@@ -96,7 +96,13 @@
       }
     ],
     "global": {
-      "anchors": []
+      "anchors": [
+        {
+          "anchor": "Blog",
+          "href": "https://photon.codes/blog",
+          "icon": "newspaper"
+        }
+      ]
     }
   },
   "logo": {
