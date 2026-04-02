@@ -7,6 +7,16 @@
     "light": "#47c6ed",
     "dark": "#47c6ed"
   },
+  "fonts": {
+    "heading": {
+      "family": "Aspekta",
+      "source": "/fonts/AspektaVF.woff2",
+      "format": "woff2"
+    },
+    "body": {
+      "family": "Inter"
+    }
+  },
   "favicon": "/favicon-128x128.png",
   "navigation": {
     "tabs": [

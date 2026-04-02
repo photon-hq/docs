@@ -1,0 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono&display=swap');
+
+code, pre, .code-block, [class*="code"] {
+  font-family: 'Geist Mono', monospace !important;
+}
