@@ -1,0 +1,19 @@
+{
+  "name": "Node 22 - Mintlify Docs",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "appPort": [3000],
+  "postCreateCommand": "npm install -g mintlify",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "mintlify.document",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "unifiedjs.vscode-mdx"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}
