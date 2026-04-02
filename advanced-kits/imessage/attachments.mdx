@@ -1,0 +1,109 @@
+---
+title: "Attachments"
+description: "Upload, download, and stream file attachments"
+---
+
+`im.attachments` handles file attachments - uploading before sending, streaming downloads, forcing iCloud downloads, and extracting Live Photos.
+
+## Supported file types
+
+| Category | Formats | Notes |
+|---|---|---|
+| Images | HEIC, HEIF | Native Apple format used by iPhone cameras |
+| Video | MOV, MP4 | MOV for Live Photos, MP4 for general video |
+| Audio | M4A, CAF, MP3 | M4A for voice memos and audio messages |
+| Documents | PDF | |
+| Stickers | PNG, GIF, APNG | Animated stickers use APNG |
+
+<Note>
+  iMessage stores and transfers images in HEIC/HEIF. If you're uploading a JPEG
+  or PNG, the server will accept it, but images received from iMessage will
+  arrive as HEIC/HEIF. Convert them before displaying in non-Apple contexts.
+</Note>
+
+## Upload an attachment
+
+Upload a file and get back an `AttachmentGuid` to pass to `im.messages.send()`.
+
+```ts
+const guid = await im.attachments.upload({
+  path: "/path/to/photo.jpg",
+  name: "photo.jpg",       // optional display name
+  mimeType: "image/jpeg",  // optional override
+});
+
+await im.messages.send(chat, "", { attachment: guid });
+```
+
+```ts
+interface AttachmentInput {
+  path: string;
+  name?: string;
+  mimeType?: string;
+}
+```
+
+## Get attachment metadata
+
+```ts
+const info = await im.attachments.get(attachmentGuid);
+```
+
+```ts
+interface AttachmentInfo {
+  guid: AttachmentGuid;
+  originalGuid: string;
+  mimeType?: string;
+  fileName?: string;
+  totalBytes: number;
+  transferState: TransferState;
+  transferName?: string;
+  _raw?: unknown;
+}
+```
+
+## Download an attachment
+
+`download()` returns a `StreamedDownload` - both a streaming and a buffered consumption path.
+
+```ts
+const dl = await im.attachments.download(attachmentGuid);
+
+dl.totalBytes;           // file size, known from the first chunk
+
+// Stream it
+for await (const chunk of dl.stream) {  // ReadableStream<Uint8Array>
+  process(chunk);
+}
+
+// Or buffer the whole thing
+const buffer = await dl.arrayBuffer();
+```
+
+```ts
+interface StreamedDownload {
+  totalBytes: number;
+  stream: ReadableStream<Uint8Array>;
+  arrayBuffer(): Promise<ArrayBuffer>;
+}
+```
+
+## Force download from iCloud
+
+Some attachments are stored in iCloud and not yet on device. Force-download them:
+
+```ts
+await im.attachments.forceDownload(attachmentGuid);
+```
+
+## Live Photos
+
+Extract the video component from a Live Photo attachment:
+
+```ts
+const video = await im.attachments.getLivePhotoVideo({
+  attachmentGuid,
+  outputPath: "/tmp/live.mov",  // optional - where to write the video
+});
+// video: LivePhotoInput
+```

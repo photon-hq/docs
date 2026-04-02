@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
+  "theme": "almond",
   "name": "Mint Starter Kit",
   "colors": {
     "primary": "#16A34A",
@@ -43,6 +43,23 @@
               "ai-tools/cursor",
               "ai-tools/claude-code",
               "ai-tools/windsurf"
+            ]
+          },
+          {
+            "group": "Advanced Kits",
+            "pages": [
+              {
+                "group": "iMessage Kit",
+                "icon": "apple",
+                "pages": [
+                  "advanced-kits/imessage/getting-started",
+                  "advanced-kits/imessage/messages",
+                  "advanced-kits/imessage/chats",
+                  "advanced-kits/imessage/attachments",
+                  "advanced-kits/imessage/scheduled-messages",
+                  "advanced-kits/imessage/error-handling"
+                ]
+              }
             ]
           }
         ]

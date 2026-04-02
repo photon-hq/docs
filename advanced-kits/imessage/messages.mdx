@@ -1,0 +1,235 @@
+---
+title: "Messages"
+description: "Send, react to, edit, and list iMessages"
+---
+
+`im.messages` covers everything related to individual messages - sending plain text, rich multipart messages, reacting, editing, unsending, paginated listing, and real-time event subscriptions.
+
+## Sending
+
+The SDK has three sending tiers. Use the simplest tier that covers your use case.
+
+### Tier 1 - plain text
+
+```ts
+await im.messages.send(chat, "Hello!");
+```
+
+### Tier 2 - with options
+
+```ts
+import { MessageEffect } from "@photon-ai/advanced-imessage";
+
+await im.messages.send(chat, "Hello!", {
+  effect: MessageEffect.confetti,
+  replyTo: someMessageGuid,
+  subject: "Hey",
+  attachment: attachmentGuid,
+  audioMessage: false,
+});
+```
+
+**`SendOptions` reference**
+
+| Option | Type | Description |
+|---|---|---|
+| `effect` | `MessageEffect` | Visual send effect (slam, confetti, fireworks, …) |
+| `replyTo` | `MessageGuid \| { guid: MessageGuid; partIndex: number }` | Reply to a specific message or part |
+| `subject` | `string` | Message subject line |
+| `attachment` | `AttachmentGuid` | Pre-uploaded attachment to include |
+| `audioMessage` | `boolean` | Send attachment as an audio message |
+| `sticker` | `{ target: MessageGuid; placement?: StickerPlacement }` | Send as a sticker on another message |
+| `formatting` | `TextFormatInput[]` | Bold, italic, underline, or text effects |
+| `service` | `string` | Override service (`"iMessage"` or `"SMS"`) |
+| `clientMessageId` | `string` | Idempotency key |
+| `ddScan` | `boolean` | Enable data detectors scan |
+| `richLink` | `boolean` | Expand URLs to rich link previews |
+
+### Tier 3 - MessageBuilder
+
+Use the builder when you need mentions, per-part formatting, or attachments mixed with text.
+
+```ts
+import { MessageBuilder, MessageEffect } from "@photon-ai/advanced-imessage";
+
+await im.messages.sendComposed(
+  chat,
+  MessageBuilder.multipart()
+    .addText("Hey ")
+    .addMention("@Alice", "alice@icloud.com")
+    .addText("!")
+    .withEffect(MessageEffect.slam)
+    .withReplyTo(someGuid)
+    .build()
+);
+```
+
+All three methods return a `SendReceipt`:
+
+```ts
+interface SendReceipt {
+  guid: MessageGuid;
+  clientMessageId?: string;
+}
+```
+
+### Available effects
+
+```ts
+import { MessageEffect, TextEffect } from "@photon-ai/advanced-imessage";
+
+MessageEffect.slam       // impact send effect
+MessageEffect.confetti   // confetti burst
+MessageEffect.fireworks  // fireworks
+MessageEffect.balloons   // balloons
+// ...
+
+TextEffect.big           // big text animation
+TextEffect.small         // small text animation
+// ...
+```
+
+## Reactions
+
+```ts
+import { Reaction } from "@photon-ai/advanced-imessage";
+
+// Tapback
+await im.messages.react(chat, messageGuid, Reaction.heart);
+await im.messages.react(chat, messageGuid, Reaction.thumbsUp, { partIndex: 1 });
+
+// Emoji reaction (iOS 17+)
+await im.messages.reactEmoji(chat, messageGuid, "🔥");
+
+// Remove a tapback
+await im.messages.unreact(chat, messageGuid, Reaction.heart);
+```
+
+All reaction methods return `CommandReceipt`:
+
+```ts
+interface CommandReceipt {
+  guid: MessageGuid;
+}
+```
+
+## Edit & unsend
+
+```ts
+// Edit text (iOS 16+)
+await im.messages.edit(chat, messageGuid, "Corrected text", {
+  backwardCompatText: "Edited: Corrected text",
+  partIndex: 0,
+});
+
+// Retract a message (iOS 16+)
+await im.messages.unsend(chat, messageGuid, { partIndex: 0 });
+```
+
+## Querying messages
+
+### Get a single message
+
+```ts
+const message = await im.messages.get(guid);
+```
+
+### List with auto-pagination
+
+`list()` returns a `Paginated<Message>` that is both `await`able and `for await`able - no pagination API to learn.
+
+```ts
+// First page
+const page = await im.messages.list({ chatGuid: chat, limit: 25 });
+page.data;  // Message[]
+page.meta;  // { total, offset, limit }
+
+// Stream all messages
+for await (const message of im.messages.list({ chatGuid: chat })) {
+  console.log(message.text);
+}
+
+// Buffer all, with a safety cap
+const all = await im.messages.list({ chatGuid: chat }).toArray({ limit: 500 });
+```
+
+**`MessageListOptions` reference**
+
+| Option | Type | Description |
+|---|---|---|
+| `chatGuid` | `ChatGuid` | Filter to one conversation |
+| `before` | `Date` | Only messages before this timestamp |
+| `after` | `Date` | Only messages after this timestamp |
+| `sort` | `SortDirection` | `"asc"` or `"desc"` |
+| `limit` | `number` | Page size |
+| `offset` | `number` | Starting offset |
+| `withChats` | `boolean` | Include related chat objects |
+| `withAttachments` | `boolean` | Include attachment metadata |
+
+### Message statistics
+
+```ts
+const stats = await im.messages.stats();
+stats.total;     // number
+stats.sent;      // number
+stats.received;  // number
+```
+
+## Real-time events
+
+`subscribe()` returns a `TypedEventStream<MessageEvent>`. Pass an event type string to narrow the type automatically.
+
+```ts
+// All message events
+for await (const event of im.messages.subscribe()) {
+  event.type; // "message.sent" | "message.received" | "message.updated" | "message.sendError"
+}
+
+// Only incoming messages - TS knows the exact shape
+for await (const event of im.messages.subscribe("message.received")) {
+  console.log(event.message.text);
+  console.log(event.chatGuid);
+}
+```
+
+### Event types
+
+| Type | Extra fields |
+|---|---|
+| `message.sent` | `message`, `chatGuid`, `clientMessageId?` |
+| `message.received` | `message`, `chatGuid` |
+| `message.updated` | `message`, `chatGuid`, `updateType` (`edited` \| `unsent` \| `notified` \| `reaction`) |
+| `message.sendError` | `chatGuid`, `errorCode`, `errorMessage`, `clientMessageId?` |
+
+### Stream operators
+
+`TypedEventStream` supports `.filter()`, `.map()`, and `.take()`:
+
+```ts
+const incoming = im.messages
+  .subscribe("message.received")
+  .filter(e => e.message.text !== undefined)
+  .map(e => ({ from: e.message.sender?.address, text: e.message.text! }));
+
+for await (const { from, text } of incoming) {
+  console.log(`[${from}] ${text}`);
+}
+```
+
+Streams implement `Symbol.asyncDispose`:
+
+```ts
+await using stream = im.messages.subscribe("message.received");
+for await (const event of stream) { ... }
+```
+
+## Miscellaneous
+
+```ts
+// Acknowledge a silenced message notification
+await im.messages.notifySilenced(chat, messageGuid);
+
+// Extract embedded media from a rich message (link preview images, etc.)
+const items = await im.messages.getEmbeddedMedia(chat, messageGuid);
+// items: Array<{ data: Uint8Array; mimeType: string }>
+```

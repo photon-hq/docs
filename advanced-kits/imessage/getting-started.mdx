@@ -1,0 +1,144 @@
+---
+title: "Getting Started"
+description: "Install the iMessage Kit and send your first message in minutes"
+---
+
+`@photon-ai/advanced-imessage` is a TypeScript SDK that connects you to our advanced gRPC-based iMessage server.
+
+It gives you a strongly-typed, resource-oriented API for everything iMessage - sending texts, reacting, scheduling, streaming events, and more.
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @photon-ai/advanced-imessage
+```
+
+```bash pnpm
+pnpm add @photon-ai/advanced-imessage
+```
+
+```bash yarn
+yarn add @photon-ai/advanced-imessage
+```
+
+```bash bun
+bun add @photon-ai/advanced-imessage
+```
+</CodeGroup>
+
+Requires Node.js 18+ or Bun.
+
+## Quick start
+
+```ts
+import { createClient, directChat } from "@photon-ai/advanced-imessage";
+
+const im = createClient({
+  address: "127.0.0.1:50051",
+  token: "your-token",
+});
+
+await im.messages.send(directChat("+1234567890"), "Hello!");
+
+await im.close();
+```
+
+## createClient
+
+```ts
+const im = createClient(options: ClientOptions): AdvancedIMessage;
+```
+
+| Option | Type | Description |
+|---|---|---|
+| `address` | `string` | Host and port of the Photon server |
+| `token` | `string \| () => Promise<string>` | Static token or async token factory |
+| `tls` | `boolean` | Enable TLS (default: `false`) |
+| `timeout` | `number` | Request timeout in milliseconds |
+| `retry` | `boolean \| RetryOptions` | Automatic retry on transient failures |
+| `autoIdempotency` | `boolean` | Attach `x-idempotency-key` to mutating RPCs |
+
+The returned `AdvancedIMessage` object exposes one property per resource:
+
+```ts
+im.messages           // send, react, edit, list, subscribe
+im.chats              // create, get, typing indicators, subscribe
+im.groups             // rename, add/remove participants, icons
+im.attachments        // upload, download, Live Photos
+im.addresses          // lookup contact info
+im.polls              // create polls, vote
+im.scheduledMessages  // schedule, update, execute
+im.locations          // FindMy friend locations
+```
+
+## Disposing the client
+
+The client implements `Symbol.asyncDispose`, so you can use `await using` in environments that support it:
+
+```ts
+await using im = createClient({ address: "...", token: "..." });
+// client is closed automatically when this block exits
+```
+
+Or close it explicitly:
+
+```ts
+await im.close();
+```
+
+## Your first echo bot
+
+An echo bot subscribes to incoming messages and replies with the same text. It's the simplest end-to-end example - receiving and sending in one loop.
+
+```ts
+import { createClient } from "@photon-ai/advanced-imessage";
+
+const im = createClient({
+  address: "127.0.0.1:50051",
+  token: "your-token",
+});
+
+for await (const event of im.messages.subscribe("message.received")) {
+  const { message, chatGuid } = event;
+
+  if (!message.text) continue;
+
+  await im.messages.send(chatGuid, message.text);
+}
+```
+
+The loop runs forever, echoing every text message back to the sender's chat. A few things to note:
+
+- `subscribe("message.received")` narrows the event type - `message` and `chatGuid` are fully typed with no casts needed.
+- Messages without text (images, reactions, etc.) are skipped with the `continue` guard.
+- `chatGuid` is already a `ChatGuid` - pass it directly to `send()`.
+
+### Prevent the bot from echoing itself
+
+Filter out messages sent by the server account to avoid infinite loops:
+
+```ts
+for await (const event of im.messages.subscribe("message.received")) {
+  const { message, chatGuid } = event;
+
+  if (!message.text || message.isFromMe) continue;
+
+  await im.messages.send(chatGuid, message.text);
+}
+```
+
+## ChatGuid helpers
+
+All APIs that target a conversation require a `ChatGuid`. Never construct the raw GUID string yourself - use the helpers:
+
+```ts
+import { directChat, groupChat, parseChatGuid } from "@photon-ai/advanced-imessage";
+
+directChat("+1234567890")    // direct message to a phone number
+groupChat("chat123")         // group chat by identifier
+
+parseChatGuid(guid)
+// { type: "direct", address: "+1234567890", raw: ChatGuid }
+// { type: "group",  identifier: "chat123",  raw: ChatGuid }
+```

@@ -1,0 +1,98 @@
+---
+title: "Error Handling"
+description: "Error class hierarchy and patterns for handling iMessage SDK errors"
+---
+
+Every SDK method throws a subclass of `IMessageError` on failure. Use `instanceof` to branch on the specific error type - no boolean getters, no magic strings.
+
+## Error hierarchy
+
+```
+IMessageError
+├── AuthenticationError   token rejected or expired
+├── NotFoundError         chat, message, or attachment does not exist
+├── RateLimitError        server is throttling requests
+├── ValidationError       bad input - wrong types, missing fields
+└── ConnectionError       network or gRPC transport failure
+```
+
+## Basic usage
+
+```ts
+import {
+  AuthenticationError,
+  ConnectionError,
+  NotFoundError,
+  RateLimitError,
+  ValidationError,
+} from "@photon-ai/advanced-imessage";
+
+try {
+  await im.messages.send(chat, "Hello!");
+} catch (err) {
+  if (err instanceof RateLimitError) {
+    // back off and retry
+    await sleep(1000);
+  } else if (err instanceof NotFoundError) {
+    // chat does not exist
+    console.error("Chat not found:", chat);
+  } else if (err instanceof AuthenticationError) {
+    // refresh the token
+    token = await refreshToken();
+  } else if (err instanceof ValidationError) {
+    // bad input, do not retry
+    console.error("Invalid request:", err.message);
+  } else if (err instanceof ConnectionError) {
+    // transient transport failure
+    console.error("Connection lost:", err.message);
+  } else {
+    throw err;
+  }
+}
+```
+
+## IMessageError properties
+
+All error subclasses inherit:
+
+```ts
+class IMessageError extends Error {
+  readonly code: ErrorCode;      // SDK-level error code enum
+  readonly retryable: boolean;   // whether retrying the request may succeed
+  readonly grpcCode: number;     // underlying gRPC status code
+}
+```
+
+`retryable` is `true` for `RateLimitError` and `ConnectionError`, `false` for all others.
+
+## Retrying with the SDK
+
+Set `retry: true` (or a `RetryOptions` object) in `createClient` to let the SDK handle transient retries automatically:
+
+```ts
+const im = createClient({
+  address: "127.0.0.1:50051",
+  token: "...",
+  retry: {
+    maxAttempts: 3,
+    initialDelayMs: 200,
+    maxDelayMs: 2000,
+  },
+});
+```
+
+When `retry` is enabled, `ConnectionError` and `RateLimitError` are retried transparently before the error propagates to your code.
+
+## Escape hatch: `_raw`
+
+If the error exposes insufficient detail, every domain type (including errors) carries `_raw` - the raw gRPC response - for debugging:
+
+```ts
+try {
+  await im.messages.send(chat, "Hello!");
+} catch (err) {
+  if (err instanceof IMessageError) {
+    console.log(err.code, err.grpcCode, err.retryable);
+  }
+}
+```

@@ -1,0 +1,168 @@
+---
+title: "Chats & Groups"
+description: "Create and manage conversations, typing indicators, and group membership"
+---
+
+`im.chats` manages direct and group conversations. `im.groups` handles group-specific operations like renaming, adding participants, and changing icons.
+
+## Chats
+
+### Create a chat
+
+```ts
+const { chat, sendReceipt } = await im.chats.create(["+1234567890"], {
+  message: "Hey!",
+  service: "iMessage",
+  subject: "Optional subject",
+  effectId: MessageEffect.confetti,
+  clientMessageId: "my-idempotency-key",
+});
+```
+
+`sendReceipt` is present only when an initial `message` was provided.
+
+### Get a chat
+
+```ts
+const chat = await im.chats.get(chatGuid);
+```
+
+The returned `Chat` object contains:
+
+```ts
+interface Chat {
+  guid: ChatGuid;
+  displayName?: string;
+  participants: string[];
+  lastMessage?: Message;
+  isArchived: boolean;
+  serviceType: ChatServiceType;
+  _raw?: unknown;
+}
+```
+
+### Count chats
+
+```ts
+const total = await im.chats.count();
+const totalWithArchived = await im.chats.count({ includeArchived: true });
+```
+
+### Typing indicators
+
+```ts
+// Show typing bubble
+await im.chats.setTyping(chatGuid, true);
+
+// Stop typing bubble
+await im.chats.setTyping(chatGuid, false);
+```
+
+### Share contact info
+
+```ts
+const info = await im.chats.shareContactInfo(chatGuid);
+// info: AddressInfo
+```
+
+### Add & remove participants
+
+```ts
+await im.chats.addParticipant(chatGuid, "+19998887777");
+await im.chats.removeParticipant(chatGuid, "+19998887777");
+```
+
+### Mark as read
+
+```ts
+await im.chats.markRead(chatGuid);
+```
+
+### Archive & unarchive
+
+```ts
+await im.chats.setArchived(chatGuid, true);
+await im.chats.setArchived(chatGuid, false);
+```
+
+### Real-time chat events
+
+```ts
+for await (const event of im.chats.subscribe()) {
+  event.type;
+  // "chat.created" | "chat.left" | "chat.readStatusChanged" | "chat.typingIndicator"
+}
+
+// Narrowed
+for await (const event of im.chats.subscribe("chat.typingIndicator")) {
+  console.log(event.isTyping, event.displayName);
+}
+```
+
+**Chat event types**
+
+| Type | Extra fields |
+|---|---|
+| `chat.created` | `chatGuid` |
+| `chat.left` | `chatGuid` |
+| `chat.readStatusChanged` | `chatGuid`, `isRead` |
+| `chat.typingIndicator` | `chatGuid`, `isTyping`, `displayName?` |
+
+## Groups
+
+### Rename a group
+
+```ts
+await im.groups.rename(chatGuid, "New Group Name");
+```
+
+### Manage participants
+
+```ts
+await im.groups.addParticipant(chatGuid, "newperson@icloud.com");
+await im.groups.removeParticipant(chatGuid, "oldperson@icloud.com");
+```
+
+### Group icons
+
+```ts
+// Change icon
+await im.groups.setIcon(chatGuid, attachmentGuid);
+
+// Remove icon
+await im.groups.removeIcon(chatGuid);
+```
+
+### Group backgrounds
+
+```ts
+await im.groups.setBackground(chatGuid, { imagePath: "/path/to/image.jpg" });
+await im.groups.removeBackground(chatGuid);
+```
+
+### Group events
+
+Group changes are emitted as a single `group.changed` event with a discriminated `change` field:
+
+```ts
+for await (const event of im.groups.subscribe()) {
+  // event.type === "group.changed"
+  switch (event.change.type) {
+    case "renamed":
+      console.log("New name:", event.change.name);
+      break;
+    case "participantAdded":
+      console.log("Added:", event.change.address);
+      break;
+    case "participantRemoved":
+      console.log("Removed:", event.change.address);
+      break;
+    case "iconChanged":
+    case "iconRemoved":
+    case "backgroundChanged":
+    case "backgroundRemoved":
+      // handle icon/background changes
+      break;
+  }
+}
+```

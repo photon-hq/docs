@@ -1,0 +1,111 @@
+---
+title: "Scheduled Messages"
+description: "Schedule, manage, and monitor messages to be sent at a future time"
+---
+
+`im.scheduledMessages` lets you create messages that the server will send at a specified time. You can update or delete them before they fire, execute them immediately, and stream lifecycle events.
+
+## Create a scheduled message
+
+```ts
+const scheduled = await im.scheduledMessages.create({
+  scheduledAt: new Date("2025-12-31T23:59:00Z"),
+  payload: {
+    chat: directChat("+1234567890"),
+    projectId: "my-project",
+    text: "Happy New Year!",
+    service: "iMessage",
+    subject: "NYE",
+    effectId: MessageEffect.fireworks,
+    clientMessageId: "nye-2025",
+  },
+});
+```
+
+**`CreateScheduledMessageOptions`**
+
+| Field | Type | Description |
+|---|---|---|
+| `scheduledAt` | `Date` | When to send the message |
+| `payload.chat` | `ChatGuid` | Destination conversation |
+| `payload.projectId` | `string` | Project namespace |
+| `payload.text` | `string` | Message text |
+| `payload.service` | `string` | `"iMessage"` or `"SMS"` |
+| `payload.subject` | `string` | Subject line |
+| `payload.effectId` | `string` | Send effect ID |
+| `payload.attachmentPath` | `string` | Path to an attachment |
+| `payload.attachmentName` | `string` | Attachment display name |
+| `payload.clientMessageId` | `string` | Idempotency key |
+
+## Get a scheduled message
+
+```ts
+const scheduled = await im.scheduledMessages.get(scheduledMessageId);
+```
+
+## List scheduled messages
+
+```ts
+const page = await im.scheduledMessages.list({ chatGuid: chat });
+for await (const msg of im.scheduledMessages.list()) {
+  console.log(msg.scheduledAt, msg.status);
+}
+```
+
+## Update a scheduled message
+
+Only pass the fields you want to change. The SDK merges them with the existing payload.
+
+```ts
+await im.scheduledMessages.update(scheduledMessageId, {
+  scheduledAt: new Date("2026-01-01T00:00:00Z"),
+  payload: {
+    text: "Happy New Year! (updated)",
+  },
+});
+```
+
+## Delete a scheduled message
+
+```ts
+await im.scheduledMessages.delete(scheduledMessageId);
+```
+
+## Execute immediately
+
+Trigger a scheduled message before its scheduled time:
+
+```ts
+await im.scheduledMessages.execute(scheduledMessageId);
+```
+
+## Real-time schedule events
+
+```ts
+for await (const event of im.scheduledMessages.subscribe()) {
+  // event.type === "schedule.changed"
+  console.log(event.action, event.scheduledMessage);
+}
+```
+
+**`ScheduleEvent` actions**
+
+| Action | When it fires |
+|---|---|
+| `created` | A new scheduled message was created |
+| `updated` | A scheduled message was modified |
+| `deleted` | A scheduled message was removed |
+| `sent` | The server sent the message successfully |
+| `failed` | The server failed to send the message |
+
+## ScheduledMessage shape
+
+```ts
+interface ScheduledMessage {
+  id: ScheduledMessageId;
+  scheduledAt: Date;
+  status: ScheduledMessageStatus;
+  payload: ScheduledMessagePayload;
+  _raw?: unknown;
+}
+```
