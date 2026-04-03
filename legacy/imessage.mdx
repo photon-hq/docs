@@ -1,0 +1,435 @@
+---
+title: "iMessage (Legacy)"
+description: "Documentation for the legacy @photon-ai/advanced-imessage-kit SDK"
+---
+
+`@photon-ai/advanced-imessage-kit` is the legacy HTTP + Socket.IO-based iMessage SDK. For new projects, use [`@photon-ai/advanced-imessage`](/advanced-kits/imessage/getting-started) instead.
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @photon-ai/advanced-imessage-kit
+```
+
+```bash bun
+bun add @photon-ai/advanced-imessage-kit
+```
+</CodeGroup>
+
+## Quick start
+
+```typescript
+import { SDK } from "@photon-ai/advanced-imessage-kit";
+
+const sdk = SDK({
+  serverUrl: "http://localhost:1234",
+});
+
+await sdk.connect();
+
+sdk.on("new-message", (message) => {
+  console.log("New message:", message.text);
+});
+
+await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;+1234567890",
+  message: "Hello World!",
+});
+
+await sdk.close();
+```
+
+## SDK options
+
+```typescript
+interface ClientConfig {
+  serverUrl?: string;   // Server URL, defaults to "http://localhost:1234"
+  apiKey?: string;      // API key (if server requires authentication)
+  logLevel?: "debug" | "info" | "warn" | "error"; // defaults to "info"
+  logToFile?: boolean;  // Write logs to ~/Library/Logs/AdvancedIMessageKit (default: true)
+}
+```
+
+## chatGuid format
+
+`chatGuid` is the unique identifier for a conversation, in the format `service;separator;address`:
+
+| Type | Format | Example |
+|---|---|---|
+| iMessage DM | `iMessage;-;address` | `iMessage;-;+1234567890` |
+| SMS DM | `SMS;-;address` | `SMS;-;+1234567890` |
+| Group chat | `iMessage;+;identifier` | `iMessage;+;chat123456789` |
+| Auto-detect | `any;-;address` | `any;-;+1234567890` |
+
+Use `any;-;` when you want the SDK to automatically pick iMessage or SMS based on availability.
+
+## Connection events
+
+```typescript
+sdk.on("ready", () => { console.log("Connected"); });
+sdk.on("disconnect", () => { console.log("Disconnected"); });
+```
+
+## Closing the client
+
+```typescript
+process.on("SIGINT", async () => {
+  await sdk.close();
+  process.exit(0);
+});
+```
+
+---
+
+## Messages
+
+`sdk.messages` covers sending, reacting, editing, unsending, querying, and real-time message events.
+
+### Sending
+
+```typescript
+// Plain text
+await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;+1234567890",
+  message: "Hello!",
+});
+
+// With subject and effect
+await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;+1234567890",
+  message: "Happy Birthday!",
+  subject: "Wishes",
+  effectId: "com.apple.messages.effect.CKConfettiEffect",
+});
+
+// Reply to a message
+await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;+1234567890",
+  message: "This is a reply",
+  selectedMessageGuid: "original-message-guid",
+});
+
+// Rich link preview
+await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;+1234567890",
+  message: "https://photon.codes/",
+  richLink: true,
+});
+```
+
+### Message effects
+
+| Effect | effectId |
+|---|---|
+| Confetti | `com.apple.messages.effect.CKConfettiEffect` |
+| Fireworks | `com.apple.messages.effect.CKFireworksEffect` |
+| Balloons | `com.apple.messages.effect.CKBalloonEffect` |
+| Hearts | `com.apple.messages.effect.CKHeartEffect` |
+| Lasers | `com.apple.messages.effect.CKHappyBirthdayEffect` |
+| Shooting Star | `com.apple.messages.effect.CKShootingStarEffect` |
+| Sparkles | `com.apple.messages.effect.CKSparklesEffect` |
+| Echo | `com.apple.messages.effect.CKEchoEffect` |
+| Spotlight | `com.apple.messages.effect.CKSpotlightEffect` |
+| Gentle | `com.apple.MobileSMS.expressivesend.gentle` |
+| Loud | `com.apple.MobileSMS.expressivesend.loud` |
+| Slam | `com.apple.MobileSMS.expressivesend.impact` |
+| Invisible Ink | `com.apple.MobileSMS.expressivesend.invisibleink` |
+
+### Text styles & animations
+
+Requires Private API.
+
+```typescript
+// Bold a range
+await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;+1234567890",
+  message: "This is bold text",
+  textStyles: [{ start: 8, end: 12, bold: true }],
+});
+
+// Character animation (whole message)
+await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;+1234567890",
+  message: "Ripple wave!",
+  textAnimation: "ripple",
+});
+```
+
+**Text style properties** (per range): `start`, `end`, `bold`, `italic`, `underline`, `strikethrough`
+
+**Text animations**: `big`, `small`, `shake`, `nod`, `explode`, `ripple`, `bloom`, `jitter`
+
+### Reactions
+
+```typescript
+await sdk.messages.sendReaction({
+  chatGuid: "iMessage;-;+1234567890",
+  messageGuid: "target-message-guid",
+  reaction: "love", // love, like, dislike, laugh, emphasize, question
+});
+
+// Remove (prefix with -)
+await sdk.messages.sendReaction({
+  chatGuid: "iMessage;-;+1234567890",
+  messageGuid: "target-message-guid",
+  reaction: "-love",
+});
+```
+
+### Edit & unsend
+
+```typescript
+await sdk.messages.editMessage({
+  messageGuid: "message-guid",
+  editedMessage: "Corrected text",
+  partIndex: 0,
+});
+
+await sdk.messages.unsendMessage({
+  messageGuid: "message-guid",
+  partIndex: 0,
+});
+```
+
+### Querying
+
+```typescript
+const message = await sdk.messages.getMessage("message-guid");
+
+const messages = await sdk.messages.getMessages({
+  chatGuid: "iMessage;-;+1234567890",
+  limit: 50,
+  offset: 0,
+  sort: "DESC",
+  before: Date.now(),
+  after: Date.now() - 86400000,
+});
+
+const results = await sdk.messages.searchMessages({
+  query: "keyword",
+  chatGuid: "iMessage;-;+1234567890",
+  limit: 20,
+});
+```
+
+### Real-time events
+
+```typescript
+sdk.on("new-message", (message) => {
+  console.log(message.text, message.handle?.address, message.isFromMe);
+});
+
+sdk.on("updated-message", (message) => {
+  if (message.dateRead) console.log("Read");
+  else if (message.dateDelivered) console.log("Delivered");
+});
+
+sdk.on("message-send-error", (data) => {
+  console.error("Send failed:", data);
+});
+```
+
+---
+
+## Chats
+
+`sdk.chats` handles listing conversations, managing group chats, typing indicators, and chat backgrounds.
+
+### Get chats
+
+```typescript
+const chats = await sdk.chats.getChats({
+  withLastMessage: true,
+  withArchived: false,
+  offset: 0,
+  limit: 50,
+});
+
+const chat = await sdk.chats.getChat("chat-guid", {
+  with: ["participants", "lastMessage"],
+});
+
+const messages = await sdk.chats.getChatMessages("chat-guid", {
+  limit: 100,
+  offset: 0,
+  sort: "DESC",
+});
+```
+
+### Create chat
+
+```typescript
+const chat = await sdk.chats.createChat({
+  addresses: ["+1234567890", "+0987654321"],
+  message: "Hello everyone!",
+  service: "iMessage",
+  method: "private-api",
+});
+```
+
+### Group chats
+
+```typescript
+await sdk.chats.updateChat("chat-guid", { displayName: "New Name" });
+await sdk.chats.addParticipant("chat-guid", "+1234567890");
+await sdk.chats.removeParticipant("chat-guid", "+1234567890");
+await sdk.chats.leaveChat("chat-guid");
+
+await sdk.chats.setGroupIcon("chat-guid", "/path/to/image.jpg");
+await sdk.chats.removeGroupIcon("chat-guid");
+```
+
+### Chat status & typing
+
+```typescript
+await sdk.chats.markChatRead("chat-guid");
+await sdk.chats.markChatUnread("chat-guid");
+await sdk.chats.deleteChat("chat-guid");
+
+await sdk.chats.startTyping("chat-guid");
+await sdk.chats.stopTyping("chat-guid");
+```
+
+### Chat background
+
+```typescript
+await sdk.chats.setBackground("chat-guid", { filePath: "/path/to/image.png" });
+await sdk.chats.removeBackground("chat-guid");
+```
+
+### Real-time events
+
+```typescript
+sdk.on("chat-read-status-changed", ({ chatGuid, read }) => { /* ... */ });
+sdk.on("typing-indicator", ({ display, guid }) => { /* ... */ });
+sdk.on("group-name-change", (message) => { /* ... */ });
+sdk.on("participant-added", (message) => { /* ... */ });
+sdk.on("participant-removed", (message) => { /* ... */ });
+sdk.on("participant-left", (message) => { /* ... */ });
+```
+
+---
+
+## Attachments
+
+`sdk.attachments` handles sending and downloading files, images, audio messages, and stickers.
+
+### Send attachment
+
+```typescript
+await sdk.attachments.sendAttachment({
+  chatGuid: "iMessage;-;+1234567890",
+  filePath: "/path/to/file.jpg",
+  fileName: "custom-name.jpg",
+});
+
+// Audio message
+await sdk.attachments.sendAttachment({
+  chatGuid: "iMessage;-;+1234567890",
+  filePath: "/path/to/audio.m4a",
+  isAudioMessage: true,
+});
+```
+
+### Send stickers
+
+```typescript
+// Standalone
+await sdk.attachments.sendSticker({
+  chatGuid: "iMessage;-;+1234567890",
+  filePath: "/path/to/sticker.png",
+});
+
+// Reply sticker (attaches to a message bubble)
+await sdk.attachments.sendSticker({
+  chatGuid: "iMessage;-;+1234567890",
+  filePath: "/path/to/sticker.png",
+  selectedMessageGuid: "target-message-guid",
+  stickerX: 0.5,
+  stickerY: 0.5,
+  stickerScale: 0.75,
+});
+```
+
+### Download attachments
+
+```typescript
+const buffer = await sdk.attachments.downloadAttachment("attachment-guid", {
+  original: true,
+  width: 800,
+  quality: 80,
+});
+
+const blurhash = await sdk.attachments.getAttachmentBlurhash("attachment-guid");
+```
+
+---
+
+## Scheduled Messages
+
+`sdk.scheduledMessages` lets you schedule messages to send once or on a recurring interval.
+
+```typescript
+// One-time
+await sdk.scheduledMessages.createScheduledMessage({
+  type: "send-message",
+  payload: {
+    chatGuid: "any;-;+1234567890",
+    message: "This is a scheduled message!",
+    method: "apple-script",
+  },
+  scheduledFor: Date.now() + 60_000,
+  schedule: { type: "once" },
+});
+
+// Recurring
+await sdk.scheduledMessages.createScheduledMessage({
+  type: "send-message",
+  payload: {
+    chatGuid: "any;-;+1234567890",
+    message: "Good morning!",
+    method: "apple-script",
+  },
+  scheduledFor: tomorrow9am.getTime(),
+  schedule: {
+    type: "recurring",
+    intervalType: "daily", // hourly, daily, weekly, monthly, yearly
+    interval: 1,
+  },
+});
+
+// Manage
+const all = await sdk.scheduledMessages.getScheduledMessages();
+await sdk.scheduledMessages.deleteScheduledMessage("scheduled-id");
+```
+
+---
+
+## Error Handling
+
+The legacy SDK uses HTTP responses under the hood. Errors surface as thrown exceptions with an optional `response` property.
+
+```typescript
+try {
+  await sdk.messages.sendMessage({
+    chatGuid: "iMessage;-;+1234567890",
+    message: "Hello!",
+  });
+} catch (error) {
+  if (error.response?.status === 404) {
+    console.error("Chat not found");
+  } else if (error.response?.status === 401) {
+    console.error("Invalid API key");
+  } else {
+    console.error("Send failed:", error.message);
+  }
+}
+```
+
+```typescript
+sdk.on("error", (error) => { console.error("SDK error:", error); });
+sdk.on("message-send-error", (data) => { console.error("Send failed:", data); });
+```
+
+The SDK reconnects automatically via Socket.IO on transient disconnections.

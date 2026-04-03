@@ -24,10 +24,10 @@
         "tab": "Guides",
         "groups": [
           {
-            "group": "Advanced Kits",
+            "group": "Advanced SDKs",
             "pages": [
               {
-                "group": "iMessage Kit",
+                "group": "iMessage",
                 "icon": "apple",
                 "pages": [
                   "advanced-kits/imessage/getting-started",
@@ -36,6 +36,12 @@
                   "advanced-kits/imessage/attachments",
                   "advanced-kits/imessage/scheduled-messages",
                   "advanced-kits/imessage/error-handling"
+                ]
+              },
+              {
+                "group": "Legacy",
+                "pages": [
+                  "legacy/imessage"
                 ]
               }
             ]
