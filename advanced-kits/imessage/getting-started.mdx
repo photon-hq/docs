@@ -35,7 +35,7 @@ Requires Node.js 18+ or Bun.
 import { createClient, directChat } from "@photon-ai/advanced-imessage";
 
 const im = createClient({
-  address: "your-instance.imsg.photon.codes",
+  address: "your-instance.imsg.photon.codes:443",
   token: "your-token",
 });
 
@@ -95,7 +95,7 @@ An echo bot subscribes to incoming messages and replies with the same text. It's
 import { createClient } from "@photon-ai/advanced-imessage";
 
 const im = createClient({
-  address: "your-instance.imsg.photon.codes",
+  address: "your-instance.imsg.photon.codes:443",
   token: "your-token",
 });
 
