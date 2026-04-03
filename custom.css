@@ -64,3 +64,12 @@ a[href="https://photon.codes/contact"]:hover::after {
   opacity: 1;
   width: 20px;
 }
+
+/* Hide vertical line and extra margin when button is inside mobile popup */
+[data-headlessui-portal] a[href="https://photon.codes/contact"] {
+  margin-left: 0 !important;
+}
+
+[data-headlessui-portal] a[href="https://photon.codes/contact"]::before {
+  display: none;
+}
