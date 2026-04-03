@@ -83,7 +83,13 @@
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg"
   },
-  "navbar": {},
+  "navbar": {
+    "primary": {
+      "type": "button",
+      "label": "Contact",
+      "href": "https://photon.codes/contact"
+    }
+  },
   "contextual": {
     "options": [
      "copy",

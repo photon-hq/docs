@@ -3,3 +3,64 @@
 code, pre, .code-block, [class*="code"] {
   font-family: 'Geist Mono', monospace !important;
 }
+
+/* Navbar CTA button */
+a[href="https://photon.codes/contact"] {
+  --border-color: rgba(12, 138, 176, 0.55);
+  --corner-shape-fallback: 0.945;
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0px !important;
+  background-color: rgb(23, 181, 230) !important;
+  corner-shape: superellipse(1.1);
+  border-radius: calc(40px * var(--one-if-corner-shape-supported, var(--corner-shape-fallback, 1))) !important;
+  box-shadow: rgba(255, 255, 255, 0.5) 0px 0px 5px 2px inset !important;
+  border: 1.5px solid var(--border-color) !important;
+  padding: 8px 14px !important;
+  color: rgb(255, 255, 255) !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  text-shadow: rgba(128, 128, 128, 0.25) 0px 0px 4px;
+  margin-left: 8px !important;
+  transition: gap 0.2s ease, transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  transform: scale(1);
+}
+
+a[href="https://photon.codes/contact"]:hover {
+  gap: 4px !important;
+  transform: scale(1.05) !important;
+}
+
+/* Vertical separator line */
+a[href="https://photon.codes/contact"]::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 24px;
+  background: rgba(128, 128, 128, 0.25);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+/* Arrow icon (slides in on hover) */
+a[href="https://photon.codes/contact"]::after {
+  content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='20' height='20'%3E%3Cpath d='M 0 0 L 5.5 5.25 L 0 10.5' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' stroke='white' transform='translate(13.75 6.75)'/%3E%3Cpath d='M 14.25 0 L 0 0' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' stroke='white' transform='translate(4.75 12)'/%3E%3C/svg%3E");
+  display: inline-block;
+  width: 0;
+  height: 20px;
+  opacity: 0;
+  overflow: hidden;
+  line-height: 0;
+  transition: opacity 0.2s ease, width 0.2s ease;
+  vertical-align: middle;
+}
+
+a[href="https://photon.codes/contact"]:hover::after {
+  opacity: 1;
+  width: 20px;
+}
