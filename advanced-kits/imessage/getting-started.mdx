@@ -54,7 +54,7 @@ const im = createClient(options: ClientOptions): AdvancedIMessage;
 |---|---|---|
 | `address` | `string` | Host and port of the Photon server |
 | `token` | `string \| () => Promise<string>` | Static token or async token factory |
-| `tls` | `boolean` | Enable TLS (default: `false`) |
+| `tls` | `boolean` | Enable TLS (default: `true`). Set to `false` to force an insecure connection for local development. |
 | `timeout` | `number` | Request timeout in milliseconds |
 | `retry` | `boolean \| RetryOptions` | Automatic retry on transient failures |
 | `autoIdempotency` | `boolean` | Attach `x-idempotency-key` to mutating RPCs |
