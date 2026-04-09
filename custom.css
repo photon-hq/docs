@@ -142,14 +142,11 @@ code, pre, .code-block, [class*="code"] {
 #content-container {
   border: 1px solid rgba(255, 255, 255, 0.07) !important;
   background-color: #101010;
+  scroll-behavior: smooth !important;
 }
 
 .sidebar-group {
   font-weight: 400 !important;
-}
-
-#content-container {
-  scroll-behavior: smooth !important;
 }
 
 #table-of-contents {
