@@ -1,0 +1,40 @@
+name: Resolve merge conflicts
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  resolve-conflicts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find PRs with merge conflicts
+        id: conflicts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          prs=$(gh pr list --state open --json number,mergeable --jq '.[] | select(.mergeable == "CONFLICTING") | .number')
+          echo "prs=$prs" >> "$GITHUB_OUTPUT"
+
+      - uses: anthropics/claude-code-action@v1
+        if: steps.conflicts.outputs.prs != ''
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            There are open PRs with merge conflicts after a push to main.
+            For each of the following PR numbers, check out the branch, resolve the merge conflicts intelligently (prefer the incoming changes from main for lockfiles and generated files, prefer the PR's changes for content), and push the resolved branch.
+
+            PR numbers: ${{ steps.conflicts.outputs.prs }}
+
+            For each PR:
+            1. `gh pr checkout <number>`
+            2. `git merge origin/main`
+            3. Resolve conflicts by reading the conflicted files and making intelligent choices
+            4. Commit and push the resolution
+            5. Leave a comment on the PR with `gh pr comment <number> --body "..."` summarizing what conflicts were found and how each was resolved
