@@ -4,12 +4,19 @@
   "private": true,
   "scripts": {
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "typecheck:docs": "tsx scripts/typecheck-docs/index.ts"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^4.15.1",
+    "@photon-ai/advanced-imessage": "^0.1.0",
+    "@photon-ai/advanced-imessage-kit": "^1.14.3",
+    "@types/node": "^25.5.2",
+    "@typescript/native-preview": "^7.0.0-dev",
     "eslint": "^9.28.0",
     "eslint-plugin-format": "^2.0.1",
-    "eslint-plugin-mdx": "^3.7.0"
+    "eslint-plugin-mdx": "^3.7.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
   }
 }
