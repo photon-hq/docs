@@ -9,12 +9,14 @@
   },
   "fonts": {
     "heading": {
-      "family": "Aspekta",
-      "source": "/fonts/AspektaVF.woff2",
+      "family": "PolySansArabicVF",
+      "source": "/fonts/PolySansArabicVF.woff2",
       "format": "woff2"
     },
     "body": {
-      "family": "Inter"
+      "family": "PolySansArabicVF",
+      "source": "/fonts/PolySansArabicVF.woff2",
+      "format": "woff2"
     }
   },
   "favicon": "/favicon-128x128.png",

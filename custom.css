@@ -1,7 +1,37 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@100..900&display=swap');
 
 code, pre, .code-block, [class*="code"] {
-  font-family: 'Geist Mono', monospace !important;
+  font-family: 'Azeret Mono', monospace !important;
+}
+
+/* Code blocks and cards */
+.code-block,
+[class*="CodeGroup"], [class*="code-group"],
+.card, [class*="Card"], [class*="card"],
+[class*="Callout"], [class*="callout"],
+[class*="Note"], [class*="note"],
+[class*="Warning"], [class*="warning"],
+[class*="Tip"], [class*="tip"],
+[class*="Accordion"], [class*="accordion"],
+[class*="ResponseField"], [class*="Expandable"] {
+  border-radius: 8px !important;
+  border: 1px solid #404040 !important;
+  background: rgba(64, 64, 64, 0.25) !important;
+}
+
+[style*="--shiki-dark-bg"] {
+  --shiki-dark-bg: transparent !important;
+  background-color: transparent !important;
+}
+
+.code-block pre,
+.code-block code {
+  background-color: transparent !important;
+}
+
+.code-block [data-fade-overlay] {
+  --fade-color-light: transparent !important;
+  --fade-color-dark: transparent !important;
 }
 
 /* Navbar CTA button */
