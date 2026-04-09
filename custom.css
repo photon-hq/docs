@@ -74,10 +74,6 @@ code, pre, .code-block, [class*="code"] {
   scrollbar-color: var(--border, rgba(128, 128, 128, 0.3)) transparent;
 }
 
-:root {
-  --background-dark: #101010;
-}
-
 .dark #navbar {
   background-color: #000000 !important;
   height: 60px !important;
@@ -145,6 +141,7 @@ code, pre, .code-block, [class*="code"] {
 
 #content-container {
   border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  background-color: #101010;
 }
 
 .sidebar-group {
