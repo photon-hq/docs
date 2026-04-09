@@ -5,7 +5,7 @@ code, pre, .code-block, [class*="code"] {
 }
 
 /* Code blocks and cards */
-.code-block,
+/*.code-block,
 [class*="CodeGroup"], [class*="code-group"],
 .card, [class*="Card"], [class*="card"],
 [class*="Callout"], [class*="callout"],
@@ -40,7 +40,7 @@ code, pre, .code-block, [class*="code"] {
 
 .rounded-2xl {
   border-radius: 8px !important;
-}
+}*/
 
 /* Scrollbars */
 ::-webkit-scrollbar {
@@ -74,7 +74,7 @@ code, pre, .code-block, [class*="code"] {
   scrollbar-color: var(--border, rgba(128, 128, 128, 0.3)) transparent;
 }
 
-.dark #navbar {
+/*.dark #navbar {
   background-color: #000000 !important;
   height: 60px !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
@@ -133,13 +133,13 @@ code, pre, .code-block, [class*="code"] {
   height: 3.5rem !important;
   display: flex !important;
   align-items: center !important;
-}
+}*/
 
 .eyebrow {
   font-family: 'Azeret Mono', monospace !important;
 }
 
-#content-container {
+/*#content-container {
   border: 1px solid rgba(255, 255, 255, 0.07) !important;
   background-color: #101010;
   scroll-behavior: smooth !important;
@@ -147,7 +147,7 @@ code, pre, .code-block, [class*="code"] {
 
 .sidebar-group {
   font-weight: 400 !important;
-}
+}*/
 
 #table-of-contents {
   scrollbar-width: none;
