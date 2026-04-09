@@ -138,27 +138,11 @@ await sdk.messages.sendMessage({
 
 ### Text styles & animations
 
-Requires Private API.
-
-```typescript
-// Bold a range
-await sdk.messages.sendMessage({
-  chatGuid: "iMessage;-;+1234567890",
-  message: "This is bold text",
-  textStyles: [{ start: 8, end: 12, bold: true }],
-});
-
-// Character animation (whole message)
-await sdk.messages.sendMessage({
-  chatGuid: "iMessage;-;+1234567890",
-  message: "Ripple wave!",
-  textAnimation: "ripple",
-});
-```
-
-**Text style properties** (per range): `start`, `end`, `bold`, `italic`, `underline`, `strikethrough`
-
-**Text animations**: `big`, `small`, `shake`, `nod`, `explode`, `ripple`, `bloom`, `jitter`
+<Note>
+  Text styles and animations are not supported by the legacy SDK. Use
+  [`@photon-ai/advanced-imessage`](/advanced-kits/imessage/messages) for rich
+  text formatting and message effects.
+</Note>
 
 ### Reactions
 
@@ -416,7 +400,7 @@ try {
     chatGuid: "iMessage;-;+1234567890",
     message: "Hello!",
   });
-} catch (error) {
+} catch (error: any) {
   if (error.response?.status === 404) {
     console.error("Chat not found");
   } else if (error.response?.status === 401) {
