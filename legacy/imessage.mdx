@@ -44,10 +44,10 @@ await sdk.close();
 
 ```typescript
 interface ClientConfig {
-  serverUrl?: string;   // Server URL, defaults to "http://localhost:1234"
-  apiKey?: string;      // API key (if server requires authentication)
+  serverUrl?: string; // Server URL, defaults to "http://localhost:1234"
+  apiKey?: string; // API key (if server requires authentication)
   logLevel?: "debug" | "info" | "warn" | "error"; // defaults to "info"
-  logToFile?: boolean;  // Write logs to ~/Library/Logs/AdvancedIMessageKit (default: true)
+  logToFile?: boolean; // Write logs to ~/Library/Logs/AdvancedIMessageKit (default: true)
 }
 ```
 
@@ -67,8 +67,12 @@ Use `any;-;` when you want the SDK to automatically pick iMessage or SMS based o
 ## Connection events
 
 ```typescript
-sdk.on("ready", () => { console.log("Connected"); });
-sdk.on("disconnect", () => { console.log("Disconnected"); });
+sdk.on("ready", () => {
+  console.log("Connected");
+});
+sdk.on("disconnect", () => {
+  console.log("Disconnected");
+});
 ```
 
 ## Closing the client
@@ -285,12 +289,24 @@ await sdk.chats.removeBackground("chat-guid");
 ### Real-time events
 
 ```typescript
-sdk.on("chat-read-status-changed", ({ chatGuid, read }) => { /* ... */ });
-sdk.on("typing-indicator", ({ display, guid }) => { /* ... */ });
-sdk.on("group-name-change", (message) => { /* ... */ });
-sdk.on("participant-added", (message) => { /* ... */ });
-sdk.on("participant-removed", (message) => { /* ... */ });
-sdk.on("participant-left", (message) => { /* ... */ });
+sdk.on("chat-read-status-changed", ({ chatGuid, read }) => {
+  /* ... */
+});
+sdk.on("typing-indicator", ({ display, guid }) => {
+  /* ... */
+});
+sdk.on("group-name-change", (message) => {
+  /* ... */
+});
+sdk.on("participant-added", (message) => {
+  /* ... */
+});
+sdk.on("participant-removed", (message) => {
+  /* ... */
+});
+sdk.on("participant-left", (message) => {
+  /* ... */
+});
 ```
 
 ---
@@ -412,8 +428,12 @@ try {
 ```
 
 ```typescript
-sdk.on("error", (error) => { console.error("SDK error:", error); });
-sdk.on("message-send-error", (data) => { console.error("Send failed:", data); });
+sdk.on("error", (error) => {
+  console.error("SDK error:", error);
+});
+sdk.on("message-send-error", (data) => {
+  console.error("Send failed:", data);
+});
 ```
 
 The SDK reconnects automatically via Socket.IO on transient disconnections.

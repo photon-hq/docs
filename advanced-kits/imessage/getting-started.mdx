@@ -135,10 +135,10 @@ All APIs that target a conversation require a `ChatGuid`. Never construct the ra
 ```ts
 import { directChat, groupChat, parseChatGuid } from "@photon-ai/advanced-imessage";
 
-directChat("+1234567890")    // direct message to a phone number
-groupChat("chat123")         // group chat by identifier
+directChat("+1234567890"); // direct message to a phone number
+groupChat("chat123"); // group chat by identifier
 
-parseChatGuid(guid)
+parseChatGuid(guid);
 // { type: "direct", address: "+1234567890", raw: ChatGuid }
 // { type: "group",  identifier: "chat123",  raw: ChatGuid }
 ```

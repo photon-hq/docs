@@ -1,8 +1,8 @@
-import type { TypecheckConfig } from "../scripts/typecheck-docs/config";
+import type { TypecheckConfig } from '../scripts/typecheck-docs/config'
 
 const config: TypecheckConfig = {
-  lang: "ts",
-  sdkPackage: "@photon-ai/advanced-imessage-kit",
+  lang: 'ts',
+  sdkPackage: '@photon-ai/advanced-imessage-kit',
   importPreamble: `
 import { SDK } from "@photon-ai/advanced-imessage-kit";
 `.trim(),
@@ -10,6 +10,6 @@ import { SDK } from "@photon-ai/advanced-imessage-kit";
 declare const sdk: ReturnType<typeof SDK>;
 declare const tomorrow9am: Date;
 `.trim(),
-};
+}
 
-export default config;
+export default config

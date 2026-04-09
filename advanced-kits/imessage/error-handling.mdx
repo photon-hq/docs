@@ -68,10 +68,10 @@ All error subclasses inherit:
 
 ```ts
 class IMessageError extends Error {
-  readonly code: ErrorCode;                    // SDK-level error code enum
-  readonly retryable: boolean;                 // whether retrying the request may succeed
-  readonly grpcCode: number;                   // underlying gRPC status code
-  readonly context: Record<string, string>;    // extra debug info from gRPC trailing metadata
+  readonly code: ErrorCode; // SDK-level error code enum
+  readonly retryable: boolean; // whether retrying the request may succeed
+  readonly grpcCode: number; // underlying gRPC status code
+  readonly context: Record<string, string>; // extra debug info from gRPC trailing metadata
 }
 ```
 

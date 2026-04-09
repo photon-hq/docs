@@ -28,8 +28,8 @@ Upload a file and get back an `AttachmentInfo` object. Use the `guid` property t
 ```ts
 const info = await im.attachments.upload({
   path: "/path/to/photo.jpg",
-  fileName: "photo.jpg",      // optional display name
-  mimeType: "image/jpeg",     // optional override
+  fileName: "photo.jpg", // optional display name
+  mimeType: "image/jpeg", // optional override
 });
 
 await im.messages.send(chat, "", { attachment: info.guid });
@@ -50,12 +50,12 @@ Upload a paired HEIC image + MOV video as a Live Photo:
 ```ts
 const info = await im.attachments.uploadLivePhoto({
   image: {
-    data: imageBytes,       // Uint8Array
+    data: imageBytes, // Uint8Array
     fileName: "photo.heic",
     mimeType: "image/heic",
   },
   video: {
-    data: videoBytes,       // Uint8Array
+    data: videoBytes, // Uint8Array
   },
 });
 ```
@@ -98,15 +98,16 @@ const total = await im.attachments.count();
 ```ts
 const dl = im.attachments.download(attachmentGuid);
 
-dl.totalBytes;           // file size, known from the first chunk
+dl.totalBytes; // file size, known from the first chunk
 
 // Stream it
-for await (const chunk of dl.stream) {  // ReadableStream<Uint8Array>
+for await (const chunk of dl.stream) {
+  // ReadableStream<Uint8Array>
   process(chunk);
 }
 
 // Or buffer the whole thing
-const buffer = await dl.arrayBuffer();  // Uint8Array
+const buffer = await dl.arrayBuffer(); // Uint8Array
 ```
 
 ```ts

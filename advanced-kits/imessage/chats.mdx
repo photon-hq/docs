@@ -144,7 +144,7 @@ const iconBytes = await im.groups.getIcon(chatGuid);
 // iconBytes: Uint8Array | null
 
 // Change icon (pass raw image bytes)
-await im.groups.setIcon(chatGuid, imageBytes);  // imageBytes: Uint8Array
+await im.groups.setIcon(chatGuid, imageBytes); // imageBytes: Uint8Array
 
 // Remove icon
 await im.groups.removeIcon(chatGuid);
@@ -158,7 +158,7 @@ const bgInfo = await im.groups.getBackground(chatGuid);
 // bgInfo: BackgroundInfo | null
 
 // Set background (pass raw image bytes)
-const bgInfo2 = await im.groups.setBackground(chatGuid, imageBytes);  // imageBytes: Uint8Array
+const bgInfo2 = await im.groups.setBackground(chatGuid, imageBytes); // imageBytes: Uint8Array
 // bgInfo2: BackgroundInfo { channelGuid?, imageUrl?, backgroundId? }
 
 // Remove background

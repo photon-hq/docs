@@ -15,7 +15,7 @@
     "@typescript/native-preview": "^7.0.0-dev",
     "eslint": "^9.28.0",
     "eslint-plugin-format": "^2.0.1",
-    "eslint-plugin-mdx": "^3.7.0",
+    "oxfmt": "^0.44.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }

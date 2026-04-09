@@ -60,7 +60,7 @@ await im.messages.sendComposed(
     .addText("!")
     .withEffect(MessageEffect.slam)
     .asReplyTo(someGuid)
-    .build()
+    .build(),
 );
 ```
 
@@ -78,14 +78,14 @@ interface SendReceipt {
 ```ts
 import { MessageEffect, TextEffect } from "@photon-ai/advanced-imessage";
 
-MessageEffect.slam       // impact send effect
-MessageEffect.confetti   // confetti burst
-MessageEffect.fireworks  // fireworks
-MessageEffect.balloons   // balloons
+MessageEffect.slam; // impact send effect
+MessageEffect.confetti; // confetti burst
+MessageEffect.fireworks; // fireworks
+MessageEffect.balloons; // balloons
 // ...
 
-TextEffect.big           // big text animation
-TextEffect.small         // small text animation
+TextEffect.big; // big text animation
+TextEffect.small; // small text animation
 // ...
 ```
 
@@ -141,8 +141,8 @@ const message = await im.messages.get(guid);
 ```ts
 // First page
 const page = await im.messages.list({ chatGuid: chat, limit: 25 });
-page.data;  // Message[]
-page.meta;  // { total, offset, limit }
+page.data; // Message[]
+page.meta; // { total, offset, limit }
 
 // Stream all messages
 for await (const message of im.messages.list({ chatGuid: chat })) {
@@ -170,9 +170,9 @@ const all = await im.messages.list({ chatGuid: chat }).toArray({ limit: 500 });
 
 ```ts
 const stats = await im.messages.stats();
-stats.total;     // number
-stats.sent;      // number
-stats.received;  // number
+stats.total; // number
+stats.sent; // number
+stats.received; // number
 ```
 
 ## Real-time events
@@ -208,8 +208,8 @@ for await (const event of im.messages.subscribe("message.received")) {
 ```ts
 const incoming = im.messages
   .subscribe("message.received")
-  .filter(e => e.message.text !== undefined)
-  .map(e => ({ from: e.message.sender?.address, text: e.message.text! }));
+  .filter((e) => e.message.text !== undefined)
+  .map((e) => ({ from: e.message.sender?.address, text: e.message.text! }));
 
 for await (const { from, text } of incoming) {
   console.log(`[${from}] ${text}`);
@@ -220,7 +220,9 @@ Streams implement `Symbol.asyncDispose`:
 
 ```ts
 await using stream = im.messages.subscribe("message.received");
-for await (const event of stream) { ... }
+for await (const event of stream) {
+  ...
+}
 ```
 
 ## Miscellaneous

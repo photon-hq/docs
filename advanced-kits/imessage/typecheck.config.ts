@@ -1,8 +1,8 @@
-import type { TypecheckConfig } from "../../scripts/typecheck-docs/config";
+import type { TypecheckConfig } from '../../scripts/typecheck-docs/config'
 
 const config: TypecheckConfig = {
-  lang: "ts",
-  sdkPackage: "@photon-ai/advanced-imessage",
+  lang: 'ts',
+  sdkPackage: '@photon-ai/advanced-imessage',
   importPreamble: `
 import type {
   AdvancedIMessage,
@@ -62,6 +62,6 @@ declare function sleep(ms: number): Promise<void>;
 declare function refreshToken(): Promise<string>;
 declare function process(...args: any[]): void;
 `.trim(),
-};
+}
 
-export default config;
+export default config

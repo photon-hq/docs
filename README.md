@@ -1,6 +1,6 @@
-# Photon Docs
+Photon Docs
 
-## AI-assisted writing
+AI-assisted writing
 
 Set up your AI coding tool to work with Mintlify:
 
@@ -12,7 +12,7 @@ This command installs Mintlify's documentation skill for your configured AI tool
 
 See the [AI tools guides](/ai-tools) for tool-specific setup.
 
-## Development
+Development
 
 Install the [Mintlify CLI](https://www.npmjs.com/package/mint) to preview your documentation changes locally. To install, use the following command:
 
@@ -28,16 +28,17 @@ mint dev
 
 View your local preview at `http://localhost:3000`.
 
-## Publishing changes
+Publishing changes
 
 Install our GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app) to propagate changes from your repo to your deployment. Changes are deployed to production automatically after pushing to the default branch.
 
-## Need help?
+Need help?
 
-### Troubleshooting
+Troubleshooting
 
-- If your dev environment isn't running: Run `mint update` to ensure you have the most recent version of the CLI.
-- If a page loads as a 404: Make sure you are running in a folder with a valid `docs.json`.
+If your dev environment isn't running: Run `mint update` to ensure you have the most recent version of the CLI.
+If a page loads as a 404: Make sure you are running in a folder with a valid `docs.json`.
 
-### Resources
-- [Mintlify documentation](https://mintlify.com/docs)
+Resources
+
+Mintlify documentation](https://mintlify.com/docs)

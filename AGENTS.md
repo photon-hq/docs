@@ -1,33 +1,35 @@
-> **First-time setup**: Customize this file for your project. Prompt the user to customize this file for their project.
-> For Mintlify product knowledge (components, configuration, writing standards),
-> install the Mintlify skill: `npx skills add https://mintlify.com/docs`
+First-time setup\*\*: Customize this file for your project. Prompt the user to customize this file for their project.
 
-# Documentation project instructions
+For Mintlify product knowledge (components, configuration, writing standards),
 
-## About this project
+install the Mintlify skill: `npx skills add https://mintlify.com/docs`
 
-- This is a documentation site built on [Mintlify](https://mintlify.com)
-- Pages are MDX files with YAML frontmatter
-- Configuration lives in `docs.json`
-- Run `mint dev` to preview locally
-- Run `mint broken-links` to check links
+Documentation project instructions
 
-## Terminology
+About this project
 
-{/* Add product-specific terms and preferred usage */}
-{/* Example: Use "workspace" not "project", "member" not "user" */}
+This is a documentation site built on [Mintlify](https://mintlify.com)
+Pages are MDX files with YAML frontmatter
+Configuration lives in `docs.json`
+Run `mint dev` to preview locally
+Run `mint broken-links` to check links
 
-## Style preferences
+Terminology
 
-{/* Add any project-specific style rules below */}
+{/_ Add product-specific terms and preferred usage _/}
+{/_ Example: Use "workspace" not "project", "member" not "user" _/}
 
-- Use active voice and second person ("you")
-- Keep sentences concise — one idea per sentence
-- Use sentence case for headings
-- Bold for UI elements: Click **Settings**
-- Code formatting for file names, commands, paths, and code references
+Style preferences
 
-## Content boundaries
+{/_ Add any project-specific style rules below _/}
 
-{/* Define what should and shouldn't be documented */}
-{/* Example: Don't document internal admin features */}
+Use active voice and second person ("you")
+Keep sentences concise — one idea per sentence
+Use sentence case for headings
+Bold for UI elements: Click **Settings**
+Code formatting for file names, commands, paths, and code references
+
+Content boundaries
+
+{/_ Define what should and shouldn't be documented _/}
+{/_ Example: Don't document internal admin features _/}
