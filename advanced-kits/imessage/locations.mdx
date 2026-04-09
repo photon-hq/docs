@@ -1,0 +1,64 @@
+---
+title: "Locations"
+description: "Find My friend locations, filtering, and real-time location events"
+---
+
+`im.locations` exposes Apple Find My friend locations - fetching the current cached snapshot, filtering by friend, and subscribing to real-time location updates.
+
+## Get friend locations
+
+`getFriends()` returns the current cached Find My snapshot and triggers a server-side background refresh.
+
+```ts
+// All friends
+const friends = await im.locations.getFriends();
+
+// Filter to specific friends
+const filtered = await im.locations.getFriends(["friend-id-1", "friend-id-2"]);
+```
+
+Pass an array of friend IDs to filter the response. Omit the argument (or pass `undefined`) to return all friends.
+
+## FindMyFriend shape
+
+```ts
+interface FindMyFriend {
+  readonly id: string;
+  readonly name?: string;
+  readonly isLocatingInProgress: boolean;
+  readonly latitude?: number;
+  readonly longitude?: number;
+  readonly horizontalAccuracy?: number;
+  readonly locationType: "legacy" | "live" | "shallow";
+  readonly locationTimestamp?: Date;
+  readonly shortAddress?: string;
+  readonly longAddress?: string;
+}
+```
+
+**`locationType` values**
+
+| Value | Description |
+|---|---|
+| `"live"` | Real-time location from an active session |
+| `"shallow"` | Cached location from Find My |
+| `"legacy"` | Location from older Find My infrastructure |
+
+## Real-time events
+
+`subscribe()` returns a `TypedEventStream<LocationEvent>`. While at least one subscriber is active, the server triggers periodic background refreshes.
+
+```ts
+for await (const event of im.locations.subscribe()) {
+  console.log(event.type, event.friend.name, event.friend.latitude);
+}
+```
+
+Streams implement `Symbol.asyncDispose`:
+
+```ts
+await using stream = im.locations.subscribe();
+for await (const event of stream) {
+  // ...
+}
+```
