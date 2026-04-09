@@ -40,7 +40,7 @@ await im.messages.send(chat, "Hello!", {
 | `audioMessage` | `boolean` | Send attachment as an audio message |
 | `sticker` | `{ attachment: AttachmentGuid; target: MessageGuid; placement?: StickerPlacement }` | Send as a sticker on another message |
 | `formatting` | `TextFormatInput[]` | Bold, italic, underline, or text effects |
-| `service` | `"iMessage" \| "SMS" \| "RCS"` | Override service |
+| `service` | `"iMessage" \| "SMS" \| "RCS"` | Override service (default: tries iMessage first, then RCS, then falls back to SMS) |
 | `clientMessageId` | `string` | Idempotency key |
 | `ddScan` | `boolean` | Enable data detectors scan |
 | `richLink` | `boolean` | Expand URLs to rich link previews |
