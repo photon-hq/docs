@@ -148,6 +148,10 @@ code, pre, .code-block, [class*="code"] {
   font-weight: 400 !important;
 }
 
+#content-container {
+  scroll-behavior: smooth !important;
+}
+
 #table-of-contents {
   scrollbar-width: none;
 }
