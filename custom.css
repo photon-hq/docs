@@ -34,6 +34,51 @@ code, pre, .code-block, [class*="code"] {
   --fade-color-dark: transparent !important;
 }
 
+.rounded-xl,
+.rounded-2xl {
+  border-radius: 8px !important;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border, rgba(128, 128, 128, 0.3));
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.5);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border, rgba(128, 128, 128, 0.3)) transparent;
+}
+
+#table-of-contents {
+  scrollbar-width: none;
+}
+
+#table-of-contents::-webkit-scrollbar {
+  display: none;
+}
+
 /* Navbar CTA button */
 a[href="https://photon.codes/contact"] {
   --border-color: rgba(12, 138, 176, 0.55);
