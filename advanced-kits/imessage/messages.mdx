@@ -34,13 +34,13 @@ await im.messages.send(chat, "Hello!", {
 | Option | Type | Description |
 |---|---|---|
 | `effect` | `MessageEffect` | Visual send effect (slam, confetti, fireworks, …) |
-| `replyTo` | `MessageGuid \| { guid: MessageGuid; partIndex: number }` | Reply to a specific message or part |
+| `replyTo` | `MessageGuid \| { guid: MessageGuid; partIndex?: number }` | Reply to a specific message or part |
 | `subject` | `string` | Message subject line |
 | `attachment` | `AttachmentGuid` | Pre-uploaded attachment to include |
 | `audioMessage` | `boolean` | Send attachment as an audio message |
-| `sticker` | `{ target: MessageGuid; placement?: StickerPlacement }` | Send as a sticker on another message |
+| `sticker` | `{ attachment: AttachmentGuid; target: MessageGuid; placement?: StickerPlacement }` | Send as a sticker on another message |
 | `formatting` | `TextFormatInput[]` | Bold, italic, underline, or text effects |
-| `service` | `string` | Override service (`"iMessage"` or `"SMS"`) |
+| `service` | `"iMessage" \| "SMS" \| "RCS"` | Override service |
 | `clientMessageId` | `string` | Idempotency key |
 | `ddScan` | `boolean` | Enable data detectors scan |
 | `richLink` | `boolean` | Expand URLs to rich link previews |
@@ -59,7 +59,7 @@ await im.messages.sendComposed(
     .addMention("@Alice", "alice@icloud.com")
     .addText("!")
     .withEffect(MessageEffect.slam)
-    .withReplyTo(someGuid)
+    .asReplyTo(someGuid)
     .build()
 );
 ```
@@ -95,14 +95,14 @@ TextEffect.small         // small text animation
 import { Reaction } from "@photon-ai/advanced-imessage";
 
 // Tapback
-await im.messages.react(chat, messageGuid, Reaction.heart);
-await im.messages.react(chat, messageGuid, Reaction.thumbsUp, { partIndex: 1 });
+await im.messages.react(chat, messageGuid, Reaction.love);
+await im.messages.react(chat, messageGuid, Reaction.like, { partIndex: 1 });
 
 // Emoji reaction (iOS 17+)
 await im.messages.reactEmoji(chat, messageGuid, "🔥");
 
 // Remove a tapback
-await im.messages.unreact(chat, messageGuid, Reaction.heart);
+await im.messages.unreact(chat, messageGuid, Reaction.love);
 ```
 
 All reaction methods return `CommandReceipt`:
@@ -160,7 +160,7 @@ const all = await im.messages.list({ chatGuid: chat }).toArray({ limit: 500 });
 | `chatGuid` | `ChatGuid` | Filter to one conversation |
 | `before` | `Date` | Only messages before this timestamp |
 | `after` | `Date` | Only messages after this timestamp |
-| `sort` | `SortDirection` | `"asc"` or `"desc"` |
+| `sort` | `SortDirection` | `"ascending"` or `"descending"` |
 | `limit` | `number` | Page size |
 | `offset` | `number` | Starting offset |
 | `withChats` | `boolean` | Include related chat objects |

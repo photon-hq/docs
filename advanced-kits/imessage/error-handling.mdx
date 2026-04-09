@@ -16,6 +16,17 @@ IMessageError
 └── ConnectionError       network or gRPC transport failure
 ```
 
+**gRPC status code mapping**
+
+| gRPC status | SDK error class |
+|---|---|
+| `UNAUTHENTICATED`, `PERMISSION_DENIED` | `AuthenticationError` |
+| `NOT_FOUND` | `NotFoundError` |
+| `RESOURCE_EXHAUSTED` | `RateLimitError` |
+| `INVALID_ARGUMENT`, `FAILED_PRECONDITION` | `ValidationError` |
+| `UNAVAILABLE`, `DEADLINE_EXCEEDED` | `ConnectionError` |
+| All others | `IMessageError` (base class) |
+
 ## Basic usage
 
 ```ts
@@ -57,13 +68,35 @@ All error subclasses inherit:
 
 ```ts
 class IMessageError extends Error {
-  readonly code: ErrorCode;      // SDK-level error code enum
-  readonly retryable: boolean;   // whether retrying the request may succeed
-  readonly grpcCode: number;     // underlying gRPC status code
+  readonly code: ErrorCode;                    // SDK-level error code enum
+  readonly retryable: boolean;                 // whether retrying the request may succeed
+  readonly grpcCode: number;                   // underlying gRPC status code
+  readonly context: Record<string, string>;    // extra debug info from gRPC trailing metadata
 }
 ```
 
-`retryable` is `true` for `RateLimitError` and `ConnectionError`, `false` for all others.
+The `retryable` flag is read from the server's gRPC trailing metadata (`x-retryable` header), so it is determined by the server on a per-response basis. By convention, `RateLimitError` and `ConnectionError` are typically retryable, but the server may override this for any error type.
+
+## Error codes
+
+`ErrorCode` has 22 values across 6 categories:
+
+| Category | Error codes |
+|---|---|
+| Authentication | `unauthenticated`, `tokenExpired`, `tokenBlocked`, `unauthorized` |
+| Rate limiting | `dailyLimitExceeded`, `recipientLimitExceeded` |
+| Deduplication | `duplicateMessage` |
+| Not found | `chatNotFound`, `messageNotFound`, `attachmentNotFound`, `addressNotFound`, `scheduledMessageNotFound`, `pollNotFound` |
+| Validation | `invalidArgument`, `preconditionFailed`, `operationNotSupported`, `privateApiUnavailable` |
+| Infrastructure | `serviceUnavailable`, `timeout`, `internalError`, `databaseError`, `networkError` |
+
+```ts
+import { ErrorCode } from "@photon-ai/advanced-imessage";
+
+if (err instanceof IMessageError && err.code === ErrorCode.chatNotFound) {
+  // handle specifically
+}
+```
 
 ## Retrying with the SDK
 
@@ -75,8 +108,8 @@ const im = createClient({
   token: "...",
   retry: {
     maxAttempts: 3,
-    initialDelayMs: 200,
-    maxDelayMs: 2000,
+    initialDelay: 200,
+    maxDelay: 5000,
   },
 });
 ```
@@ -85,14 +118,14 @@ When `retry` is enabled, `ConnectionError` and `RateLimitError` are retried tran
 
 ## Escape hatch: `_raw`
 
-If the error exposes insufficient detail, every domain type (including errors) carries `_raw` - the raw gRPC response - for debugging:
+Most domain types carry `_raw` containing the raw gRPC response for debugging purposes. The types that include `_raw` are `Chat`, `Message`, `AttachmentInfo`, and `AddressInfo`. Other types such as `ScheduledMessage`, `FindMyFriend`, and `PollInfo` do not include `_raw`.
 
 ```ts
 try {
   await im.messages.send(chat, "Hello!");
 } catch (err) {
   if (err instanceof IMessageError) {
-    console.log(err.code, err.grpcCode, err.retryable);
+    console.log(err.code, err.grpcCode, err.retryable, err.context);
   }
 }
 ```

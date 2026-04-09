@@ -9,33 +9,32 @@ description: "Schedule, manage, and monitor messages to be sent at a future time
 
 ```ts
 const scheduled = await im.scheduledMessages.create({
-  scheduledAt: new Date("2025-12-31T23:59:00Z"),
-  payload: {
-    chat: directChat("+1234567890"),
-    projectId: "my-project",
-    text: "Happy New Year!",
-    service: "iMessage",
-    subject: "NYE",
-    effectId: MessageEffect.fireworks,
-    clientMessageId: "nye-2025",
-  },
+  chat: directChat("+1234567890"),
+  projectId: "my-project",
+  text: "Happy New Year!",
+  scheduledFor: new Date("2025-12-31T23:59:00Z"),
+  service: "iMessage",
+  subject: "NYE",
+  effectId: MessageEffect.fireworks,
+  clientMessageId: "nye-2025",
 });
 ```
 
 **`CreateScheduledMessageOptions`**
 
-| Field | Type | Description |
-|---|---|---|
-| `scheduledAt` | `Date` | When to send the message |
-| `payload.chat` | `ChatGuid` | Destination conversation |
-| `payload.projectId` | `string` | Project namespace |
-| `payload.text` | `string` | Message text |
-| `payload.service` | `string` | `"iMessage"` or `"SMS"` |
-| `payload.subject` | `string` | Subject line |
-| `payload.effectId` | `string` | Send effect ID |
-| `payload.attachmentPath` | `string` | Path to an attachment |
-| `payload.attachmentName` | `string` | Attachment display name |
-| `payload.clientMessageId` | `string` | Idempotency key |
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `chat` | `ChatGuid` | Yes | Destination conversation |
+| `projectId` | `string` | Yes | Project namespace |
+| `scheduledFor` | `Date` | Yes | When to send the message |
+| `text` | `string` | No | Message text |
+| `service` | `"iMessage" \| "SMS" \| "RCS"` | No | Service to use |
+| `subject` | `string` | No | Subject line |
+| `effectId` | `string` | No | Send effect ID |
+| `attachmentPath` | `string` | No | Path to an attachment |
+| `attachmentName` | `string` | No | Attachment display name |
+| `clientMessageId` | `string` | No | Idempotency key |
+| `schedule` | `{ type: "once" } \| { type: "recurring"; intervalSeconds: number }` | No | Single or recurring schedule |
 
 ## Get a scheduled message
 
@@ -45,23 +44,23 @@ const scheduled = await im.scheduledMessages.get(scheduledMessageId);
 
 ## List scheduled messages
 
+`list()` takes no parameters and returns a plain array of all scheduled messages:
+
 ```ts
-const page = await im.scheduledMessages.list({ chatGuid: chat });
-for await (const msg of im.scheduledMessages.list()) {
-  console.log(msg.scheduledAt, msg.status);
+const messages = await im.scheduledMessages.list();
+for (const msg of messages) {
+  console.log(msg.scheduledFor, msg.status);
 }
 ```
 
 ## Update a scheduled message
 
-Only pass the fields you want to change. The SDK merges them with the existing payload.
+Only pass the fields you want to change. Returns the updated `ScheduledMessage`.
 
 ```ts
-await im.scheduledMessages.update(scheduledMessageId, {
-  scheduledAt: new Date("2026-01-01T00:00:00Z"),
-  payload: {
-    text: "Happy New Year! (updated)",
-  },
+const updated = await im.scheduledMessages.update(scheduledMessageId, {
+  scheduledFor: new Date("2026-01-01T00:00:00Z"),
+  text: "Happy New Year! (updated)",
 });
 ```
 
@@ -71,12 +70,27 @@ await im.scheduledMessages.update(scheduledMessageId, {
 await im.scheduledMessages.delete(scheduledMessageId);
 ```
 
+## Delete all scheduled messages
+
+```ts
+await im.scheduledMessages.deleteAll();
+```
+
 ## Execute immediately
 
 Trigger a scheduled message before its scheduled time:
 
 ```ts
 await im.scheduledMessages.execute(scheduledMessageId);
+```
+
+## Execute all due messages
+
+Execute all scheduled messages that have passed their `scheduledFor` time:
+
+```ts
+const executed = await im.scheduledMessages.executeDue();
+// executed: ScheduledMessage[]
 ```
 
 ## Real-time schedule events
@@ -103,9 +117,22 @@ for await (const event of im.scheduledMessages.subscribe()) {
 ```ts
 interface ScheduledMessage {
   id: ScheduledMessageId;
-  scheduledAt: Date;
+  scheduledFor: Date;
   status: ScheduledMessageStatus;
-  payload: ScheduledMessagePayload;
-  _raw?: unknown;
+  payload: Uint8Array;
+  schedule: Uint8Array;
+  type: string;
+  createdAt: Date;
+  sentAt?: Date;
+  errorMessage?: string;
 }
 ```
+
+**`ScheduledMessageStatus` values**
+
+| Value | Description |
+|---|---|
+| `"pending"` | Waiting to be sent |
+| `"inProgress"` | Currently being processed |
+| `"complete"` | Sent successfully |
+| `"failed"` | Failed to send (check `errorMessage`) |

@@ -21,6 +21,16 @@ const { chat, sendReceipt } = await im.chats.create(["+1234567890"], {
 
 `sendReceipt` is present only when an initial `message` was provided.
 
+**`CreateChatOptions`**
+
+| Option | Type | Description |
+|---|---|---|
+| `message` | `string` | Initial message text to send |
+| `service` | `"iMessage" \| "SMS" \| "RCS"` | Service to use |
+| `subject` | `string` | Subject line |
+| `effectId` | `string` | Send effect ID |
+| `clientMessageId` | `string` | Idempotency key |
+
 ### Get a chat
 
 ```ts
@@ -31,13 +41,18 @@ The returned `Chat` object contains:
 
 ```ts
 interface Chat {
-  guid: ChatGuid;
-  displayName?: string;
-  participants: string[];
-  lastMessage?: Message;
-  isArchived: boolean;
-  serviceType: ChatServiceType;
-  _raw?: unknown;
+  readonly guid: ChatGuid;
+  readonly chatIdentifier?: string;
+  readonly displayName?: string;
+  readonly groupId?: string;
+  readonly participants: readonly AddressInfo[];
+  readonly lastMessage?: Message;
+  readonly isArchived: boolean;
+  readonly isFiltered: boolean;
+  readonly isGroup: boolean;
+  readonly service: ChatServiceType;
+  readonly unreadCount?: number;
+  readonly _raw?: unknown;
 }
 ```
 
@@ -52,37 +67,35 @@ const totalWithArchived = await im.chats.count({ includeArchived: true });
 
 ```ts
 // Show typing bubble
-await im.chats.setTyping(chatGuid, true);
+await im.chats.startTyping(chatGuid);
 
 // Stop typing bubble
-await im.chats.setTyping(chatGuid, false);
+await im.chats.stopTyping(chatGuid);
 ```
 
 ### Share contact info
 
 ```ts
-const info = await im.chats.shareContactInfo(chatGuid);
-// info: AddressInfo
+await im.chats.shareContactInfo(chatGuid);
 ```
 
-### Add & remove participants
+### Get participants
 
 ```ts
-await im.chats.addParticipant(chatGuid, "+19998887777");
-await im.chats.removeParticipant(chatGuid, "+19998887777");
+const participants = await im.chats.getParticipants(chatGuid);
+// participants: AddressInfo[]
+```
+
+### Leave a chat
+
+```ts
+await im.chats.leave(chatGuid);
 ```
 
 ### Mark as read
 
 ```ts
 await im.chats.markRead(chatGuid);
-```
-
-### Archive & unarchive
-
-```ts
-await im.chats.setArchived(chatGuid, true);
-await im.chats.setArchived(chatGuid, false);
 ```
 
 ### Real-time chat events
@@ -113,21 +126,25 @@ for await (const event of im.chats.subscribe("chat.typingIndicator")) {
 ### Rename a group
 
 ```ts
-await im.groups.rename(chatGuid, "New Group Name");
+const updatedChat = await im.groups.setDisplayName(chatGuid, "New Group Name");
 ```
 
 ### Manage participants
 
 ```ts
-await im.groups.addParticipant(chatGuid, "newperson@icloud.com");
-await im.groups.removeParticipant(chatGuid, "oldperson@icloud.com");
+const updatedChat = await im.groups.addParticipant(chatGuid, "newperson@icloud.com");
+const updatedChat2 = await im.groups.removeParticipant(chatGuid, "oldperson@icloud.com");
 ```
 
 ### Group icons
 
 ```ts
-// Change icon
-await im.groups.setIcon(chatGuid, attachmentGuid);
+// Get icon
+const iconBytes = await im.groups.getIcon(chatGuid);
+// iconBytes: Uint8Array | null
+
+// Change icon (pass raw image bytes)
+await im.groups.setIcon(chatGuid, imageBytes);  // imageBytes: Uint8Array
 
 // Remove icon
 await im.groups.removeIcon(chatGuid);
@@ -136,7 +153,15 @@ await im.groups.removeIcon(chatGuid);
 ### Group backgrounds
 
 ```ts
-await im.groups.setBackground(chatGuid, { imagePath: "/path/to/image.jpg" });
+// Get background
+const bgInfo = await im.groups.getBackground(chatGuid);
+// bgInfo: BackgroundInfo | null
+
+// Set background (pass raw image bytes)
+const bgInfo2 = await im.groups.setBackground(chatGuid, imageBytes);  // imageBytes: Uint8Array
+// bgInfo2: BackgroundInfo { channelGuid?, imageUrl?, backgroundId? }
+
+// Remove background
 await im.groups.removeBackground(chatGuid);
 ```
 

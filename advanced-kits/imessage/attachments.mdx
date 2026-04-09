@@ -3,7 +3,7 @@ title: "Attachments"
 description: "Upload, download, and stream file attachments"
 ---
 
-`im.attachments` handles file attachments - uploading before sending, streaming downloads, forcing iCloud downloads, and extracting Live Photos.
+`im.attachments` handles file attachments - uploading before sending, streaming downloads, transparent iCloud recovery, and extracting Live Photos.
 
 ## Supported file types
 
@@ -23,24 +23,41 @@ description: "Upload, download, and stream file attachments"
 
 ## Upload an attachment
 
-Upload a file and get back an `AttachmentGuid` to pass to `im.messages.send()`.
+Upload a file and get back an `AttachmentInfo` object. Use the `guid` property to pass to `im.messages.send()`.
 
 ```ts
-const guid = await im.attachments.upload({
+const info = await im.attachments.upload({
   path: "/path/to/photo.jpg",
-  name: "photo.jpg",       // optional display name
-  mimeType: "image/jpeg",  // optional override
+  fileName: "photo.jpg",      // optional display name
+  mimeType: "image/jpeg",     // optional override
 });
 
-await im.messages.send(chat, "", { attachment: guid });
+await im.messages.send(chat, "", { attachment: info.guid });
 ```
 
+`AttachmentInput` is a union type with two variants - file path or raw bytes:
+
 ```ts
-interface AttachmentInput {
-  path: string;
-  name?: string;
-  mimeType?: string;
-}
+type AttachmentInput =
+  | { data: Uint8Array; fileName: string; mimeType: string }
+  | { path: string; fileName?: string; mimeType?: string };
+```
+
+## Upload a Live Photo
+
+Upload a paired HEIC image + MOV video as a Live Photo:
+
+```ts
+const info = await im.attachments.uploadLivePhoto({
+  image: {
+    data: imageBytes,       // Uint8Array
+    fileName: "photo.heic",
+    mimeType: "image/heic",
+  },
+  video: {
+    data: videoBytes,       // Uint8Array
+  },
+});
 ```
 
 ## Get attachment metadata
@@ -52,22 +69,34 @@ const info = await im.attachments.get(attachmentGuid);
 ```ts
 interface AttachmentInfo {
   guid: AttachmentGuid;
-  originalGuid: string;
-  mimeType?: string;
-  fileName?: string;
+  originalGuid?: AttachmentGuid;
+  mimeType: string;
+  fileName: string;
   totalBytes: number;
   transferState: TransferState;
-  transferName?: string;
+  hasLivePhoto: boolean;
+  height?: number;
+  hideAttachment: boolean;
+  isOutgoing: boolean;
+  isSticker: boolean;
+  uti: string;
+  width?: number;
   _raw?: unknown;
 }
 ```
 
-## Download an attachment
-
-`download()` returns a `StreamedDownload` - both a streaming and a buffered consumption path.
+## Count attachments
 
 ```ts
-const dl = await im.attachments.download(attachmentGuid);
+const total = await im.attachments.count();
+```
+
+## Download an attachment
+
+`download()` returns a `StreamedDownload` synchronously - both a streaming and a buffered consumption path.
+
+```ts
+const dl = im.attachments.download(attachmentGuid);
 
 dl.totalBytes;           // file size, known from the first chunk
 
@@ -77,23 +106,24 @@ for await (const chunk of dl.stream) {  // ReadableStream<Uint8Array>
 }
 
 // Or buffer the whole thing
-const buffer = await dl.arrayBuffer();
+const buffer = await dl.arrayBuffer();  // Uint8Array
 ```
 
 ```ts
 interface StreamedDownload {
   totalBytes: number;
   stream: ReadableStream<Uint8Array>;
-  arrayBuffer(): Promise<ArrayBuffer>;
+  arrayBuffer(): Promise<Uint8Array>;
 }
 ```
 
-## Force download from iCloud
+### Quick buffer download
 
-Some attachments are stored in iCloud and not yet on device. Force-download them:
+A convenience method that combines `download()` and `arrayBuffer()`:
 
 ```ts
-await im.attachments.forceDownload(attachmentGuid);
+const bytes = await im.attachments.downloadBuffer(attachmentGuid);
+// bytes: Uint8Array
 ```
 
 ## Live Photos
@@ -101,9 +131,8 @@ await im.attachments.forceDownload(attachmentGuid);
 Extract the video component from a Live Photo attachment:
 
 ```ts
-const video = await im.attachments.getLivePhotoVideo({
-  attachmentGuid,
-  outputPath: "/tmp/live.mov",  // optional - where to write the video
-});
-// video: LivePhotoInput
+const videoDl = im.attachments.getLivePhoto(attachmentGuid);
+const videoBytes = await videoDl.arrayBuffer();
 ```
+
+`getLivePhoto()` returns a `StreamedDownload` synchronously, just like `download()`.
