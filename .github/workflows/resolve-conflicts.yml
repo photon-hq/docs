@@ -28,7 +28,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          prs=$(gh pr list --state open --json number,mergeable --jq '.[] | select(.mergeable == "CONFLICTING") | .number' | tr '\n' ' ')
+          # Wait for GitHub to compute mergeability after the push
+          for i in 1 2 3 4 5; do
+            prs=$(gh pr list --state open --json number,mergeable --jq '.[] | select(.mergeable == "CONFLICTING") | .number' | tr '\n' ' ')
+            unknown=$(gh pr list --state open --json number,mergeable --jq '.[] | select(.mergeable == "UNKNOWN") | .number' | tr '\n' ' ')
+            if [ -z "$unknown" ]; then
+              break
+            fi
+            echo "Waiting for GitHub to compute mergeability (attempt $i)..."
+            sleep 10
+          done
+          echo "Conflicting PRs: $prs"
           echo "prs=$prs" >> "$GITHUB_OUTPUT"
 
       - name: Resolve conflicts with Claude Code
