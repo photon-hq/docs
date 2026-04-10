@@ -9,85 +9,115 @@ description: "Send, react to, edit, and list iMessages"
 
 The SDK has three sending tiers. Use the simplest tier that covers your use case.
 
-### Tier 1 - plain text
+<Tabs>
+  <Tab title="Plain text">
+    ```ts
+    await im.messages.send(chat, "Hello!");
+    ```
+  </Tab>
+  <Tab title="With options">
+    ```ts
+    import { MessageEffect } from "@photon-ai/advanced-imessage";
 
-```ts
-await im.messages.send(chat, "Hello!");
-```
+    await im.messages.send(chat, "Hello!", {
+      effect: MessageEffect.confetti,
+      replyTo: someMessageGuid,
+      subject: "Hey",
+      attachment: attachmentGuid,
+      audioMessage: false,
+    });
+    ```
 
-### Tier 2 - with options
+  </Tab>
+  <Tab title="MessageBuilder">
+    Use the builder when you need mentions, per-part formatting, or attachments mixed with text.
 
-```ts
-import { MessageEffect } from "@photon-ai/advanced-imessage";
+    ```ts
+    import { MessageBuilder, MessageEffect } from "@photon-ai/advanced-imessage";
 
-await im.messages.send(chat, "Hello!", {
-  effect: MessageEffect.confetti,
-  replyTo: someMessageGuid,
-  subject: "Hey",
-  attachment: attachmentGuid,
-  audioMessage: false,
-});
-```
+    await im.messages.sendComposed(
+      chat,
+      MessageBuilder.multipart()
+        .addText("Hey ")
+        .addMention("@Alice", "alice@icloud.com")
+        .addText("!")
+        .withEffect(MessageEffect.slam)
+        .asReplyTo(someGuid)
+        .build(),
+    );
+    ```
+  </Tab>
+</Tabs>
 
-**`SendOptions` reference**
+{/* <!-- GENERATED:SEND_OPTIONS:START --> */}
 
-| Option | Type | Description |
+<Accordion title="SendOptions reference">
+
+| Field | Type | Description |
 |---|---|---|
-| `effect` | `MessageEffect` | Visual send effect (slam, confetti, fireworks, …) |
-| `replyTo` | `MessageGuid \| { guid: MessageGuid; partIndex?: number }` | Reply to a specific message or part |
-| `subject` | `string` | Message subject line |
-| `attachment` | `AttachmentGuid` | Pre-uploaded attachment to include |
-| `audioMessage` | `boolean` | Send attachment as an audio message |
-| `sticker` | `{ attachment: AttachmentGuid; target: MessageGuid; placement?: StickerPlacement }` | Send as a sticker on another message |
-| `formatting` | `TextFormatInput[]` | Bold, italic, underline, or text effects |
-| `service` | `"iMessage" \| "SMS" \| "RCS"` | Override service (default: tries iMessage first, then RCS, then falls back to SMS) |
-| `clientMessageId` | `string` | Idempotency key |
-| `ddScan` | `boolean` | Enable data detectors scan |
-| `richLink` | `boolean` | Expand URLs to rich link previews |
+| `attachment` | `AttachmentGuid` | A previously uploaded attachment to include. |
+| `audioMessage` | `boolean` | Send as an audio message. |
+| `clientMessageId` | `string` | Client-provided idempotency key. |
+| `ddScan` | `boolean` | Enable data-detector scanning (links, phone numbers, etc.). |
+| `effect` | `MessageEffect` | Full-screen or bubble effect to apply. |
+| `formatting` | `TextFormatInput[]` | Inline text formatting instructions. |
+| `replyTo` | `MessageGuid \| { guid: MessageGuid; partIndex?: number; }` | Reply to an existing message, optionally targeting a specific part. |
+| `richLink` | `boolean` | Enable rich link previews. |
+| `service` | `"iMessage" \| "SMS" \| "RCS"` | Force a specific transport service. |
+| `sticker` | `{ attachment: AttachmentGuid; target: MessageGuid; placement?: StickerPlacement; }` | Place a sticker on an existing message. |
+| `subject` | `string` | Subject line. |
 
-### Tier 3 - MessageBuilder
+</Accordion>
 
-Use the builder when you need mentions, per-part formatting, or attachments mixed with text.
+{/* <!-- GENERATED:SEND_OPTIONS:END --> */}
 
-```ts
-import { MessageBuilder, MessageEffect } from "@photon-ai/advanced-imessage";
+{/* <!-- GENERATED:SEND_RECEIPT:START --> */}
 
-await im.messages.sendComposed(
-  chat,
-  MessageBuilder.multipart()
-    .addText("Hey ")
-    .addMention("@Alice", "alice@icloud.com")
-    .addText("!")
-    .withEffect(MessageEffect.slam)
-    .asReplyTo(someGuid)
-    .build(),
-);
-```
+All three methods return a <Tooltip tip="clientMessageId?: string; guid: MessageGuid">`SendReceipt`</Tooltip>.
 
-All three methods return a `SendReceipt`:
-
-```ts
-interface SendReceipt {
-  guid: MessageGuid;
-  clientMessageId?: string;
-}
-```
+{/* <!-- GENERATED:SEND_RECEIPT:END --> */}
 
 ### Available effects
+With the MessageBuilder method, you can use various effects as shown below.
 
-```ts
-import { MessageEffect, TextEffect } from "@photon-ai/advanced-imessage";
+{/* <!-- GENERATED:EFFECTS:START --> */}
 
-MessageEffect.slam; // impact send effect
-MessageEffect.confetti; // confetti burst
-MessageEffect.fireworks; // fireworks
-MessageEffect.balloons; // balloons
-// ...
+<Accordion title="MessageEffect - full-screen and bubble effects">
 
-TextEffect.big; // big text animation
-TextEffect.small; // small text animation
-// ...
-```
+| Effect | Value |
+|---|---|
+| `slam` | `"com.apple.MobileSMS.expressivesend.impact"` |
+| `loud` | `"com.apple.MobileSMS.expressivesend.loud"` |
+| `gentle` | `"com.apple.MobileSMS.expressivesend.gentle"` |
+| `invisible` | `"com.apple.MobileSMS.expressivesend.invisibleink"` |
+| `confetti` | `"com.apple.messages.effect.CKConfettiEffect"` |
+| `fireworks` | `"com.apple.messages.effect.CKFireworksEffect"` |
+| `balloons` | `"com.apple.messages.effect.CKBalloonEffect"` |
+| `heart` | `"com.apple.messages.effect.CKHeartEffect"` |
+| `lasers` | `"com.apple.messages.effect.CKLasersEffect"` |
+| `celebration` | `"com.apple.messages.effect.CKHappyBirthdayEffect"` |
+| `sparkles` | `"com.apple.messages.effect.CKSparklesEffect"` |
+| `spotlight` | `"com.apple.messages.effect.CKSpotlightEffect"` |
+| `echo` | `"com.apple.messages.effect.CKEchoEffect"` |
+
+</Accordion>
+
+<Accordion title="TextEffect - per-character text animations (iOS 18+)">
+
+| Effect | Value |
+|---|---|
+| `big` | `"big"` |
+| `small` | `"small"` |
+| `shake` | `"shake"` |
+| `nod` | `"nod"` |
+| `explode` | `"explode"` |
+| `ripple` | `"ripple"` |
+| `bloom` | `"bloom"` |
+| `jitter` | `"jitter"` |
+
+</Accordion>
+
+{/* <!-- GENERATED:EFFECTS:END --> */}
 
 ## Reactions
 
@@ -105,13 +135,30 @@ await im.messages.reactEmoji(chat, messageGuid, "🔥");
 await im.messages.unreact(chat, messageGuid, Reaction.love);
 ```
 
-All reaction methods return `CommandReceipt`:
+{/* <!-- GENERATED:REACTIONS:START --> */}
 
-```ts
-interface CommandReceipt {
-  guid: MessageGuid;
-}
-```
+<Accordion title="All Reaction values">
+
+| Reaction | Value |
+|---|---|
+| `love` | `"love"` |
+| `like` | `"like"` |
+| `dislike` | `"dislike"` |
+| `laugh` | `"laugh"` |
+| `emphasize` | `"emphasize"` |
+| `question` | `"question"` |
+| `emoji` | `"emoji"` |
+| `sticker` | `"sticker"` |
+
+</Accordion>
+
+{/* <!-- GENERATED:REACTIONS:END --> */}
+
+{/* <!-- GENERATED:COMMAND_RECEIPT:START --> */}
+
+All reaction methods return a <Tooltip tip="guid: MessageGuid">`CommandReceipt`</Tooltip>.
+
+{/* <!-- GENERATED:COMMAND_RECEIPT:END --> */}
 
 ## Edit & unsend
 
@@ -153,18 +200,24 @@ for await (const message of im.messages.list({ chatGuid: chat })) {
 const all = await im.messages.list({ chatGuid: chat }).toArray({ limit: 500 });
 ```
 
-**`MessageListOptions` reference**
+{/* <!-- GENERATED:MESSAGE_LIST_OPTIONS:START --> */}
 
-| Option | Type | Description |
+<Accordion title="MessageListOptions reference">
+
+| Field | Type | Description |
 |---|---|---|
-| `chatGuid` | `ChatGuid` | Filter to one conversation |
-| `before` | `Date` | Only messages before this timestamp |
-| `after` | `Date` | Only messages after this timestamp |
-| `sort` | `SortDirection` | `"ascending"` or `"descending"` |
-| `limit` | `number` | Page size |
-| `offset` | `number` | Starting offset |
-| `withChats` | `boolean` | Include related chat objects |
-| `withAttachments` | `boolean` | Include attachment metadata |
+| `after` | `Date` | Return only messages created after this date. |
+| `before` | `Date` | Return only messages created before this date. |
+| `chatGuid` | `ChatGuid` | Restrict to messages in a specific chat. |
+| `limit` | `number` | Maximum number of messages per page. |
+| `offset` | `number` | Offset into the result set (for manual pagination). |
+| `sort` | `SortDirection` | Sort order for results. |
+| `withAttachments` | `boolean` | Include attachment metadata in the response. |
+| `withChats` | `boolean` | Include chat metadata in the response. |
+
+</Accordion>
+
+{/* <!-- GENERATED:MESSAGE_LIST_OPTIONS:END --> */}
 
 ### Message statistics
 

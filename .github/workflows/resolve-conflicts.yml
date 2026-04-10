@@ -53,16 +53,22 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          cat <<EOF | claude -p --allowedTools "Edit,Write,Read,Bash(git *),Bash(gh *),Bash(pnpm lint),Bash(pnpm typecheck:docs),Bash(pnpm install *)"
+          cat <<EOF | claude -p --allowedTools "Edit,Write,Read,Bash(git *),Bash(gh *),Bash(pnpm *)"
           There are open PRs with merge conflicts after a push to main. For each of the following PR numbers, check out the branch, resolve the merge conflicts intelligently (prefer the incoming changes from main for lockfiles and generated files, prefer the PR changes for content), and push the resolved branch.
 
           PR numbers: ${PRS}
+
+          CRITICAL RULES:
+          - NEVER add type casts, fake type declarations, or modify typecheck.config.ts to work around type errors.
+          - If types don't match, the SDK dependency in package.json is likely outdated. Run "pnpm update <package-name>" to get the latest version with the correct types.
+          - The typecheck.config.ts declarePreamble must only use types exported by the actual SDK package. Never invent types.
 
           For each PR:
           1. gh pr checkout <number>
           2. git merge origin/main
           3. Resolve conflicts by reading the conflicted files and making intelligent choices
           4. Commit and push the resolution
-          5. Run pnpm install --frozen-lockfile, then pnpm lint and pnpm typecheck:docs to verify everything passes. If they fail, fix the errors.
-          6. Leave a comment on the PR with gh pr comment <number> --body "..." summarizing what conflicts were found and how each was resolved
+          5. If the PR updates docs for a new SDK version, run "pnpm update" for that SDK package first to get the latest types.
+          6. Run "pnpm install", then "pnpm lint" and "pnpm typecheck:docs" to verify everything passes. If they fail, fix the errors in the MDX files only.
+          7. Leave a comment on the PR with gh pr comment <number> --body "..." summarizing what conflicts were found and how each was resolved
           EOF

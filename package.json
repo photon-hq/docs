@@ -6,7 +6,8 @@
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck:docs": "tsx scripts/typecheck-docs/index.ts"
+    "typecheck:docs": "tsx scripts/typecheck-docs/index.ts",
+    "generate:effects": "tsx scripts/generate-effects-table.ts"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^4.15.1",
