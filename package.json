@@ -10,7 +10,7 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^4.15.1",
-    "@photon-ai/advanced-imessage": "^0.1.0",
+    "@photon-ai/advanced-imessage": "^0.2.1",
     "@photon-ai/advanced-imessage-kit": "^1.14.3",
     "@types/node": "^25.5.2",
     "@typescript/native-preview": "^7.0.0-dev",

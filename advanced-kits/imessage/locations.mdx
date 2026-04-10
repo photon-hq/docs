@@ -1,0 +1,66 @@
+---
+title: "Locations"
+description: "Track Find My friend locations and subscribe to real-time updates"
+---
+
+`im.locations` provides access to Find My friend locations - fetching the current cached snapshot and subscribing to real-time location updates.
+
+## Get friend locations
+
+`getFriends()` returns the current cached Find My snapshot and triggers a server-side background refresh. Optionally pass an array of friend IDs to filter the results.
+
+```ts
+// All friends
+const friends = await im.locations.getFriends();
+
+// Specific friends only
+const filtered = await im.locations.getFriends(["friend-1", "friend-2"]);
+```
+
+Each friend in the returned array is a `FindMyFriend`:
+
+```ts
+interface FindMyFriend {
+  readonly id: string;
+  readonly name?: string;
+  readonly latitude?: number;
+  readonly longitude?: number;
+  readonly accuracy?: number;
+  readonly locationTimestamp?: Date;
+  readonly locationType: "legacy" | "live" | "shallow";
+  readonly longAddress?: string;
+  readonly shortAddress?: string;
+  readonly isLocatingInProgress: boolean;
+  readonly expiresAt?: Date;
+}
+```
+
+**`locationType` values**
+
+| Value | Description |
+|---|---|
+| `"live"` | Real-time location with active sharing |
+| `"shallow"` | Cached or stale location |
+| `"legacy"` | Location from a legacy Find My source |
+
+## Real-time events
+
+`subscribe()` returns a `TypedEventStream<LocationEvent>`. While at least one subscriber is active, the server triggers periodic background refreshes.
+
+```ts
+for await (const event of im.locations.subscribe()) {
+  // event.type === "location.updated"
+  for (const friend of event.friends) {
+    console.log(friend.name, friend.latitude, friend.longitude);
+  }
+}
+```
+
+Streams implement `Symbol.asyncDispose`:
+
+```ts
+await using stream = im.locations.subscribe();
+for await (const event of stream) {
+  console.log(event.friends.length, "friends updated");
+}
+```

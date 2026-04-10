@@ -24,6 +24,8 @@ import type {
   StickerPlacement,
   BackgroundInfo,
   TextFormatInput,
+  FindMyFriend,
+  LocationEvent,
 } from "@photon-ai/advanced-imessage";
 
 import {
