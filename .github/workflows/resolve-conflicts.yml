@@ -1,0 +1,68 @@
+name: Resolve merge conflicts
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  resolve-conflicts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Find PRs with merge conflicts
+        id: conflicts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Wait for GitHub to compute mergeability after the push
+          for i in 1 2 3 4 5; do
+            prs=$(gh pr list --state open --json number,mergeable --jq '.[] | select(.mergeable == "CONFLICTING") | .number' | tr '\n' ' ')
+            unknown=$(gh pr list --state open --json number,mergeable --jq '.[] | select(.mergeable == "UNKNOWN") | .number' | tr '\n' ' ')
+            if [ -z "$unknown" ]; then
+              break
+            fi
+            echo "Waiting for GitHub to compute mergeability (attempt $i)..."
+            sleep 10
+          done
+          echo "Conflicting PRs: $prs"
+          echo "prs=$prs" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve conflicts with Claude Code
+        if: steps.conflicts.outputs.prs != ''
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRS: ${{ steps.conflicts.outputs.prs }}
+        run: |
+          npm install -g @anthropic-ai/claude-code
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          cat <<EOF | claude -p --allowedTools "Edit,Write,Read,Bash(git *),Bash(gh *),Bash(pnpm lint),Bash(pnpm typecheck:docs),Bash(pnpm install *)"
+          There are open PRs with merge conflicts after a push to main. For each of the following PR numbers, check out the branch, resolve the merge conflicts intelligently (prefer the incoming changes from main for lockfiles and generated files, prefer the PR changes for content), and push the resolved branch.
+
+          PR numbers: ${PRS}
+
+          For each PR:
+          1. gh pr checkout <number>
+          2. git merge origin/main
+          3. Resolve conflicts by reading the conflicted files and making intelligent choices
+          4. Commit and push the resolution
+          5. Run pnpm install --frozen-lockfile, then pnpm lint and pnpm typecheck:docs to verify everything passes. If they fail, fix the errors.
+          6. Leave a comment on the PR with gh pr comment <number> --body "..." summarizing what conflicts were found and how each was resolved
+          EOF
