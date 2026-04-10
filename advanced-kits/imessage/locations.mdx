@@ -50,7 +50,7 @@ interface FindMyFriend {
 
 ```ts
 for await (const event of im.locations.subscribe()) {
-  console.log(event.type, event.friend.name, event.friend.latitude);
+  console.log(event.type, event.friends.name, event.friends.latitude);
 }
 ```
 

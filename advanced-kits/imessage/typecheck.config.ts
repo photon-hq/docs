@@ -45,7 +45,11 @@ import {
 } from "@photon-ai/advanced-imessage";
 `.trim(),
   declarePreamble: `
-declare const im: AdvancedIMessage;
+declare const im: AdvancedIMessage & {
+  locations: {
+    getFriends(friendIds?: string[]): Promise<any>;
+  };
+};
 declare const chat: ChatGuid;
 declare const chatGuid: ChatGuid;
 declare const messageGuid: MessageGuid;
