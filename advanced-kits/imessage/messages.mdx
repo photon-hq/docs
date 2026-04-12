@@ -179,6 +179,10 @@ stats.received; // number
 
 `subscribe()` returns a `TypedEventStream<MessageEvent>`. Pass an event type string to narrow the type automatically.
 
+<Note>
+  All event streams send periodic heartbeat signals to keep long-lived connections alive through proxies like Cloudflare Tunnel. Heartbeats are handled transparently and do not appear as typed events.
+</Note>
+
 ```ts
 // All message events
 for await (const event of im.messages.subscribe()) {

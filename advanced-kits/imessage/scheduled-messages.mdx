@@ -95,6 +95,10 @@ const executed = await im.scheduledMessages.executeDue();
 
 ## Real-time schedule events
 
+<Note>
+  All event streams send periodic heartbeat signals to keep long-lived connections alive through proxies like Cloudflare Tunnel. Heartbeats are handled transparently and do not appear as typed events.
+</Note>
+
 ```ts
 for await (const event of im.scheduledMessages.subscribe()) {
   // event.type === "schedule.changed"
