@@ -12,8 +12,8 @@ importers:
         specifier: ^4.15.1
         version: 4.19.0(@typescript-eslint/rule-tester@8.58.1(eslint@9.39.4)(typescript@5.9.3))(@typescript-eslint/typescript-estree@8.58.1(typescript@5.9.3))(@typescript-eslint/utils@8.58.1(eslint@9.39.4)(typescript@5.9.3))(@vue/compiler-sfc@3.5.32)(eslint-plugin-format@2.0.1(eslint@9.39.4))(eslint@9.39.4)(typescript@5.9.3)
       '@photon-ai/advanced-imessage':
-        specifier: ^0.1.0
-        version: 0.1.1
+        specifier: ^0.4.0
+        version: 0.4.0
       '@photon-ai/advanced-imessage-kit':
         specifier: ^1.14.3
         version: 1.14.3(typescript@5.9.3)
@@ -798,8 +798,8 @@ packages:
     peerDependencies:
       typescript: ^5.9.3
 
-  '@photon-ai/advanced-imessage@0.1.1':
-    resolution: {integrity: sha512-ZNj4v4V7SnbArsp6ZfBbOpvZJKAzoCx5g+Wtkfq6D/XmeLGVWzf1BULeiovGiI5IxfN9duAw1l6gB1LEhAbtuQ==}
+  '@photon-ai/advanced-imessage@0.4.0':
+    resolution: {integrity: sha512-Fg3yDs5zHFq2NdimipcW+wK5egdU3e3vzpwzMkL/7/13lvE1ZTjSYd16tLALcLIGyblnl540TEucBRcONkM5Gw==}
     engines: {node: '>=18'}
 
   '@pkgr/core@0.2.9':
@@ -1004,8 +1004,8 @@ packages:
   '@vue/shared@3.5.32':
     resolution: {integrity: sha512-ksNyrmRQzWJJ8n3cRDuSF7zNNontuJg1YHnmWRJd2AMu8Ij2bqwiiri2lH5rHtYPZjj4STkNcgcmiQqlOjiYGg==}
 
-  abort-controller-x@0.4.3:
-    resolution: {integrity: sha512-VtUwTNU8fpMwvWGn4xE93ywbogTYsuT+AUxAXOeelbXuQVIwNmC5YLeho9sH4vZ4ITW8414TTAOG1nW6uIVHCA==}
+  abort-controller-x@0.5.0:
+    resolution: {integrity: sha512-yTt9CI0x+nRfX6BFMenEGP8ooPvErGH6AbFz20C2IeOLIlDsrw/VHpgne3GsCEuTA410IiFiaLVFKmgM4bKEPQ==}
 
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -1901,11 +1901,11 @@ packages:
     resolution: {integrity: sha512-kKHJhxwpR/Okycz4HhQKKlhWe4ASEfPgkSWNmKFHd7+ezuQlxkA5cM3+XkBPvm1gmHen3w53qsYAv+8GwRrBlg==}
     engines: {node: '>=18'}
 
-  nice-grpc-common@2.0.2:
-    resolution: {integrity: sha512-7RNWbls5kAL1QVUOXvBsv1uO0wPQK3lHv+cY1gwkTzirnG1Nop4cBJZubpgziNbaVc/bl9QJcyvsf/NQxa3rjQ==}
+  nice-grpc-common@2.0.3:
+    resolution: {integrity: sha512-MEhnD3JMah0mgyivpb9hpRDbOBuXBxI/TVO+OK1h6rC97WM42HsPMR+zzRNQ0C5BqYJTw1nyWiQRD0DucO+pjQ==}
 
-  nice-grpc@2.1.14:
-    resolution: {integrity: sha512-GK9pKNxlvnU5FAdaw7i2FFuR9CqBspcE+if2tqnKXBcE0R8525wj4BZvfcwj7FjvqbssqKxRHt2nwedalbJlww==}
+  nice-grpc@2.1.15:
+    resolution: {integrity: sha512-agPIt7dtQASnN5p1X3c2S5amDhWRWRT0Jp62trmpMBKSbkm87l8bG2slqxSthlrGa4AnRPG8+lFf4y8nn+Pogw==}
 
   node-releases@2.0.37:
     resolution: {integrity: sha512-1h5gKZCF+pO/o3Iqt5Jp7wc9rH3eJJ0+nh/CIoiRwjRxde/hAHyLPXYN4V3CqKAbiZPSeJFSWHmJsbkicta0Eg==}
@@ -2801,12 +2801,12 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@photon-ai/advanced-imessage@0.1.1':
+  '@photon-ai/advanced-imessage@0.4.0':
     dependencies:
       '@grpc/grpc-js': 1.14.3
       long: 5.3.2
-      nice-grpc: 2.1.14
-      nice-grpc-common: 2.0.2
+      nice-grpc: 2.1.15
+      nice-grpc-common: 2.0.3
       protobufjs: 7.5.4
 
   '@pkgr/core@0.2.9': {}
@@ -3047,7 +3047,7 @@ snapshots:
 
   '@vue/shared@3.5.32': {}
 
-  abort-controller-x@0.4.3: {}
+  abort-controller-x@0.5.0: {}
 
   acorn-jsx@5.3.2(acorn@8.16.0):
     dependencies:
@@ -4146,15 +4146,15 @@ snapshots:
 
   natural-orderby@5.0.0: {}
 
-  nice-grpc-common@2.0.2:
+  nice-grpc-common@2.0.3:
     dependencies:
       ts-error: 1.0.6
 
-  nice-grpc@2.1.14:
+  nice-grpc@2.1.15:
     dependencies:
       '@grpc/grpc-js': 1.14.3
-      abort-controller-x: 0.4.3
-      nice-grpc-common: 2.0.2
+      abort-controller-x: 0.5.0
+      nice-grpc-common: 2.0.3
 
   node-releases@2.0.37: {}
 

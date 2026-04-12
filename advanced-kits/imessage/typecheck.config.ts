@@ -23,6 +23,7 @@ import type {
   TransferState,
   StickerPlacement,
   BackgroundInfo,
+  FetchMissedOptions,
   TextFormatInput,
 } from "@photon-ai/advanced-imessage";
 
@@ -61,6 +62,11 @@ declare const err: unknown;
 declare function sleep(ms: number): Promise<void>;
 declare function refreshToken(): Promise<string>;
 declare function process(...args: any[]): void;
+declare let cursor: string;
+declare function loadPersistedCursor(): string | undefined;
+declare function processMissedMessage(msg: Message): void;
+declare function processEvent(event: any): void;
+declare function persistCursor(cursor: string | undefined): void;
 `.trim(),
 }
 

@@ -160,6 +160,7 @@ const all = await im.messages.list({ chatGuid: chat }).toArray({ limit: 500 });
 | `chatGuid` | `ChatGuid` | Filter to one conversation |
 | `before` | `Date` | Only messages before this timestamp |
 | `after` | `Date` | Only messages after this timestamp |
+| `afterCursor` | `string` | Resume from a stream event cursor. Overrides `after` and forces ascending sort. |
 | `sort` | `SortDirection` | `"ascending"` or `"descending"` |
 | `limit` | `number` | Page size |
 | `offset` | `number` | Starting offset |
@@ -196,10 +197,10 @@ for await (const event of im.messages.subscribe("message.received")) {
 
 | Type | Extra fields |
 |---|---|
-| `message.sent` | `message`, `chatGuid`, `clientMessageId?` |
-| `message.received` | `message`, `chatGuid` |
-| `message.updated` | `message`, `chatGuid`, `updateType` (`edited` \| `unsent` \| `notified` \| `reaction`) |
-| `message.sendError` | `chatGuid`, `errorCode`, `errorMessage`, `clientMessageId?` |
+| `message.sent` | `message`, `chatGuid`, `clientMessageId?`, `cursor?` |
+| `message.received` | `message`, `chatGuid`, `cursor?` |
+| `message.updated` | `message`, `chatGuid`, `updateType` (`edited` \| `unsent` \| `notified` \| `reaction`), `cursor?` |
+| `message.sendError` | `chatGuid`, `errorCode`, `errorMessage`, `clientMessageId?`, `cursor?` |
 
 ### Stream operators
 
@@ -224,6 +225,45 @@ for await (const event of stream) {
   ...
 }
 ```
+
+## Stream catch-up
+
+When a stream disconnects, messages keep arriving on the server. Every stream event includes an opaque `cursor` string you can persist. On reconnect, use `fetchMissed()` to replay everything you missed, then resume the live stream.
+
+```ts
+let cursor = loadPersistedCursor(); // your storage
+
+// 1. Catch up on anything missed while disconnected
+if (cursor) {
+  for await (const msg of im.messages.fetchMissed(cursor)) {
+    processMissedMessage(msg);
+  }
+}
+
+// 2. Resume live stream, tracking cursor for next time
+for await (const event of im.messages.subscribe()) {
+  if (event.cursor) cursor = event.cursor;
+  processEvent(event);
+}
+
+// 3. Persist cursor when done (or periodically)
+persistCursor(cursor);
+```
+
+`fetchMissed(cursor)` returns `Paginated<Message>` — the same auto-pagination as `list()`. Results are ordered chronologically so they can be replayed in order.
+
+**`FetchMissedOptions`**
+
+| Option | Type | Description |
+|---|---|---|
+| `chatGuid` | `ChatGuid` | Restrict to messages in a specific chat |
+| `limit` | `number` | Maximum number of messages per page |
+
+```ts
+im.messages.fetchMissed(cursor, { chatGuid: chat, limit: 100 });
+```
+
+The cursor is opaque — treat it as a string, persist it, and pass it back. The server handles the rest.
 
 ## Miscellaneous
 
