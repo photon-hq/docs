@@ -46,18 +46,18 @@ await im.close();
 
 ## createClient
 
+{% set clientOpts = symbol("ts:@photon-ai/advanced-imessage#ClientOptions") %}
 ```ts
 const im = createClient(options: ClientOptions): AdvancedIMessage;
 ```
 
+{% if clientOpts and clientOpts.members %}
 | Option | Type | Description |
 |---|---|---|
-| `address` | `string` | Host (and optional port) of the Photon server |
-| `token` | `string \| () => Promise<string>` | Static token or async token factory |
-| `tls` | `boolean` | Enable TLS (default: `true`). Set to `false` to force an insecure connection. |
-| `timeout` | `number` | Request timeout in milliseconds |
-| `retry` | `boolean \| RetryOptions` | Automatic retry on transient failures |
-| `autoIdempotency` | `boolean` | Attach `x-idempotency-key` to mutating RPCs |
+{% for m in clientOpts.members -%}
+| `{{ m.name }}` | `{{ m.type.text }}` | {{ m.doc.summary }} |
+{% endfor %}
+{% endif %}
 
 The returned `AdvancedIMessage` object exposes one property per resource:
 
