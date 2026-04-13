@@ -42,8 +42,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Force-add generated files that are normally gitignored
-          git add -f advanced-kits/imessage/*.mdx
+          # Force-add all Vellum-generated files (gitignored, but needed on dist)
+          git add -f $(find docs-src -name '*.vel' | sed 's|^docs-src/||;s|\.vel$||')
 
           # Commit onto a detached HEAD so main is untouched
           TREE=$(git write-tree)
