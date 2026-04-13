@@ -38,15 +38,11 @@ await im.messages.send(chat, "", { attachment: info.guid });
 {% set attInput = symbol("ts:@photon-ai/advanced-imessage#AttachmentInput") %}
 `AttachmentInput` is a union type with two variants - file path or raw bytes:
 
-{% if attInput %}
-{{ attInput | mdxSignature | safe }}
-{% else %}
 ```ts
 type AttachmentInput =
   | { data: Uint8Array; fileName: string; mimeType: string }
   | { path: string; fileName?: string; mimeType?: string };
 ```
-{% endif %}
 
 ## Upload a Live Photo
 
@@ -72,8 +68,12 @@ const info = await im.attachments.get(attachmentGuid);
 ```
 
 {% set attInfo = symbol("ts:@photon-ai/advanced-imessage#AttachmentInfo") %}
-{% if attInfo %}
-{{ attInfo | mdxSignature | safe }}
+{% if attInfo and attInfo.members %}
+```ts
+interface AttachmentInfo {
+{% for m in attInfo.members %}{% if m.kind == "property" %}  {% if m.readonly %}readonly {% endif %}{{ m.name }}{% if m.optional %}?{% endif %}: {{ m.type.text }};
+{% endif %}{% endfor %}}
+```
 {% else %}
 ```ts
 interface AttachmentInfo {
@@ -121,8 +121,13 @@ const buffer = await dl.arrayBuffer(); // Uint8Array
 ```
 
 {% set streamDl = symbol("ts:@photon-ai/advanced-imessage#StreamedDownload") %}
-{% if streamDl %}
-{{ streamDl | mdxSignature | safe }}
+{% if streamDl and streamDl.members %}
+```ts
+interface StreamedDownload {
+{% for m in streamDl.members %}{% if m.kind == "property" %}  {% if m.readonly %}readonly {% endif %}{{ m.name }}{% if m.optional %}?{% endif %}: {{ m.type.text }};
+{% elif m.kind == "method" %}  {{ m.name }}{{ m.signature | replace("    ", "  ") }};
+{% endif %}{% endfor %}}
+```
 {% else %}
 ```ts
 interface StreamedDownload {

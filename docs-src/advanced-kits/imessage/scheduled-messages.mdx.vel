@@ -110,8 +110,12 @@ for await (const event of im.scheduledMessages.subscribe()) {
 ## ScheduledMessage shape
 
 {% set schedMsg = symbol("ts:@photon-ai/advanced-imessage#ScheduledMessage") %}
-{% if schedMsg %}
-{{ schedMsg | mdxSignature | safe }}
+{% if schedMsg and schedMsg.members %}
+```ts
+interface ScheduledMessage {
+{% for m in schedMsg.members %}{% if m.kind == "property" %}  {% if m.readonly %}readonly {% endif %}{{ m.name }}{% if m.optional %}?{% endif %}: {{ m.type.text }};
+{% endif %}{% endfor %}}
+```
 {% else %}
 ```ts
 interface ScheduledMessage {

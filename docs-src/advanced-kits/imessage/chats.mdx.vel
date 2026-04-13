@@ -41,8 +41,12 @@ const chat = await im.chats.get(chatGuid);
 {% set chatType = symbol("ts:@photon-ai/advanced-imessage#Chat") %}
 The returned `Chat` object contains:
 
-{% if chatType %}
-{{ chatType | mdxSignature | safe }}
+{% if chatType and chatType.members %}
+```ts
+interface Chat {
+{% for m in chatType.members %}{% if m.kind == "property" %}  {% if m.readonly %}readonly {% endif %}{{ m.name }}{% if m.optional %}?{% endif %}: {{ m.type.text }};
+{% endif %}{% endfor %}}
+```
 {% else %}
 ```ts
 interface Chat {

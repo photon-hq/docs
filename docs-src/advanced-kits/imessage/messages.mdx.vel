@@ -62,8 +62,12 @@ await im.messages.sendComposed(
 {% set sendReceipt = symbol("ts:@photon-ai/advanced-imessage#SendReceipt") %}
 All three methods return a `SendReceipt`:
 
-{% if sendReceipt %}
-{{ sendReceipt | mdxSignature | safe }}
+{% if sendReceipt and sendReceipt.members %}
+```ts
+interface SendReceipt {
+{% for m in sendReceipt.members %}{% if m.kind == "property" %}  {% if m.readonly %}readonly {% endif %}{{ m.name }}{% if m.optional %}?{% endif %}: {{ m.type.text }};
+{% endif %}{% endfor %}}
+```
 {% else %}
 ```ts
 interface SendReceipt {
@@ -108,8 +112,12 @@ await im.messages.unreact(chat, messageGuid, Reaction.love);
 {% set cmdReceipt = symbol("ts:@photon-ai/advanced-imessage#CommandReceipt") %}
 All reaction methods return `CommandReceipt`:
 
-{% if cmdReceipt %}
-{{ cmdReceipt | mdxSignature | safe }}
+{% if cmdReceipt and cmdReceipt.members %}
+```ts
+interface CommandReceipt {
+{% for m in cmdReceipt.members %}{% if m.kind == "property" %}  {% if m.readonly %}readonly {% endif %}{{ m.name }}{% if m.optional %}?{% endif %}: {{ m.type.text }};
+{% endif %}{% endfor %}}
+```
 {% else %}
 ```ts
 interface CommandReceipt {
