@@ -64,21 +64,37 @@ try {
 
 ## IMessageError properties
 
+{% set imsgError = symbol("ts:@photon-ai/advanced-imessage#IMessageError") %}
 All error subclasses inherit:
 
+{% if imsgError and imsgError.members %}
 ```ts
 class IMessageError extends Error {
-  readonly code: ErrorCode; // SDK-level error code enum
-  readonly retryable: boolean; // whether retrying the request may succeed
-  readonly grpcCode: number; // underlying gRPC status code
-  readonly context: Record<string, string>; // extra debug info from gRPC trailing metadata
+{% for m in imsgError.members %}{% if m.kind == "property" %}  readonly {{ m.name }}: {{ m.type.text }};
+{% endif %}{% endfor %}}
+```
+
+| Property | Type | Description |
+|---|---|---|
+{% for m in imsgError.members %}{% if m.kind == "property" -%}
+| `{{ m.name }}` | `{{ m.type.text }}` | {{ m.doc.summary }} |
+{% endif %}{% endfor %}
+{% else %}
+```ts
+class IMessageError extends Error {
+  readonly code: ErrorCode;
+  readonly retryable: boolean;
+  readonly grpcCode: number;
+  readonly context: Record<string, string>;
 }
 ```
+{% endif %}
 
 The `retryable` flag is read from the server's gRPC trailing metadata (`x-retryable` header), so it is determined by the server on a per-response basis. By convention, `RateLimitError` and `ConnectionError` are typically retryable, but the server may override this for any error type.
 
 ## Error codes
 
+{% set errorCode = symbol("ts:@photon-ai/advanced-imessage#ErrorCode") %}
 `ErrorCode` has 22 values across 6 categories:
 
 | Category | Error codes |
@@ -100,6 +116,7 @@ if (err instanceof IMessageError && err.code === ErrorCode.chatNotFound) {
 
 ## Retrying with the SDK
 
+{% set retryOpts = symbol("ts:@photon-ai/advanced-imessage#RetryOptions") %}
 Set `retry: true` (or a `RetryOptions` object) in `createClient` to let the SDK handle transient retries automatically:
 
 ```ts
