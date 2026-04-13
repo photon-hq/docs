@@ -29,21 +29,16 @@ await im.messages.send(chat, "Hello!", {
 });
 ```
 
+{% set sendOpts = symbol("ts:@photon-ai/advanced-imessage#SendOptions") %}
 **`SendOptions` reference**
 
+{% if sendOpts and sendOpts.members %}
 | Option | Type | Description |
 |---|---|---|
-| `effect` | `MessageEffect` | Visual send effect (slam, confetti, fireworks, …) |
-| `replyTo` | `MessageGuid \| { guid: MessageGuid; partIndex?: number }` | Reply to a specific message or part |
-| `subject` | `string` | Message subject line |
-| `attachment` | `AttachmentGuid` | Pre-uploaded attachment to include |
-| `audioMessage` | `boolean` | Send attachment as an audio message |
-| `sticker` | `{ attachment: AttachmentGuid; target: MessageGuid; placement?: StickerPlacement }` | Send as a sticker on another message |
-| `formatting` | `TextFormatInput[]` | Bold, italic, underline, or text effects |
-| `service` | `"iMessage" \| "SMS" \| "RCS"` | Override service (default: tries iMessage first, then RCS, then falls back to SMS) |
-| `clientMessageId` | `string` | Idempotency key |
-| `ddScan` | `boolean` | Enable data detectors scan |
-| `richLink` | `boolean` | Expand URLs to rich link previews |
+{% for m in sendOpts.members -%}
+| `{{ m.name }}` | `{{ m.type.text }}` | {{ m.doc.summary }} |
+{% endfor %}
+{% endif %}
 
 ### Tier 3 - MessageBuilder
 
@@ -64,14 +59,19 @@ await im.messages.sendComposed(
 );
 ```
 
+{% set sendReceipt = symbol("ts:@photon-ai/advanced-imessage#SendReceipt") %}
 All three methods return a `SendReceipt`:
 
+{% if sendReceipt %}
+{{ sendReceipt | mdxSignature | safe }}
+{% else %}
 ```ts
 interface SendReceipt {
   guid: MessageGuid;
   clientMessageId?: string;
 }
 ```
+{% endif %}
 
 ### Available effects
 
@@ -105,13 +105,18 @@ await im.messages.reactEmoji(chat, messageGuid, "🔥");
 await im.messages.unreact(chat, messageGuid, Reaction.love);
 ```
 
+{% set cmdReceipt = symbol("ts:@photon-ai/advanced-imessage#CommandReceipt") %}
 All reaction methods return `CommandReceipt`:
 
+{% if cmdReceipt %}
+{{ cmdReceipt | mdxSignature | safe }}
+{% else %}
 ```ts
 interface CommandReceipt {
   guid: MessageGuid;
 }
 ```
+{% endif %}
 
 ## Edit & unsend
 
@@ -153,18 +158,16 @@ for await (const message of im.messages.list({ chatGuid: chat })) {
 const all = await im.messages.list({ chatGuid: chat }).toArray({ limit: 500 });
 ```
 
+{% set listOpts = symbol("ts:@photon-ai/advanced-imessage#MessageListOptions") %}
 **`MessageListOptions` reference**
 
+{% if listOpts and listOpts.members %}
 | Option | Type | Description |
 |---|---|---|
-| `chatGuid` | `ChatGuid` | Filter to one conversation |
-| `before` | `Date` | Only messages before this timestamp |
-| `after` | `Date` | Only messages after this timestamp |
-| `sort` | `SortDirection` | `"ascending"` or `"descending"` |
-| `limit` | `number` | Page size |
-| `offset` | `number` | Starting offset |
-| `withChats` | `boolean` | Include related chat objects |
-| `withAttachments` | `boolean` | Include attachment metadata |
+{% for m in listOpts.members -%}
+| `{{ m.name }}` | `{{ m.type.text }}` | {{ m.doc.summary }} |
+{% endfor %}
+{% endif %}
 
 ### Message statistics
 

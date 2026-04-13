@@ -35,13 +35,18 @@ const info = await im.attachments.upload({
 await im.messages.send(chat, "", { attachment: info.guid });
 ```
 
+{% set attInput = symbol("ts:@photon-ai/advanced-imessage#AttachmentInput") %}
 `AttachmentInput` is a union type with two variants - file path or raw bytes:
 
+{% if attInput %}
+{{ attInput | mdxSignature | safe }}
+{% else %}
 ```ts
 type AttachmentInput =
   | { data: Uint8Array; fileName: string; mimeType: string }
   | { path: string; fileName?: string; mimeType?: string };
 ```
+{% endif %}
 
 ## Upload a Live Photo
 
@@ -66,6 +71,10 @@ const info = await im.attachments.uploadLivePhoto({
 const info = await im.attachments.get(attachmentGuid);
 ```
 
+{% set attInfo = symbol("ts:@photon-ai/advanced-imessage#AttachmentInfo") %}
+{% if attInfo %}
+{{ attInfo | mdxSignature | safe }}
+{% else %}
 ```ts
 interface AttachmentInfo {
   guid: AttachmentGuid;
@@ -84,6 +93,7 @@ interface AttachmentInfo {
   _raw?: unknown;
 }
 ```
+{% endif %}
 
 ## Count attachments
 
@@ -110,6 +120,10 @@ for await (const chunk of dl.stream) {
 const buffer = await dl.arrayBuffer(); // Uint8Array
 ```
 
+{% set streamDl = symbol("ts:@photon-ai/advanced-imessage#StreamedDownload") %}
+{% if streamDl %}
+{{ streamDl | mdxSignature | safe }}
+{% else %}
 ```ts
 interface StreamedDownload {
   totalBytes: number;
@@ -117,6 +131,7 @@ interface StreamedDownload {
   arrayBuffer(): Promise<Uint8Array>;
 }
 ```
+{% endif %}
 
 ### Quick buffer download
 

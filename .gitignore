@@ -1,2 +1,8 @@
 node_modules
 .typecheck-output
+
+.pnpm-store
+
+# Vellum generated output (built from docs-src/*.vel templates)
+advanced-kits/imessage/*.mdx
+

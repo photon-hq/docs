@@ -20,21 +20,16 @@ const scheduled = await im.scheduledMessages.create({
 });
 ```
 
+{% set createSchedOpts = symbol("ts:@photon-ai/advanced-imessage#CreateScheduledMessageOptions") %}
 **`CreateScheduledMessageOptions`**
 
+{% if createSchedOpts and createSchedOpts.members %}
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `chat` | `ChatGuid` | Yes | Destination conversation |
-| `projectId` | `string` | Yes | Project namespace |
-| `scheduledFor` | `Date` | Yes | When to send the message |
-| `text` | `string` | No | Message text |
-| `service` | `"iMessage" \| "SMS" \| "RCS"` | No | Service to use |
-| `subject` | `string` | No | Subject line |
-| `effectId` | `string` | No | Send effect ID |
-| `attachmentPath` | `string` | No | Path to an attachment |
-| `attachmentName` | `string` | No | Attachment display name |
-| `clientMessageId` | `string` | No | Idempotency key |
-| `schedule` | `{ type: "once" } \| { type: "recurring"; intervalSeconds: number }` | No | Single or recurring schedule |
+{% for m in createSchedOpts.members -%}
+| `{{ m.name }}` | `{{ m.type.text }}` | {% if not m.optional %}Yes{% else %}No{% endif %} | {{ m.doc.summary }} |
+{% endfor %}
+{% endif %}
 
 ## Get a scheduled message
 
@@ -114,6 +109,10 @@ for await (const event of im.scheduledMessages.subscribe()) {
 
 ## ScheduledMessage shape
 
+{% set schedMsg = symbol("ts:@photon-ai/advanced-imessage#ScheduledMessage") %}
+{% if schedMsg %}
+{{ schedMsg | mdxSignature | safe }}
+{% else %}
 ```ts
 interface ScheduledMessage {
   id: ScheduledMessageId;
@@ -127,7 +126,9 @@ interface ScheduledMessage {
   errorMessage?: string;
 }
 ```
+{% endif %}
 
+{% set schedStatus = symbol("ts:@photon-ai/advanced-imessage#ScheduledMessageStatus") %}
 **`ScheduledMessageStatus` values**
 
 | Value | Description |
