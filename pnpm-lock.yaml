@@ -24,20 +24,20 @@ importers:
         specifier: 7.0.0-dev.20260413.1
         version: 7.0.0-dev.20260413.1
       '@vellum-docs/cli':
-        specifier: ^0.2.2
-        version: 0.2.2
+        specifier: ^0.2.3
+        version: 0.2.3
       '@vellum-docs/core':
-        specifier: ^0.2.2
-        version: 0.2.2
+        specifier: ^0.2.3
+        version: 0.2.3
       '@vellum-docs/engine-nunjucks':
-        specifier: ^0.2.2
-        version: 0.2.2
+        specifier: ^0.2.3
+        version: 0.2.3
       '@vellum-docs/extractor-typescript':
-        specifier: ^0.2.2
-        version: 0.2.2
+        specifier: ^0.2.3
+        version: 0.2.3
       '@vellum-docs/profile-mintlify':
-        specifier: ^0.2.2
-        version: 0.2.2
+        specifier: ^0.2.3
+        version: 0.2.3
       eslint:
         specifier: ^9.39.4
         version: 9.39.4(jiti@2.6.1)
@@ -1035,21 +1035,21 @@ packages:
     resolution: {integrity: sha512-twzr3V4QLEbXaESuI2DqdzutOVFGpkY3VZDR9sF8YlLsAXkwyQvZo58cKM77mZcsHoCR4lCYcdTatWTTa/+8tw==}
     hasBin: true
 
-  '@vellum-docs/cli@0.2.2':
-    resolution: {integrity: sha512-owfADl7Z8sLctlAwCwXRJtuLQlayjHX8Rb0oX8nPdpiCJ3ISee1r+qJEUeeyEEEu0iDkYNcdfaSNOKs9aIy+vA==}
+  '@vellum-docs/cli@0.2.3':
+    resolution: {integrity: sha512-4R4U3oRV+XL+LmIu76tfoAp3WZmZxyWCQI/iVHMlXDYIqXuGBA0PI7CfpIzAmSc+B3/1YS5H0LrDHExBjuI9XQ==}
     hasBin: true
 
-  '@vellum-docs/core@0.2.2':
-    resolution: {integrity: sha512-XRuT0CA0XmQLA1sKNeL0llXI8W3NfaJcwo7xDuCq6meBCSBxQ6IDDS/D6nFSw53M/A7VlpQDsuWIXu6va56orA==}
+  '@vellum-docs/core@0.2.3':
+    resolution: {integrity: sha512-mlrkdZe+8wb6r4KjPC2TvpYlxW6YEmRGk0VcRQEJsVah84tXSxudyLNp0o6bU8qaz0KGRRDAgBvBXmOV9TMyHg==}
 
-  '@vellum-docs/engine-nunjucks@0.2.2':
-    resolution: {integrity: sha512-r/seqBhT3d8IOOheMRmaUNEIAOcF1H31NdKV5Tg4vGUi0idytXWryzwLWX3Z9o+JJLL6/09I/Jpey3998SrSpg==}
+  '@vellum-docs/engine-nunjucks@0.2.3':
+    resolution: {integrity: sha512-wcZj8nJ1B6KOW4Lz7dob8OTxbKvS0dQjy2hZ0+4PBe17HWEtAXFpDFaP6L0oK8t3Z0p+8OXp04j3PQ2Y+6R/Pw==}
 
-  '@vellum-docs/extractor-typescript@0.2.2':
-    resolution: {integrity: sha512-+BWSSmPhXX0W8OHPO8vvX/y9aRtFIq+qjpI/y0DZlUzuPPd8sYbrkLJd2SU+x6L3EDy5aHaagyUppZrBRncHBQ==}
+  '@vellum-docs/extractor-typescript@0.2.3':
+    resolution: {integrity: sha512-1ObWrX/q9xV/KxUYKKuYeGMgdZd+ZxBBP5Xpr4jWoCZ5MXR4Eo+oapBpp0T5B/CaAvlD2soxvcDqF7oARU6w9g==}
 
-  '@vellum-docs/profile-mintlify@0.2.2':
-    resolution: {integrity: sha512-3E801dtIgU2jKZwFXxn1F0dTYcu31Vv/4e+wEgKMgiyvF1yl8l3LppwbGi16mOQfqE4wRAWgZRW9IFDwGDasGQ==}
+  '@vellum-docs/profile-mintlify@0.2.3':
+    resolution: {integrity: sha512-+QMxapD+D3QFVbDp3rBTP/fEssBxLK10ndaGrTdBq7jMhHrsZuLq8dyaKgzqluhLma3i14Vk/xyrCyP5pFIIrw==}
 
   '@vitest/eslint-plugin@1.6.15':
     resolution: {integrity: sha512-dTMjrdngmcB+DxomlKQ+SUubCTvd0m2hQQFpv5sx+GRodmeoxr2PVbphk57SVp250vpxphk9Ccwyv6fQ6+2gkA==}
@@ -3171,30 +3171,30 @@ snapshots:
       '@typescript/native-preview-win32-arm64': 7.0.0-dev.20260413.1
       '@typescript/native-preview-win32-x64': 7.0.0-dev.20260413.1
 
-  '@vellum-docs/cli@0.2.2':
+  '@vellum-docs/cli@0.2.3':
     dependencies:
-      '@vellum-docs/core': 0.2.2
+      '@vellum-docs/core': 0.2.3
 
-  '@vellum-docs/core@0.2.2':
+  '@vellum-docs/core@0.2.3':
     dependencies:
       jiti: 2.6.1
 
-  '@vellum-docs/engine-nunjucks@0.2.2':
+  '@vellum-docs/engine-nunjucks@0.2.3':
     dependencies:
-      '@vellum-docs/core': 0.2.2
+      '@vellum-docs/core': 0.2.3
       nunjucks: 3.2.4
     transitivePeerDependencies:
       - chokidar
 
-  '@vellum-docs/extractor-typescript@0.2.2':
+  '@vellum-docs/extractor-typescript@0.2.3':
     dependencies:
       '@microsoft/tsdoc': 0.15.1
-      '@vellum-docs/core': 0.2.2
+      '@vellum-docs/core': 0.2.3
       typescript: 5.9.3
 
-  '@vellum-docs/profile-mintlify@0.2.2':
+  '@vellum-docs/profile-mintlify@0.2.3':
     dependencies:
-      '@vellum-docs/core': 0.2.2
+      '@vellum-docs/core': 0.2.3
 
   '@vitest/eslint-plugin@1.6.15(@typescript-eslint/eslint-plugin@8.58.2(@typescript-eslint/parser@8.58.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)':
     dependencies:
