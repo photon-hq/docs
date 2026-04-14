@@ -5,7 +5,7 @@ description: "Resolve address metadata, check Focus Mode, and verify iMessage av
 
 import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 
-`im.addresses` looks up information about phone numbers and email addresses — canonicalizes them, reports Focus Mode status, and checks whether they're reachable on iMessage.
+`im.addresses` looks up information about phone numbers and email addresses - canonicalizes them, reports Focus Mode status, and checks whether they're reachable on iMessage.
 
 ## Get address metadata
 
@@ -14,7 +14,7 @@ const info = await im.addresses.get("+1 (234) 567-8900");
 ```
 
 {% set addressInfo = symbol("ts:@photon-ai/advanced-imessage#AddressInfo") %}
-Returns an <TypeTooltip name="AddressInfo" type={`{{ addressInfo.signature }}`} /> with the canonical address, service type, and country metadata. Pass either a phone number or an email — the SDK normalizes the input.
+Returns an <TypeTooltip name="AddressInfo" type={`{{ addressInfo.signature }}`} /> with the canonical address, service type, and country metadata. Pass either a phone number or an email - the SDK normalizes the input.
 
 ## Check Focus Mode status
 
@@ -35,7 +35,7 @@ Returns `true` when the recipient has a Focus mode (Do Not Disturb, Sleep, Work,
 const available = await im.addresses.checkAvailability("+1234567890");
 ```
 
-Returns `true` when the address is reachable on iMessage. Currently the only supported service type is `"iMessage"` — pass nothing or pass `"iMessage"` explicitly:
+Returns `true` when the address is reachable on iMessage. Currently the only supported service type is `"iMessage"` - pass nothing or pass `"iMessage"` explicitly:
 
 ```ts
 await im.addresses.checkAvailability("+1234567890", "iMessage");

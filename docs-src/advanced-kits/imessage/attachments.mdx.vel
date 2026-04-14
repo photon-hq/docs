@@ -30,7 +30,7 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 </Tip>
 
 <Note>
-  Apple caps individual attachments at roughly **100 MB** — larger files are rejected, trimmed (video), or offered as an iCloud link instead. This is an Apple-side limit, not an SDK one.
+  Apple caps individual attachments at roughly **100 MB** - larger files are rejected, trimmed (video), or offered as an iCloud link instead. This is an Apple-side limit, not an SDK one.
 </Note>
 ## Upload an attachment
 

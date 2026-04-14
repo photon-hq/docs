@@ -54,7 +54,7 @@ The SDK has four sending APIs. Use the simplest one that covers your use case.
     Formatting is specified per-part via `MessagePart.formatting` rather than at the top level; every other `SendOptions` field applies normally.
   </Tab>
   <Tab title="MessageBuilder">
-    Use the builder when you want chained, fluent construction — same capability as `sendMultipart()` with a more readable surface.
+    Use the builder when you want chained, fluent construction - same capability as `sendMultipart()` with a more readable surface.
 
     ```ts
     import { MessageBuilder, MessageEffect } from "@photon-ai/advanced-imessage";
@@ -90,14 +90,14 @@ import { MessageEffect, TextEffect } from "@photon-ai/advanced-imessage";
     | Member | Value |
     |---|---|
     {% for v in messageEffect.variants -%}
-    | `{{ messageEffect.name }}.{{ v.name }}` | {% if v.value %}`{{ v.value.text }}`{% else %}—{% endif %} |
+    | `{{ messageEffect.name }}.{{ v.name }}` | {% if v.value %}`{{ v.value.text }}`{% else %}-{% endif %} |
     {% endfor %}
   </Accordion>
   <Accordion title="TextEffect" description="{{ textEffect.doc.summary }}">
     | Member | Value |
     |---|---|
     {% for v in textEffect.variants -%}
-    | `{{ textEffect.name }}.{{ v.name }}` | {% if v.value %}`{{ v.value.text }}`{% else %}—{% endif %} |
+    | `{{ textEffect.name }}.{{ v.name }}` | {% if v.value %}`{{ v.value.text }}`{% else %}-{% endif %} |
     {% endfor %}
   </Accordion>
 </AccordionGroup>
@@ -230,7 +230,7 @@ for await (const event of im.messages.subscribe("message.received")) {
   | `event.{{ messageEvent.discriminator }}` | Extra fields |
   |---|---|
   {% for v in messageEvent.variants -%}
-  | `{{ v.name }}` | {% if v.fields and v.fields|length %}{% for f in v.fields %}`{{ f.name }}{% if f.optional %}?{% endif %}`{% if not loop.last %}, {% endif %}{% endfor %}{% else %}—{% endif %} |
+  | `{{ v.name }}` | {% if v.fields and v.fields|length %}{% for f in v.fields %}`{{ f.name }}{% if f.optional %}?{% endif %}`{% if not loop.last %}, {% endif %}{% endfor %}{% else %}-{% endif %} |
   {% endfor %}
 </Accordion>
 

@@ -23,7 +23,7 @@ Every `.mdx.vel` file that mentions a type symbol in prose imports:
 import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 ```
 
-Use `<TypeTooltip>` whenever a named type appears inline — method return type, parameter, passing reference. Hover shows the full declaration.
+Use `<TypeTooltip>` whenever a named type appears inline - method return type, parameter, passing reference. Hover shows the full declaration.
 
 ```mdx
 {% set chatType = symbol("ts:@photon-ai/advanced-imessage#Chat") %}
@@ -32,11 +32,11 @@ Returns a <TypeTooltip name="Chat" type={`{{ chatType.signature }}`} /> with the
 
 - One `{% set %}` per symbol, placed at the first reference. Later mentions reuse the binding.
 - Pair the tooltip with a short prose description so the sentence still reads without the hover (screen readers, print).
-- **Don't** dump the interface as a code block and also reference it inline — pick one. Tooltips are the default for inline references.
+- **Don't** dump the interface as a code block and also reference it inline - pick one. Tooltips are the default for inline references.
 
 ## Collapsible details → `<Accordion>`
 
-Use `<Accordion>` when the content is reference material: long options tables, enumerated values, event-type mappings — things users scan for a specific row, not read top-to-bottom.
+Use `<Accordion>` when the content is reference material: long options tables, enumerated values, event-type mappings - things users scan for a specific row, not read top-to-bottom.
 
 ```mdx
 {% set opts = symbol("ts:@photon-ai/advanced-imessage#SendOptions") %}
@@ -76,7 +76,7 @@ When showing the same task in multiple ways (e.g. plain text / with options / bu
 
 - **No type annotations in comments.** `// info: AttachmentInfo | null` in a code block is wrong; move it to prose underneath with a `<TypeTooltip>`.
 - **No scare-quote comments** (`// Narrowed`, `// Returns`). Either explain in surrounding prose or delete.
-- Keep snippets minimal — real API calls, no mock data shaped to look real.
+- Keep snippets minimal - real API calls, no mock data shaped to look real.
 
 ## Auto-gen over hand-writing tables
 
@@ -84,7 +84,7 @@ When a table's rows map 1:1 to source members/variants, drive it from vellum:
 
 ```njk
 {% for v in sym.variants -%}
-| `{{ v.name }}` | {% if v.fields and v.fields|length %}{% for f in v.fields %}`{{ f.name }}{% if f.optional %}?{% endif %}`{% if not loop.last %}, {% endif %}{% endfor %}{% else %}—{% endif %} |
+| `{{ v.name }}` | {% if v.fields and v.fields|length %}{% for f in v.fields %}`{{ f.name }}{% if f.optional %}?{% endif %}`{% if not loop.last %}, {% endif %}{% endfor %}{% else %}-{% endif %} |
 {% endfor %}
 ```
 
@@ -100,7 +100,7 @@ Vellum extracts well-formed patterns; some TS shapes fall through to `kind: 'typ
 - **Unions of named references** (`type X = Foo | Bar`, not inline). Extractor doesn't cross-resolve arms.
 - **Non-literal discriminators** (`{ type: SomeStringEnum }`).
 - **Mixed unions** (`string | { type: "foo" }`).
-- **Pure literal unions** (`"a" | "b" | "c"` with no fields). No variant extraction — hand-write the table, wrap in Accordion with `{{ sym.doc.summary }}`.
+- **Pure literal unions** (`"a" | "b" | "c"` with no fields). No variant extraction - hand-write the table, wrap in Accordion with `{{ sym.doc.summary }}`.
 
 If you hit one of these, file an issue upstream rather than working around it indefinitely. Past examples: [const-object enum promotion](https://github.com/photon-hq/vellum/releases) (shipped), [discriminated-union variants](https://github.com/photon-hq/vellum/releases) (shipped).
 
@@ -110,13 +110,13 @@ If you hit one of these, file an issue upstream rather than working around it in
 - Output: `**/*.mdx` (built, don't edit directly)
 - Shared components: `snippets/` (e.g. `type-tooltip.mdx`)
 - Mintlify config: `docs.json`
-- Custom CSS: `custom.css` (keep selectors narrow — broad `[class*="..."]` selectors have bitten us; see accordion-title-monospace incident)
+- Custom CSS: `custom.css` (keep selectors narrow - broad `[class*="..."]` selectors have bitten us; see accordion-title-monospace incident)
 
 ## Checklist for new pages
 
 - [ ] `import { TypeTooltip } from "/snippets/type-tooltip.mdx";` if the page references named types
 - [ ] Every named type mention uses `<TypeTooltip>` or appears in an auto-gen table
-- [ ] No interface/class declarations written by hand — `sym.signature` covers them
+- [ ] No interface/class declarations written by hand - `sym.signature` covers them
 - [ ] Tables that map to source members/variants use `{% for %}` loops
 - [ ] Accordion titles are bare type names; descriptions come from `doc.summary`
 - [ ] No `// TypeName` comments in code blocks

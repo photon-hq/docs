@@ -5,7 +5,7 @@ description: "Create polls, cast votes, add options, and stream poll events"
 
 import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 
-`im.polls` manages polls attached to messages in a chat — creation, voting, adding options, and real-time poll event subscription.
+`im.polls` manages polls attached to messages in a chat - creation, voting, adding options, and real-time poll event subscription.
 
 ## Create a poll
 
@@ -18,7 +18,7 @@ const receipt = await im.polls.create(chat, "What should we order?", [
 ```
 
 {% set cmdReceipt = symbol("ts:@photon-ai/advanced-imessage#CommandReceipt") %}
-Returns a <TypeTooltip name="CommandReceipt" type={`{{ cmdReceipt.signature }}`} /> whose `guid` is the GUID of the poll message — store it to vote or add options later.
+Returns a <TypeTooltip name="CommandReceipt" type={`{{ cmdReceipt.signature }}`} /> whose `guid` is the GUID of the poll message - store it to vote or add options later.
 
 ## Vote on an option
 

@@ -5,7 +5,7 @@ description: "Retrieve Find My Friends locations and subscribe to live updates"
 
 import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 
-`im.locations` wraps Apple's Find My Friends backend — fetch the cached snapshot of friends who share their location, and subscribe to real-time updates as those locations change.
+`im.locations` wraps Apple's Find My Friends backend - fetch the cached snapshot of friends who share their location, and subscribe to real-time updates as those locations change.
 
 ## Get current friend locations
 
@@ -27,7 +27,7 @@ const subset = await im.locations.getFriends(["friend-id-1", "friend-id-2"]);
 
 <Note>
   `getFriends()` returns the **cached** snapshot and triggers a background
-  refresh on the server. For a live feed, subscribe to location events —
+  refresh on the server. For a live feed, subscribe to location events -
   the subscription delivers updates as they arrive.
 </Note>
 
@@ -43,7 +43,7 @@ for await (const event of im.locations.subscribe()) {
 ```
 
 {% set locationEvent = symbol("ts:@photon-ai/advanced-imessage#LocationEvent") %}
-Each update is a <TypeTooltip name="LocationEvent" type={`{{ locationEvent.signature }}`} /> carrying the full friends array — not a diff. Replace your local state rather than merging.
+Each update is a <TypeTooltip name="LocationEvent" type={`{{ locationEvent.signature }}`} /> carrying the full friends array - not a diff. Replace your local state rather than merging.
 
 ## Location types
 
