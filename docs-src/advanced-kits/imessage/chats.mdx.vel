@@ -3,6 +3,8 @@ title: "Chats & Groups"
 description: "Create and manage conversations, typing indicators, and group membership"
 ---
 
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
 `im.chats` manages direct and group conversations. `im.groups` handles group-specific operations like renaming, adding participants, and changing icons.
 
 ## Chats
@@ -22,15 +24,14 @@ const { chat, sendReceipt } = await im.chats.create(["+1234567890"], {
 `sendReceipt` is present only when an initial `message` was provided.
 
 {% set createChatOpts = symbol("ts:@photon-ai/advanced-imessage#CreateChatOptions") %}
-**`CreateChatOptions`**
 
-{% if createChatOpts and createChatOpts.members %}
-| Option | Type | Description |
-|---|---|---|
-{% for m in createChatOpts.members -%}
-| `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
-{% endfor %}
-{% endif %}
+<Accordion title="CreateChatOptions" description="{{ createChatOpts.doc.summary }}">
+  | Option | Type | Description |
+  |---|---|---|
+  {% for m in createChatOpts.members -%}
+  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
+  {% endfor %}
+</Accordion>
 
 ### Get a chat
 
@@ -39,32 +40,7 @@ const chat = await im.chats.get(chatGuid);
 ```
 
 {% set chatType = symbol("ts:@photon-ai/advanced-imessage#Chat") %}
-The returned `Chat` object contains:
-
-{% if chatType and chatType.members %}
-```ts
-interface Chat {
-{% for m in chatType.members %}{% if m.kind == "property" %}  {% if m.readonly %}readonly {% endif %}{{ m.name }}{% if m.optional %}?{% endif %}: {{ m.type.text }};
-{% endif %}{% endfor %}}
-```
-{% else %}
-```ts
-interface Chat {
-  readonly guid: ChatGuid;
-  readonly chatIdentifier?: string;
-  readonly displayName?: string;
-  readonly groupId?: string;
-  readonly participants: readonly AddressInfo[];
-  readonly lastMessage?: Message;
-  readonly isArchived: boolean;
-  readonly isFiltered: boolean;
-  readonly isGroup: boolean;
-  readonly service: ChatServiceType;
-  readonly unreadCount?: number;
-  readonly _raw?: unknown;
-}
-```
-{% endif %}
+The returned <TypeTooltip name="Chat" type={`{{ chatType.signature }}`} /> object contains the chat's identifiers, participants, latest message, and status flags.
 
 ### Count chats
 
@@ -93,8 +69,10 @@ await im.chats.shareContactInfo(chatGuid);
 
 ```ts
 const participants = await im.chats.getParticipants(chatGuid);
-// participants: AddressInfo[]
 ```
+
+{% set addressInfo = symbol("ts:@photon-ai/advanced-imessage#AddressInfo") %}
+Returns an array of <TypeTooltip name="AddressInfo" type={`{{ addressInfo.signature }}`} />.
 
 ### Leave a chat
 
@@ -113,23 +91,21 @@ await im.chats.markRead(chatGuid);
 ```ts
 for await (const event of im.chats.subscribe()) {
   event.type;
-  // "chat.created" | "chat.left" | "chat.readStatusChanged" | "chat.typingIndicator"
 }
 
-// Narrowed
 for await (const event of im.chats.subscribe("chat.typingIndicator")) {
   console.log(event.isTyping, event.displayName);
 }
 ```
 
-**Chat event types**
-
-| Type | Extra fields |
-|---|---|
-| `chat.created` | `chatGuid` |
-| `chat.left` | `chatGuid` |
-| `chat.readStatusChanged` | `chatGuid`, `isRead` |
-| `chat.typingIndicator` | `chatGuid`, `isTyping`, `displayName?` |
+{% set chatEvent = symbol("ts:@photon-ai/advanced-imessage#ChatEvent") %}
+<Accordion title="Chat event types" description="{{ chatEvent.doc.summary }}">
+  | `event.{{ chatEvent.discriminator }}` | Extra fields |
+  |---|---|
+  {% for v in chatEvent.variants -%}
+  | `{{ v.name }}` | {% if v.fields and v.fields|length %}{% for f in v.fields %}`{{ f.name }}{% if f.optional %}?{% endif %}`{% if not loop.last %}, {% endif %}{% endfor %}{% else %}—{% endif %} |
+  {% endfor %}
+</Accordion>
 
 ## Groups
 
@@ -165,15 +141,18 @@ await im.groups.removeIcon(chatGuid);
 ```ts
 // Get background
 const bgInfo = await im.groups.getBackground(chatGuid);
-// bgInfo: BackgroundInfo | null
 
 // Set background (pass raw image bytes)
-const bgInfo2 = await im.groups.setBackground(chatGuid, imageBytes); // imageBytes: Uint8Array
-// bgInfo2: BackgroundInfo { channelGuid?, imageUrl?, backgroundId? }
+const bgInfo2 = await im.groups.setBackground(chatGuid, imageBytes);
 
 // Remove background
 await im.groups.removeBackground(chatGuid);
 ```
+
+{% set backgroundInfo = symbol("ts:@photon-ai/advanced-imessage#BackgroundInfo") %}
+`getBackground` returns <TypeTooltip name="BackgroundInfo" type={`{{ backgroundInfo.signature }}`} /> or `null`. 
+
+`setBackground` returns the newly applied <TypeTooltip name="BackgroundInfo" type={`{{ backgroundInfo.signature }}`} />.
 
 ### Group events
 
@@ -201,3 +180,12 @@ for await (const event of im.groups.subscribe()) {
   }
 }
 ```
+
+{% set groupChange = symbol("ts:@photon-ai/advanced-imessage#GroupChange") %}
+<Accordion title="Group change types" description="{{ groupChange.doc.summary }}">
+  | `change.{{ groupChange.discriminator }}` | Extra fields |
+  |---|---|
+  {% for v in groupChange.variants -%}
+  | `{{ v.name }}` | {% if v.fields and v.fields|length %}{% for f in v.fields %}`{{ f.name }}{% if f.optional %}?{% endif %}`{% if not loop.last %}, {% endif %}{% endfor %}{% else %}—{% endif %} |
+  {% endfor %}
+</Accordion>

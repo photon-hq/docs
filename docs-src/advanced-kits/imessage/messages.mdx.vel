@@ -31,15 +31,14 @@ The SDK has three sending tiers. Use the simplest tier that covers your use case
     ```
 
     {% set sendOpts = symbol("ts:@photon-ai/advanced-imessage#SendOptions") %}
-    **`SendOptions` reference**
 
-    {% if sendOpts and sendOpts.members %}
-    | Option | Type | Description |
-    |---|---|---|
-    {% for m in sendOpts.members -%}
-    | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
-    {% endfor %}
-    {% endif %}
+    <Accordion title="SendOptions" description="{{ sendOpts.doc.summary }}">
+      | Option | Type | Description |
+      |---|---|---|
+      {% for m in sendOpts.members -%}
+      | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
+      {% endfor %}
+    </Accordion>
   </Tab>
   <Tab title="MessageBuilder">
     Use the builder when you need mentions, per-part formatting, or attachments mixed with text.
@@ -150,15 +149,14 @@ const all = await im.messages.list({ chatGuid: chat }).toArray({ limit: 500 });
 ```
 
 {% set listOpts = symbol("ts:@photon-ai/advanced-imessage#MessageListOptions") %}
-**`MessageListOptions` reference**
 
-{% if listOpts and listOpts.members %}
-| Option | Type | Description |
-|---|---|---|
-{% for m in listOpts.members -%}
-| `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
-{% endfor %}
-{% endif %}
+<Accordion title="MessageListOptions" description="{{ listOpts.doc.summary }}">
+  | Option | Type | Description |
+  |---|---|---|
+  {% for m in listOpts.members -%}
+  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
+  {% endfor %}
+</Accordion>
 
 ### Message statistics
 
@@ -186,14 +184,14 @@ for await (const event of im.messages.subscribe("message.received")) {
 }
 ```
 
-### Event types
-
-| Type | Extra fields |
-|---|---|
-| `message.sent` | `message`, `chatGuid`, `clientMessageId?` |
-| `message.received` | `message`, `chatGuid` |
-| `message.updated` | `message`, `chatGuid`, `updateType` (`edited` \| `unsent` \| `notified` \| `reaction`) |
-| `message.sendError` | `chatGuid`, `errorCode`, `errorMessage`, `clientMessageId?` |
+{% set messageEvent = symbol("ts:@photon-ai/advanced-imessage#MessageEvent") %}
+<Accordion title="Message event types" description="{{ messageEvent.doc.summary }}">
+  | `event.{{ messageEvent.discriminator }}` | Extra fields |
+  |---|---|
+  {% for v in messageEvent.variants -%}
+  | `{{ v.name }}` | {% if v.fields and v.fields|length %}{% for f in v.fields %}`{{ f.name }}{% if f.optional %}?{% endif %}`{% if not loop.last %}, {% endif %}{% endfor %}{% else %}—{% endif %} |
+  {% endfor %}
+</Accordion>
 
 ### Stream operators
 
