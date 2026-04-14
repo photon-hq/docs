@@ -9,7 +9,7 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 
 ## Sending Messages
 
-The SDK has three sending tiers. Use the simplest tier that covers your use case.
+The SDK has four sending APIs. Use the simplest one that covers your use case.
 
 <Tabs>
   <Tab title="Plain text">
@@ -40,8 +40,21 @@ The SDK has three sending tiers. Use the simplest tier that covers your use case
       {% endfor %}
     </Accordion>
   </Tab>
+  <Tab title="Multipart">
+    Use `sendMultipart()` when you want per-part formatting or mentions without the builder's fluent style.
+
+    ```ts
+    await im.messages.sendMultipart(chat, [
+      { text: "Hey " },
+      { mention: "alice@icloud.com", text: "@Alice" },
+      { text: "!" },
+    ]);
+    ```
+
+    Formatting is specified per-part via `MessagePart.formatting` rather than at the top level; every other `SendOptions` field applies normally.
+  </Tab>
   <Tab title="MessageBuilder">
-    Use the builder when you need mentions, per-part formatting, or attachments mixed with text.
+    Use the builder when you want chained, fluent construction — same capability as `sendMultipart()` with a more readable surface.
 
     ```ts
     import { MessageBuilder, MessageEffect } from "@photon-ai/advanced-imessage";
@@ -61,7 +74,7 @@ The SDK has three sending tiers. Use the simplest tier that covers your use case
 </Tabs>
 
 {% set sendReceipt = symbol("ts:@photon-ai/advanced-imessage#SendReceipt") %}
-All three methods return a <TypeTooltip name="SendReceipt" type={`{{ sendReceipt.signature }}`} />.
+All four APIs return a <TypeTooltip name="SendReceipt" type={`{{ sendReceipt.signature }}`} />.
 
 ### Available effects
 
@@ -166,6 +179,34 @@ stats.total; // number
 stats.sent; // number
 stats.received; // number
 ```
+
+## Catch up after disconnect
+
+`fetchMissed()` returns messages newer than a cursor from a previous `subscribe()` event. Use it on reconnect to replay anything missed before resuming the live stream.
+
+```ts
+let cursor = loadPersistedCursor();
+
+if (cursor) {
+  for await (const msg of im.messages.fetchMissed(cursor)) {
+    processMissedMessage(msg);
+  }
+}
+
+for await (const event of im.messages.subscribe()) {
+  if (event.cursor) cursor = event.cursor;
+  processEvent(event);
+}
+```
+
+{% set fetchMissedOpts = symbol("ts:@photon-ai/advanced-imessage#FetchMissedOptions") %}
+<Accordion title="FetchMissedOptions" description="{{ fetchMissedOpts.doc.summary }}">
+  | Option | Type | Description |
+  |---|---|---|
+  {% for m in fetchMissedOpts.members -%}
+  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
+  {% endfor %}
+</Accordion>
 
 ## Real-time events
 

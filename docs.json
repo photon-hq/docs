@@ -36,6 +36,9 @@
                   "advanced-kits/imessage/messages",
                   "advanced-kits/imessage/chats",
                   "advanced-kits/imessage/attachments",
+                  "advanced-kits/imessage/polls",
+                  "advanced-kits/imessage/addresses",
+                  "advanced-kits/imessage/locations",
                   "advanced-kits/imessage/scheduled-messages",
                   "advanced-kits/imessage/error-handling"
                 ]

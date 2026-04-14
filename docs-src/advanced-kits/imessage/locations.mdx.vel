@@ -1,0 +1,58 @@
+---
+title: "Locations"
+description: "Retrieve Find My Friends locations and subscribe to live updates"
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+`im.locations` wraps Apple's Find My Friends backend — fetch the cached snapshot of friends who share their location, and subscribe to real-time updates as those locations change.
+
+## Get current friend locations
+
+```ts
+const friends = await im.locations.getFriends();
+for (const friend of friends) {
+  console.log(friend.name, friend.latitude, friend.longitude);
+}
+```
+
+{% set findMyFriend = symbol("ts:@photon-ai/advanced-imessage#FindMyFriend") %}
+Returns an array of <TypeTooltip name="FindMyFriend" type={`{{ findMyFriend.signature }}`} /> with each friend's last known position, accuracy, and address.
+
+Pass a list of friend ids to narrow the result:
+
+```ts
+const subset = await im.locations.getFriends(["friend-id-1", "friend-id-2"]);
+```
+
+<Note>
+  `getFriends()` returns the **cached** snapshot and triggers a background
+  refresh on the server. For a live feed, subscribe to location events —
+  the subscription delivers updates as they arrive.
+</Note>
+
+## Real-time location updates
+
+```ts
+for await (const event of im.locations.subscribe()) {
+  // event.type === "location.updated"
+  for (const friend of event.friends) {
+    updateMapPin(friend);
+  }
+}
+```
+
+{% set locationEvent = symbol("ts:@photon-ai/advanced-imessage#LocationEvent") %}
+Each update is a <TypeTooltip name="LocationEvent" type={`{{ locationEvent.signature }}`} /> carrying the full friends array — not a diff. Replace your local state rather than merging.
+
+## Location types
+
+Each `FindMyFriend` has a `locationType` field describing how fresh the fix is:
+
+<Accordion title="Location types" description="The freshness tier of a friend's location fix.">
+  | `locationType` | Meaning |
+  |---|---|
+  | `live` | Real-time position, actively being updated |
+  | `shallow` | Recent cached position, not being refreshed live |
+  | `legacy` | Older cached position from a prior session |
+</Accordion>
