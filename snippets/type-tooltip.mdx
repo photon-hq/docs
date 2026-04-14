@@ -1,0 +1,51 @@
+export const TypeTooltip = ({ name, type, children }) => {
+  const [visible, setVisible] = React.useState(false);
+  const [pos, setPos] = React.useState({ top: 0, left: 0 });
+  const triggerRef = React.useRef(null);
+
+  const show = () => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 6, left: rect.left });
+    }
+    setVisible(true);
+  };
+
+  const hide = () => setVisible(false);
+
+  return (
+    <>
+      <span
+        ref={triggerRef}
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        style={{ cursor: "pointer", position: "relative", display: "inline" }}
+      >
+        {children || <code>{name}</code>}
+      </span>
+      {visible && (
+        <span
+          style={{
+            position: "fixed",
+            top: pos.top,
+            left: pos.left,
+            zIndex: 9999,
+            padding: "8px 12px",
+            borderRadius: "8px",
+            fontSize: "13px",
+            lineHeight: "1.5",
+            fontFamily: "'Azeret Mono', monospace",
+            whiteSpace: "pre",
+            backgroundColor: "var(--tw-prose-pre-bg, #1e1e1e)",
+            color: "var(--tw-prose-pre-code, #e5e5e5)",
+            border: "1px solid var(--border, rgba(128,128,128,0.2))",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+            pointerEvents: "none",
+          }}
+        >
+          {type}
+        </span>
+      )}
+    </>
+  );
+};
