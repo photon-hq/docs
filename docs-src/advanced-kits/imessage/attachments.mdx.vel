@@ -7,15 +7,15 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 
 `im.attachments` handles file attachments - uploading before sending, streaming downloads, transparent iCloud recovery, and extracting Live Photos.
 
-## Supported file types
+## Common file types
 
 | Category | Formats | Notes |
 |---|---|---|
-| Images | HEIC, HEIF | Native Apple format used by iPhone cameras |
-| Video | MOV, MP4 | MOV for Live Photos, MP4 for general video |
-| Audio | M4A, CAF, MP3 | M4A for voice memos and audio messages |
-| Documents | PDF | |
-| Stickers | PNG, GIF, APNG | Animated stickers use APNG |
+| Images | HEIC, HEIF, JPEG, PNG, GIF, TIFF, BMP, WebP | HEIC/HEIF is preserved end-to-end between Apple devices; iOS transcodes to JPEG when bridging to non-Apple recipients |
+| Video | MOV, MP4 | H.264 for maximum compatibility; HEVC preserved between Apple devices, transcoded to H.264 otherwise. MOV is also the companion container for Live Photos |
+| Audio | M4A (AAC), MP3, WAV, AIFF, FLAC | Delivered as generic audio attachments. Native "voice bubbles" require CAF + Opus, the format Messages.app records into |
+| Stickers | PNG, APNG, GIF, JPEG, HEIC | PNG / APNG recommended. Animated stickers **must** use the `.apng` extension (a `.png` extension shows only frame 1). 500 KB per sticker |
+| Documents | Any file type | PDF, DOCX, XLSX, PPTX, TXT, CSV, ZIP, iWork, anything. Quick Look previews PDF, iWork, MS Office, and TXT inline; everything else shows as a file chip |
 
 <Note>
   iMessage stores and transfers images in HEIC/HEIF. If you're uploading a JPEG
@@ -25,9 +25,13 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 
 <Tip>
   Building with JavaScript? Unfortunately the industry-standard `sharp` library requires you to manually build libvips to get HEIC support. Yes, we also struggled with this.
-  
+
   That's why we built [heif2jpeg](/utilities/heif2jpeg) for you. Use it. You won't regret it.
 </Tip>
+
+<Note>
+  Apple caps individual attachments at roughly **100 MB** — larger files are rejected, trimmed (video), or offered as an iCloud link instead. This is an Apple-side limit, not an SDK one.
+</Note>
 ## Upload an attachment
 
 Upload a file and get back an `AttachmentInfo` object. Use the `guid` property to pass to `im.messages.send()`.

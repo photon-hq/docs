@@ -3,6 +3,8 @@ title: "Scheduled Messages"
 description: "Schedule, manage, and monitor messages to be sent at a future time"
 ---
 
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
 `im.scheduledMessages` lets you create messages that the server will send at a specified time. You can update or delete them before they fire, execute them immediately, and stream lifecycle events.
 
 ## Create a scheduled message
@@ -21,15 +23,17 @@ const scheduled = await im.scheduledMessages.create({
 ```
 
 {% set createSchedOpts = symbol("ts:@photon-ai/advanced-imessage#CreateScheduledMessageOptions") %}
-**`CreateScheduledMessageOptions`**
+{% set schedMsg = symbol("ts:@photon-ai/advanced-imessage#ScheduledMessage") %}
 
-{% if createSchedOpts and createSchedOpts.members %}
-| Field | Type | Required | Description |
-|---|---|---|---|
-{% for m in createSchedOpts.members -%}
-| `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {% if not m.optional %}Yes{% else %}No{% endif %} | {{ m.doc.summary }} |
-{% endfor %}
-{% endif %}
+<Accordion title="CreateScheduledMessageOptions" description="{{ createSchedOpts.doc.summary }}">
+  | Field | Type | Required | Description |
+  |---|---|---|---|
+  {% for m in createSchedOpts.members -%}
+  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {% if not m.optional %}Yes{% else %}No{% endif %} | {{ m.doc.summary }} |
+  {% endfor %}
+</Accordion>
+
+Returns a <TypeTooltip name="ScheduledMessage" type={`{{ schedMsg.signature }}`} /> with the assigned id, lifecycle status, and timestamps.
 
 ## Get a scheduled message
 
@@ -50,7 +54,7 @@ for (const msg of messages) {
 
 ## Update a scheduled message
 
-Only pass the fields you want to change. Returns the updated `ScheduledMessage`.
+Only pass the fields you want to change. Returns the updated <TypeTooltip name="ScheduledMessage" type={`{{ schedMsg.signature }}`} />.
 
 ```ts
 const updated = await im.scheduledMessages.update(scheduledMessageId, {
@@ -85,8 +89,9 @@ Execute all scheduled messages that have passed their `scheduledFor` time:
 
 ```ts
 const executed = await im.scheduledMessages.executeDue();
-// executed: ScheduledMessage[]
 ```
+
+Returns an array of <TypeTooltip name="ScheduledMessage" type={`{{ schedMsg.signature }}`} /> for each message that was executed.
 
 ## Real-time schedule events
 
@@ -97,47 +102,23 @@ for await (const event of im.scheduledMessages.subscribe()) {
 }
 ```
 
-**`ScheduleEvent` actions**
-
-| Action | When it fires |
-|---|---|
-| `created` | A new scheduled message was created |
-| `updated` | A scheduled message was modified |
-| `deleted` | A scheduled message was removed |
-| `sent` | The server sent the message successfully |
-| `failed` | The server failed to send the message |
-
-## ScheduledMessage shape
-
-{% set schedMsg = symbol("ts:@photon-ai/advanced-imessage#ScheduledMessage") %}
-{% if schedMsg and schedMsg.members %}
-```ts
-interface ScheduledMessage {
-{% for m in schedMsg.members %}{% if m.kind == "property" %}  {% if m.readonly %}readonly {% endif %}{{ m.name }}{% if m.optional %}?{% endif %}: {{ m.type.text }};
-{% endif %}{% endfor %}}
-```
-{% else %}
-```ts
-interface ScheduledMessage {
-  id: ScheduledMessageId;
-  scheduledFor: Date;
-  status: ScheduledMessageStatus;
-  payload: Uint8Array;
-  schedule: Uint8Array;
-  type: string;
-  createdAt: Date;
-  sentAt?: Date;
-  errorMessage?: string;
-}
-```
-{% endif %}
+{% set scheduleEvent = symbol("ts:@photon-ai/advanced-imessage#ScheduleEvent") %}
+<Accordion title="ScheduleEvent actions" description="{{ scheduleEvent.doc.summary }}">
+  | `event.action` | When it fires |
+  |---|---|
+  | `created` | A new scheduled message was created |
+  | `updated` | A scheduled message was modified |
+  | `deleted` | A scheduled message was removed |
+  | `sent` | The server sent the message successfully |
+  | `failed` | The server failed to send the message |
+</Accordion>
 
 {% set schedStatus = symbol("ts:@photon-ai/advanced-imessage#ScheduledMessageStatus") %}
-**`ScheduledMessageStatus` values**
-
-| Value | Description |
-|---|---|
-| `"pending"` | Waiting to be sent |
-| `"inProgress"` | Currently being processed |
-| `"complete"` | Sent successfully |
-| `"failed"` | Failed to send (check `errorMessage`) |
+<Accordion title="ScheduledMessageStatus" description="{{ schedStatus.doc.summary }}">
+  | Value | Description |
+  |---|---|
+  | `"pending"` | Waiting to be sent |
+  | `"inProgress"` | Currently being processed |
+  | `"complete"` | Sent successfully |
+  | `"failed"` | Failed to send (check `errorMessage`) |
+</Accordion>
