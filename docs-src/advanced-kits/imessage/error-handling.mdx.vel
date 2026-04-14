@@ -77,7 +77,7 @@ class IMessageError extends Error {
 | Property | Type | Description |
 |---|---|---|
 {% for m in imsgError.members %}{% if m.kind == "property" -%}
-| `{{ m.name }}` | `{{ m.type.text }}` | {{ m.doc.summary }} |
+| `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
 {% endif %}{% endfor %}
 {% else %}
 ```ts

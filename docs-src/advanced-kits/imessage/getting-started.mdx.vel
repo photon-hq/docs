@@ -55,7 +55,7 @@ const im = createClient(options: ClientOptions): AdvancedIMessage;
 | Option | Type | Description |
 |---|---|---|
 {% for m in clientOpts.members -%}
-| `{{ m.name }}` | `{{ m.type.text }}` | {{ m.doc.summary }} |
+| `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
 {% endfor %}
 {% endif %}
 
