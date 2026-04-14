@@ -47,6 +47,12 @@
                 ]
               }
             ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "utilities/heif2jpeg"
+            ]
           }
         ]
       },
