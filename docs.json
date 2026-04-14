@@ -42,6 +42,7 @@
               },
               {
                 "group": "Legacy",
+                "icon": "hat-cowboy",
                 "pages": [
                   "legacy/imessage"
                 ]
