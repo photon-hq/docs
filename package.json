@@ -10,20 +10,20 @@
     "typecheck:docs": "tsx scripts/typecheck-docs/index.ts"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^4.15.1",
-    "@photon-ai/advanced-imessage": "^0.3.0",
+    "@antfu/eslint-config": "^4.19.0",
+    "@photon-ai/advanced-imessage": "^0.4.2",
     "@photon-ai/advanced-imessage-kit": "^1.14.3",
-    "@types/node": "^25.5.2",
-    "@typescript/native-preview": "^7.0.0-dev",
-    "@vellum-docs/cli": "^0.1.1",
-    "@vellum-docs/core": "^0.1.1",
-    "@vellum-docs/engine-nunjucks": "^0.1.1",
-    "@vellum-docs/extractor-typescript": "^0.1.1",
-    "@vellum-docs/profile-mintlify": "^0.1.1",
-    "eslint": "^9.28.0",
+    "@types/node": "^25.6.0",
+    "@typescript/native-preview": "7.0.0-dev.20260413.1",
+    "@vellum-docs/cli": "^0.2.2",
+    "@vellum-docs/core": "^0.2.2",
+    "@vellum-docs/engine-nunjucks": "^0.2.2",
+    "@vellum-docs/extractor-typescript": "^0.2.2",
+    "@vellum-docs/profile-mintlify": "^0.2.2",
+    "eslint": "^9.39.4",
     "eslint-plugin-format": "^2.0.1",
     "oxfmt": "^0.44.0",
-    "tsx": "^4.19.0",
-    "typescript": "^5.7.0"
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }

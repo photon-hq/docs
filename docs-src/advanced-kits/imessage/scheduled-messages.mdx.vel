@@ -27,7 +27,7 @@ const scheduled = await im.scheduledMessages.create({
 | Field | Type | Required | Description |
 |---|---|---|---|
 {% for m in createSchedOpts.members -%}
-| `{{ m.name }}` | `{{ m.type.text }}` | {% if not m.optional %}Yes{% else %}No{% endif %} | {{ m.doc.summary }} |
+| `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {% if not m.optional %}Yes{% else %}No{% endif %} | {{ m.doc.summary }} |
 {% endfor %}
 {% endif %}
 
