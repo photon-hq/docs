@@ -4,6 +4,8 @@ This repo is Mintlify docs with [vellum](https://github.com/photon-hq/vellum) dr
 
 The rules below are what we've converged on. Follow them when adding or editing any page in `docs-src/`.
 
+**Before editing any `.vel` file, read vellum's README** at <https://github.com/photon-hq/vellum/blob/main/README.md> — it's the authoritative reference for template syntax, symbol fields, filters, and profiles. This file summarizes repo-specific conventions, but the README is the source of truth for what vellum can do.
+
 ## Generate from the source, not from memory
 
 If you're writing something that already exists in a `.d.ts`, pull it through vellum. Hand-written type info drifts the moment the package is bumped.
