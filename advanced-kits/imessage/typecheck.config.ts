@@ -52,6 +52,9 @@ declare const chatGuid: ChatGuid;
 declare const messageGuid: MessageGuid;
 declare const someMessageGuid: MessageGuid;
 declare const someGuid: MessageGuid;
+declare const pollMessageGuid: MessageGuid;
+declare const optionIdentifier: string;
+declare const cursor: string | undefined;
 declare const guid: any;
 declare const attachmentGuid: AttachmentGuid;
 declare const scheduledMessageId: ScheduledMessageId;
@@ -62,11 +65,11 @@ declare const err: unknown;
 declare function sleep(ms: number): Promise<void>;
 declare function refreshToken(): Promise<string>;
 declare function process(...args: any[]): void;
-declare let cursor: string;
 declare function loadPersistedCursor(): string | undefined;
 declare function processMissedMessage(msg: Message): void;
 declare function processEvent(event: any): void;
 declare function persistCursor(cursor: string | undefined): void;
+declare function updateMapPin(friend: any): void;
 `.trim(),
 }
 

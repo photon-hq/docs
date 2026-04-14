@@ -103,7 +103,7 @@ for await (const event of im.chats.subscribe("chat.typingIndicator")) {
   | `event.{{ chatEvent.discriminator }}` | Extra fields |
   |---|---|
   {% for v in chatEvent.variants -%}
-  | `{{ v.name }}` | {% if v.fields and v.fields|length %}{% for f in v.fields %}`{{ f.name }}{% if f.optional %}?{% endif %}`{% if not loop.last %}, {% endif %}{% endfor %}{% else %}—{% endif %} |
+  | `{{ v.name }}` | {% if v.fields and v.fields|length %}{% for f in v.fields %}`{{ f.name }}{% if f.optional %}?{% endif %}`{% if not loop.last %}, {% endif %}{% endfor %}{% else %}-{% endif %} |
   {% endfor %}
 </Accordion>
 
@@ -186,6 +186,6 @@ for await (const event of im.groups.subscribe()) {
   | `change.{{ groupChange.discriminator }}` | Extra fields |
   |---|---|
   {% for v in groupChange.variants -%}
-  | `{{ v.name }}` | {% if v.fields and v.fields|length %}{% for f in v.fields %}`{{ f.name }}{% if f.optional %}?{% endif %}`{% if not loop.last %}, {% endif %}{% endfor %}{% else %}—{% endif %} |
+  | `{{ v.name }}` | {% if v.fields and v.fields|length %}{% for f in v.fields %}`{{ f.name }}{% if f.optional %}?{% endif %}`{% if not loop.last %}, {% endif %}{% endfor %}{% else %}-{% endif %} |
   {% endfor %}
 </Accordion>
