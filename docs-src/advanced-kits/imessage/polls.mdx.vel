@@ -10,11 +10,7 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 ## Create a poll
 
 ```ts
-const receipt = await im.polls.create(chat, "What should we order?", [
-  "Pizza",
-  "Sushi",
-  "Burgers",
-]);
+const receipt = await im.polls.create(chat, "What should we order?", ["Pizza", "Sushi", "Burgers"]);
 ```
 
 {% set cmdReceipt = symbol("ts:@photon-ai/advanced-imessage#CommandReceipt") %}

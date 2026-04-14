@@ -8,12 +8,12 @@ The rules below are what we've converged on. Follow them when adding or editing 
 
 If you're writing something that already exists in a `.d.ts`, pull it through vellum. Hand-written type info drifts the moment the package is bumped.
 
-| Doc surface | Vellum field | Notes |
-|---|---|---|
-| Full declaration text | `sym.signature` | Canonical printer output, matches `tsc --declaration`. JSDoc stripped, bodies removed. |
-| Interface property tables | `sym.members[]` | Each has `.name`, `.type.text`, `.optional`, `.readonly`, `.doc.summary`. |
-| Enum / `as const` / discriminated-union rows | `sym.variants[]` | Each has `.name`, `.value.text`, optionally `.fields[]` (for discriminated unions). Also set `sym.discriminator` for union tag key. |
-| Descriptions | `sym.doc.summary` | First paragraph of TSDoc. Always prefer this over hand-written blurbs. |
+| Doc surface                                  | Vellum field      | Notes                                                                                                                               |
+| -------------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Full declaration text                        | `sym.signature`   | Canonical printer output, matches `tsc --declaration`. JSDoc stripped, bodies removed.                                              |
+| Interface property tables                    | `sym.members[]`   | Each has `.name`, `.type.text`, `.optional`, `.readonly`, `.doc.summary`.                                                           |
+| Enum / `as const` / discriminated-union rows | `sym.variants[]`  | Each has `.name`, `.value.text`, optionally `.fields[]` (for discriminated unions). Also set `sym.discriminator` for union tag key. |
+| Descriptions                                 | `sym.doc.summary` | First paragraph of TSDoc. Always prefer this over hand-written blurbs.                                                              |
 
 ## Inline type references → `<TypeTooltip>`
 
@@ -50,6 +50,7 @@ Use `<Accordion>` when the content is reference material: long options tables, e
 ```
 
 Rules:
+
 - **Title:** just the type name. No `reference` / `shape` / `values` suffixes.
 - **Description:** always `{{ sym.doc.summary }}` when a symbol exists. If it doesn't (purely documentation-level tables), write a one-sentence description in the same voice.
 - Stack related accordions in `<AccordionGroup>` (e.g. `MessageEffect` + `TextEffect`).
@@ -59,7 +60,7 @@ Rules:
 
 When showing the same task in multiple ways (e.g. plain text / with options / builder API), use `<Tabs>`, not successive `###` headings.
 
-```mdx
+````mdx
 <Tabs>
   <Tab title="Plain text">
     ```ts
@@ -70,7 +71,7 @@ When showing the same task in multiple ways (e.g. plain text / with options / bu
     ...
   </Tab>
 </Tabs>
-```
+````
 
 ## Code blocks
 
@@ -89,6 +90,7 @@ When a table's rows map 1:1 to source members/variants, drive it from vellum:
 ```
 
 Hand-write tables only when:
+
 - There's no corresponding symbol (gRPC status → SDK error class mapping, error hierarchy tree).
 - You're adding categorization or editorial structure that isn't in the source (e.g. grouping 22 error codes into 6 categories). Keep the table hand-written but wrap it in an `<Accordion>` with `{{ sym.doc.summary }}` as description.
 - Dynamic counts: if you reference a count in prose ("X has N values"), use `{{ sym.variants | length }}` so it stays correct as the enum grows.
