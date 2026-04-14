@@ -42,10 +42,17 @@
               },
               {
                 "group": "Legacy",
+                "icon": "hat-cowboy",
                 "pages": [
                   "legacy/imessage"
                 ]
               }
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "utilities/heif2jpeg"
             ]
           }
         ]

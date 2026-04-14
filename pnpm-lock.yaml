@@ -9,37 +9,37 @@ importers:
   .:
     devDependencies:
       '@antfu/eslint-config':
-        specifier: ^4.15.1
+        specifier: ^4.19.0
         version: 4.19.0(@typescript-eslint/rule-tester@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(@typescript-eslint/typescript-estree@8.58.1(typescript@5.9.3))(@typescript-eslint/utils@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(@vue/compiler-sfc@3.5.32)(eslint-plugin-format@2.0.1(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
       '@photon-ai/advanced-imessage':
-        specifier: ^0.2.1
-        version: 0.2.1
+        specifier: ^0.4.2
+        version: 0.4.2
       '@photon-ai/advanced-imessage-kit':
         specifier: ^1.14.3
         version: 1.14.3(typescript@5.9.3)
       '@types/node':
-        specifier: ^25.5.2
-        version: 25.5.2
+        specifier: ^25.6.0
+        version: 25.6.0
       '@typescript/native-preview':
-        specifier: ^7.0.0-dev
-        version: 7.0.0-dev.20260408.1
+        specifier: 7.0.0-dev.20260413.1
+        version: 7.0.0-dev.20260413.1
       '@vellum-docs/cli':
-        specifier: ^0.1.1
-        version: 0.1.1
+        specifier: ^0.2.2
+        version: 0.2.2
       '@vellum-docs/core':
-        specifier: ^0.1.1
-        version: 0.1.1
+        specifier: ^0.2.2
+        version: 0.2.2
       '@vellum-docs/engine-nunjucks':
-        specifier: ^0.1.1
-        version: 0.1.1
+        specifier: ^0.2.2
+        version: 0.2.2
       '@vellum-docs/extractor-typescript':
-        specifier: ^0.1.1
-        version: 0.1.1
+        specifier: ^0.2.2
+        version: 0.2.2
       '@vellum-docs/profile-mintlify':
-        specifier: ^0.1.1
-        version: 0.1.1
+        specifier: ^0.2.2
+        version: 0.2.2
       eslint:
-        specifier: ^9.28.0
+        specifier: ^9.39.4
         version: 9.39.4(jiti@2.6.1)
       eslint-plugin-format:
         specifier: ^2.0.1
@@ -48,10 +48,10 @@ importers:
         specifier: ^0.44.0
         version: 0.44.0
       tsx:
-        specifier: ^4.19.0
+        specifier: ^4.21.0
         version: 4.21.0
       typescript:
-        specifier: ^5.7.0
+        specifier: ^5.9.3
         version: 5.9.3
 
 packages:
@@ -816,8 +816,8 @@ packages:
     peerDependencies:
       typescript: ^5.9.3
 
-  '@photon-ai/advanced-imessage@0.2.1':
-    resolution: {integrity: sha512-vQt5MPMoBmdB6x4l8d+aAGS+hTlFjOnUIJVF6G17wBOFOozPeBDRNsRfk3ZtpqWiFc0guhiVkLZoIcI+MKHcVg==}
+  '@photon-ai/advanced-imessage@0.4.2':
+    resolution: {integrity: sha512-w66rA8vnAYcZWJHFbahERt0WkwxPnRbg8B1SmKlScNk4jO0jx9nsuaj2wuh8mtoPnT+LFwkB5Zd2avHLC8eIKQ==}
     engines: {node: '>=18'}
 
   '@pkgr/core@0.2.9':
@@ -881,8 +881,8 @@ packages:
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
 
-  '@types/node@25.5.2':
-    resolution: {integrity: sha512-tO4ZIRKNC+MDWV4qKVZe3Ql/woTnmHDr5JD8UI5hn2pwBrHEwOEMZK7WlNb5RKB6EoJ02gwmQS9OrjuFnZYdpg==}
+  '@types/node@25.6.0':
+    resolution: {integrity: sha512-+qIYRKdNYJwY3vRCZMdJbPLJAtGjQBudzZzdzwQYkEPQd+PJGixUL5QfvCLDaULoLv+RhT3LDkwEfKaAkgSmNQ==}
 
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
@@ -952,60 +952,60 @@ packages:
     resolution: {integrity: sha512-y+vH7QE8ycjoa0bWciFg7OpFcipUuem1ujhrdLtq1gByKwfbC7bPeKsiny9e0urg93DqwGcHey+bGRKCnF1nZQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260408.1':
-    resolution: {integrity: sha512-YcPczNLfPDB13eUBYHkTOkL7HyWqqqEhho4eSxhAvigZuxvtHQ1uyILIvLVAwipEVzhJ8QciKmLdLucpfi4XyA==}
+  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260413.1':
+    resolution: {integrity: sha512-CDgxIPvAWRCfOiQKvSk4wUkAoRW4Cy6vfAUBPNHSeLalIt43ToF0LOAsa5uLyRGsftjfMYY0A4qFOmgDvBhgzQ==}
     cpu: [arm64]
     os: [darwin]
 
-  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260408.1':
-    resolution: {integrity: sha512-cHqkDg53xxxz21MThLBf4vx1kyIpRPEYNdEiQlvu9O35Tth49+aub6F+/YEMd9MG4TYZmxh1bEjkjErTUIElpA==}
+  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260413.1':
+    resolution: {integrity: sha512-oiMmUtNMaqBh+eUogX53ichcEf7d+7upC0qa7xS9zWl85XEPKlrZCZpZ79yixw1PkdpjqJJigI11bmCi/JVv+g==}
     cpu: [x64]
     os: [darwin]
 
-  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260408.1':
-    resolution: {integrity: sha512-iHG0FEXq/QFsn+qlTPllxdcbvfQ9aRYggy4lc1z0+f11Nyk4YDNCSiR8WW7pbnOTx/VreGbbXhlpuJXTidqL8g==}
+  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260413.1':
+    resolution: {integrity: sha512-hPKanfs9c+7953gIYw13CNxN0HqFAOfJjnWk4SHqSBe3Pj9pxoeJvvRWlofp5C833eOZK6gZB7ll0/uNb0djtA==}
     cpu: [arm64]
     os: [linux]
 
-  '@typescript/native-preview-linux-arm@7.0.0-dev.20260408.1':
-    resolution: {integrity: sha512-w26Gv9yq9LIYIhxjkQC+i0wBPDdQdX+H06ZhyVRL5grKWTIsk9Xwjp9mDRB/dGlXBKcvnM25JH16OyAA0rFH3A==}
+  '@typescript/native-preview-linux-arm@7.0.0-dev.20260413.1':
+    resolution: {integrity: sha512-0lSXBzBVsxIGrFv/PxoswzMptsnU6BgSk7GMAUt/o1dVw36R2XrSs538vwKnujaJwt4iIdMS0uGdpUC5s9jkzQ==}
     cpu: [arm]
     os: [linux]
 
-  '@typescript/native-preview-linux-x64@7.0.0-dev.20260408.1':
-    resolution: {integrity: sha512-hMcUlUIzYbvbdq6j/B4RPL+kZR917NGnE9AgPZ7dJ92yamH/7LGT1Mnlc6McUx31yqTFBFHdTc7Cfx+ynua7Iw==}
+  '@typescript/native-preview-linux-x64@7.0.0-dev.20260413.1':
+    resolution: {integrity: sha512-8Cr477HRmHZ5YyLfikNvw7qp3/WmnRjzIzJhUDrAx5173OBe8BdyV9jPemFHKDPqwI1AUMTijvptOFoQE7429w==}
     cpu: [x64]
     os: [linux]
 
-  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260408.1':
-    resolution: {integrity: sha512-avJWIEKSx4rdBLZD1FOOTuxTU51dQfYb3jZvZMaXD4thJjq+6eSwfzu2elwL36AZDlnaxggGjB5nBxp0t54iOA==}
+  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260413.1':
+    resolution: {integrity: sha512-ulJD9ZbIQyTBIDx8zzAzQLtbvQDGHSWrNRgkgBU5Os2NTYADQRco4pU747R9wZPMLopy3IeNck6m8vwPoYMk1g==}
     cpu: [arm64]
     os: [win32]
 
-  '@typescript/native-preview-win32-x64@7.0.0-dev.20260408.1':
-    resolution: {integrity: sha512-gpvEHkF/WoxkA3711c4uWNCZO9WAuwrq49COdNwxgOTzYHnMc1yCj8CpkCUJwU0f/Ydwp2s6/efn6gTMvtckPg==}
+  '@typescript/native-preview-win32-x64@7.0.0-dev.20260413.1':
+    resolution: {integrity: sha512-x7DsSXnLQBf5XBBR8luHf1Nc/T1eByUmrOSEThW6825UB7lHoPlqKdhIoUNnTnS4nXQMxLwcusD4P1EP23GPJw==}
     cpu: [x64]
     os: [win32]
 
-  '@typescript/native-preview@7.0.0-dev.20260408.1':
-    resolution: {integrity: sha512-N0MZLEUnAoP/aRVk7MY119LDsESkbtEwIw+YeXi/jjx2XCqf7ni3GxIVsUYtf/troyuSedq3V/OUrkoCh5A9gA==}
+  '@typescript/native-preview@7.0.0-dev.20260413.1':
+    resolution: {integrity: sha512-twzr3V4QLEbXaESuI2DqdzutOVFGpkY3VZDR9sF8YlLsAXkwyQvZo58cKM77mZcsHoCR4lCYcdTatWTTa/+8tw==}
     hasBin: true
 
-  '@vellum-docs/cli@0.1.1':
-    resolution: {integrity: sha512-4LUS7/w/AS7dYjYAXjf2qrGXb09BseUOs59xkZyFUJJLrRpTowhFBzyFS7wTCHC9GcYR+odwkP1oZMgfsJodEg==}
+  '@vellum-docs/cli@0.2.2':
+    resolution: {integrity: sha512-owfADl7Z8sLctlAwCwXRJtuLQlayjHX8Rb0oX8nPdpiCJ3ISee1r+qJEUeeyEEEu0iDkYNcdfaSNOKs9aIy+vA==}
     hasBin: true
 
-  '@vellum-docs/core@0.1.1':
-    resolution: {integrity: sha512-JTTBAGaiy0u6A2qDx7sJS5ojYYZs3uR3W6DxM/4b/r1ky/N5kaL4HH0ywpPwgYVcOfl6OHVzemDdKgOiIlPkTw==}
+  '@vellum-docs/core@0.2.2':
+    resolution: {integrity: sha512-XRuT0CA0XmQLA1sKNeL0llXI8W3NfaJcwo7xDuCq6meBCSBxQ6IDDS/D6nFSw53M/A7VlpQDsuWIXu6va56orA==}
 
-  '@vellum-docs/engine-nunjucks@0.1.1':
-    resolution: {integrity: sha512-QBrNggteZuleamjMshJWSjmcuI22KaNg9M2hGM3bcdyyGZ2zTiGfiNvofUzLhvNzvFZNL6g/yEdn96nxwdX83g==}
+  '@vellum-docs/engine-nunjucks@0.2.2':
+    resolution: {integrity: sha512-r/seqBhT3d8IOOheMRmaUNEIAOcF1H31NdKV5Tg4vGUi0idytXWryzwLWX3Z9o+JJLL6/09I/Jpey3998SrSpg==}
 
-  '@vellum-docs/extractor-typescript@0.1.1':
-    resolution: {integrity: sha512-mqsIBg/uH8veNfYlZvLxduYGftlWuxOVSo1Ux1dzcYyKJTp0Z6yDFdHhD90f3izgO5RKOqI807vYXj7DStDxNQ==}
+  '@vellum-docs/extractor-typescript@0.2.2':
+    resolution: {integrity: sha512-+BWSSmPhXX0W8OHPO8vvX/y9aRtFIq+qjpI/y0DZlUzuPPd8sYbrkLJd2SU+x6L3EDy5aHaagyUppZrBRncHBQ==}
 
-  '@vellum-docs/profile-mintlify@0.1.1':
-    resolution: {integrity: sha512-X419jljW/QXWZhAANFlPH2At1tYs/vgB+b3pv8st8zvPn3b6uf04QIm71IGEwojdPoit9+7frzxzK7RSXBJXKg==}
+  '@vellum-docs/profile-mintlify@0.2.2':
+    resolution: {integrity: sha512-3E801dtIgU2jKZwFXxn1F0dTYcu31Vv/4e+wEgKMgiyvF1yl8l3LppwbGi16mOQfqE4wRAWgZRW9IFDwGDasGQ==}
 
   '@vitest/eslint-plugin@1.6.15':
     resolution: {integrity: sha512-dTMjrdngmcB+DxomlKQ+SUubCTvd0m2hQQFpv5sx+GRodmeoxr2PVbphk57SVp250vpxphk9Ccwyv6fQ6+2gkA==}
@@ -2233,8 +2233,8 @@ packages:
   ufo@1.6.3:
     resolution: {integrity: sha512-yDJTmhydvl5lJzBmy/hyOAA0d+aqCBuwl818haVdYCRrWV84o7YyeVm4QlVHStqNrrJSTb6jKuFAVqAFsr+K3Q==}
 
-  undici-types@7.18.2:
-    resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
+  undici-types@7.19.2:
+    resolution: {integrity: sha512-qYVnV5OEm2AW8cJMCpdV20CDyaN3g0AjDlOGf1OW4iaDEx8MwdtChUp4zu4H0VP3nDRF/8RKWH+IPp9uW0YGZg==}
 
   unist-util-is@6.0.1:
     resolution: {integrity: sha512-LsiILbtBETkDz8I9p1dQ0uyRUWuaQzd/cuEeS1hoRSyW5E5XGmTzlwY1OrNzzakGowI9Dr/I8HVaw4hTtnxy8g==}
@@ -2861,7 +2861,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@photon-ai/advanced-imessage@0.2.1':
+  '@photon-ai/advanced-imessage@0.4.2':
     dependencies:
       '@grpc/grpc-js': 1.14.3
       long: 5.3.2
@@ -2922,9 +2922,9 @@ snapshots:
 
   '@types/ms@2.1.0': {}
 
-  '@types/node@25.5.2':
+  '@types/node@25.6.0':
     dependencies:
-      undici-types: 7.18.2
+      undici-types: 7.19.2
 
   '@types/unist@3.0.3': {}
 
@@ -3033,60 +3033,61 @@ snapshots:
       '@typescript-eslint/types': 8.58.1
       eslint-visitor-keys: 5.0.1
 
-  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260408.1':
+  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260413.1':
     optional: true
 
-  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260408.1':
+  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260413.1':
     optional: true
 
-  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260408.1':
+  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260413.1':
     optional: true
 
-  '@typescript/native-preview-linux-arm@7.0.0-dev.20260408.1':
+  '@typescript/native-preview-linux-arm@7.0.0-dev.20260413.1':
     optional: true
 
-  '@typescript/native-preview-linux-x64@7.0.0-dev.20260408.1':
+  '@typescript/native-preview-linux-x64@7.0.0-dev.20260413.1':
     optional: true
 
-  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260408.1':
+  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260413.1':
     optional: true
 
-  '@typescript/native-preview-win32-x64@7.0.0-dev.20260408.1':
+  '@typescript/native-preview-win32-x64@7.0.0-dev.20260413.1':
     optional: true
 
-  '@typescript/native-preview@7.0.0-dev.20260408.1':
+  '@typescript/native-preview@7.0.0-dev.20260413.1':
     optionalDependencies:
-      '@typescript/native-preview-darwin-arm64': 7.0.0-dev.20260408.1
-      '@typescript/native-preview-darwin-x64': 7.0.0-dev.20260408.1
-      '@typescript/native-preview-linux-arm': 7.0.0-dev.20260408.1
-      '@typescript/native-preview-linux-arm64': 7.0.0-dev.20260408.1
-      '@typescript/native-preview-linux-x64': 7.0.0-dev.20260408.1
-      '@typescript/native-preview-win32-arm64': 7.0.0-dev.20260408.1
-      '@typescript/native-preview-win32-x64': 7.0.0-dev.20260408.1
+      '@typescript/native-preview-darwin-arm64': 7.0.0-dev.20260413.1
+      '@typescript/native-preview-darwin-x64': 7.0.0-dev.20260413.1
+      '@typescript/native-preview-linux-arm': 7.0.0-dev.20260413.1
+      '@typescript/native-preview-linux-arm64': 7.0.0-dev.20260413.1
+      '@typescript/native-preview-linux-x64': 7.0.0-dev.20260413.1
+      '@typescript/native-preview-win32-arm64': 7.0.0-dev.20260413.1
+      '@typescript/native-preview-win32-x64': 7.0.0-dev.20260413.1
 
-  '@vellum-docs/cli@0.1.1':
+  '@vellum-docs/cli@0.2.2':
     dependencies:
-      '@vellum-docs/core': 0.1.1
+      '@vellum-docs/core': 0.2.2
+
+  '@vellum-docs/core@0.2.2':
+    dependencies:
       jiti: 2.6.1
 
-  '@vellum-docs/core@0.1.1': {}
-
-  '@vellum-docs/engine-nunjucks@0.1.1':
+  '@vellum-docs/engine-nunjucks@0.2.2':
     dependencies:
-      '@vellum-docs/core': 0.1.1
+      '@vellum-docs/core': 0.2.2
       nunjucks: 3.2.4
     transitivePeerDependencies:
       - chokidar
 
-  '@vellum-docs/extractor-typescript@0.1.1':
+  '@vellum-docs/extractor-typescript@0.2.2':
     dependencies:
       '@microsoft/tsdoc': 0.15.1
-      '@vellum-docs/core': 0.1.1
+      '@vellum-docs/core': 0.2.2
       typescript: 5.9.3
 
-  '@vellum-docs/profile-mintlify@0.1.1':
+  '@vellum-docs/profile-mintlify@0.2.2':
     dependencies:
-      '@vellum-docs/core': 0.1.1
+      '@vellum-docs/core': 0.2.2
 
   '@vitest/eslint-plugin@1.6.15(@typescript-eslint/eslint-plugin@8.58.1(@typescript-eslint/parser@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)':
     dependencies:
@@ -4402,7 +4403,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.0
-      '@types/node': 25.5.2
+      '@types/node': 25.6.0
       long: 5.3.2
 
   proxy-from-env@2.1.0: {}
@@ -4576,7 +4577,7 @@ snapshots:
 
   ufo@1.6.3: {}
 
-  undici-types@7.18.2: {}
+  undici-types@7.19.2: {}
 
   unist-util-is@6.0.1:
     dependencies:

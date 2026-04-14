@@ -1,0 +1,84 @@
+---
+title: "heif2jpeg"
+description: "Fast and simple HEIC/HEIF to JPEG converter for Node.js"
+---
+
+Fast and simple HEIC/HEIF to JPEG converter for Node.js. Native performance, zero runtime dependencies.
+
+Built with node-api.
+
+## Install
+
+<CodeGroup>
+```bash npm
+npm install heif2jpeg
+```
+
+```bash pnpm
+pnpm add heif2jpeg
+```
+
+```bash yarn
+yarn add heif2jpeg
+```
+
+```bash bun
+bun add heif2jpeg
+```
+</CodeGroup>
+
+Prebuilt binaries are provided for:
+
+| Platform | Architecture |
+|----------|-------------|
+| macOS | x64, arm64 |
+| Linux (glibc) | x64, arm64 |
+| Linux (musl) | x64, arm64 |
+| Windows | x64, arm64 |
+
+Works with Node.js, Bun, and Deno.
+
+## Usage
+
+```js
+const { heifToJpeg } = require("heif2jpeg");
+const fs = require("fs");
+
+const heic = fs.readFileSync("photo.heic");
+const jpeg = await heifToJpeg(heic, { quality: 85 });
+fs.writeFileSync("photo.jpg", jpeg);
+```
+
+## API
+
+### `heifToJpeg(input, options?)`
+
+Convert a HEIF/HEIC buffer to JPEG.
+
+- **input** `Buffer`: HEIF/HEIC file contents
+- **options.quality** `number`: JPEG quality, 1-100 (default: 85)
+- Returns `Promise<Buffer>`: JPEG file contents
+
+## How it works
+
+All processing runs on the libuv thread pool — the main thread is never blocked.
+
+1. [libheif](https://github.com/strukturag/libheif) parses the HEIF container
+2. [libde265](https://github.com/strukturag/libde265) decodes the HEVC payload to raw RGB pixels
+3. [jpeg-encoder](https://crates.io/crates/jpeg-encoder) (pure Rust) encodes to JPEG
+
+## Building from source
+
+Requires Rust, CMake, and a C/C++ compiler.
+
+```bash
+git clone --recurse-submodules https://github.com/photon-hq/heif2jpeg.git
+cd heif2jpeg
+npm install
+npx napi build --platform --release
+npm test
+```
+
+## License
+
+MIT
