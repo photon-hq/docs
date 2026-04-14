@@ -7,7 +7,8 @@
     "docs:generate": "vellum build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck:docs": "tsx scripts/typecheck-docs/index.ts"
+    "typecheck:docs": "tsx scripts/typecheck-docs/index.ts",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^4.19.0",
@@ -15,13 +16,14 @@
     "@photon-ai/advanced-imessage-kit": "^1.14.3",
     "@types/node": "^25.6.0",
     "@typescript/native-preview": "7.0.0-dev.20260413.1",
-    "@vellum-docs/cli": "^0.2.2",
-    "@vellum-docs/core": "^0.2.2",
-    "@vellum-docs/engine-nunjucks": "^0.2.2",
-    "@vellum-docs/extractor-typescript": "^0.2.2",
-    "@vellum-docs/profile-mintlify": "^0.2.2",
+    "@vellum-docs/cli": "^0.2.4",
+    "@vellum-docs/core": "^0.2.4",
+    "@vellum-docs/engine-nunjucks": "^0.2.4",
+    "@vellum-docs/extractor-typescript": "^0.2.4",
+    "@vellum-docs/profile-mintlify": "^0.2.4",
     "eslint": "^9.39.4",
     "eslint-plugin-format": "^2.0.1",
+    "husky": "^9.1.7",
     "oxfmt": "^0.44.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"

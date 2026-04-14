@@ -3,95 +3,104 @@ title: "Messages"
 description: "Send, react to, edit, and list iMessages"
 ---
 
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
 `im.messages` covers everything related to individual messages - sending plain text, rich multipart messages, reacting, editing, unsending, paginated listing, and real-time event subscriptions.
 
-## Sending
+## Sending Messages
 
-The SDK has three sending tiers. Use the simplest tier that covers your use case.
+The SDK has four sending APIs. Use the simplest one that covers your use case.
 
-### Tier 1 - plain text
+<Tabs>
+  <Tab title="Plain text">
+    ```ts
+    await im.messages.send(chat, "Hello!");
+    ```
+  </Tab>
+  <Tab title="With options">
+    ```ts
+    import { MessageEffect } from "@photon-ai/advanced-imessage";
 
-```ts
-await im.messages.send(chat, "Hello!");
-```
+    await im.messages.send(chat, "Hello!", {
+      effect: MessageEffect.confetti,
+      replyTo: someMessageGuid,
+      subject: "Hey",
+      attachment: attachmentGuid,
+      audioMessage: false,
+    });
+    ```
 
-### Tier 2 - with options
+    {% set sendOpts = symbol("ts:@photon-ai/advanced-imessage#SendOptions") %}
 
-```ts
-import { MessageEffect } from "@photon-ai/advanced-imessage";
+    <Accordion title="SendOptions" description="{{ sendOpts.doc.summary }}">
+      | Option | Type | Description |
+      |---|---|---|
+      {% for m in sendOpts.members -%}
+      | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
+      {% endfor %}
+    </Accordion>
+  </Tab>
+  <Tab title="Multipart">
+    Use `sendMultipart()` when you want per-part formatting or mentions without the builder's fluent style.
 
-await im.messages.send(chat, "Hello!", {
-  effect: MessageEffect.confetti,
-  replyTo: someMessageGuid,
-  subject: "Hey",
-  attachment: attachmentGuid,
-  audioMessage: false,
-});
-```
+    ```ts
+    await im.messages.sendMultipart(chat, [
+      { text: "Hey " },
+      { mention: "alice@icloud.com", text: "@Alice" },
+      { text: "!" },
+    ]);
+    ```
 
-{% set sendOpts = symbol("ts:@photon-ai/advanced-imessage#SendOptions") %}
-**`SendOptions` reference**
+    Formatting is specified per-part via `MessagePart.formatting` rather than at the top level; every other `SendOptions` field applies normally.
+  </Tab>
+  <Tab title="MessageBuilder">
+    Use the builder when you want chained, fluent construction - same capability as `sendMultipart()` with a more readable surface.
 
-{% if sendOpts and sendOpts.members %}
-| Option | Type | Description |
-|---|---|---|
-{% for m in sendOpts.members -%}
-| `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
-{% endfor %}
-{% endif %}
+    ```ts
+    import { MessageBuilder, MessageEffect } from "@photon-ai/advanced-imessage";
 
-### Tier 3 - MessageBuilder
-
-Use the builder when you need mentions, per-part formatting, or attachments mixed with text.
-
-```ts
-import { MessageBuilder, MessageEffect } from "@photon-ai/advanced-imessage";
-
-await im.messages.sendComposed(
-  chat,
-  MessageBuilder.multipart()
-    .addText("Hey ")
-    .addMention("@Alice", "alice@icloud.com")
-    .addText("!")
-    .withEffect(MessageEffect.slam)
-    .asReplyTo(someGuid)
-    .build(),
-);
-```
+    await im.messages.sendComposed(
+      chat,
+      MessageBuilder.multipart()
+        .addText("Hey ")
+        .addMention("@Alice", "alice@icloud.com")
+        .addText("!")
+        .withEffect(MessageEffect.slam)
+        .asReplyTo(someGuid)
+        .build(),
+    );
+    ```
+  </Tab>
+</Tabs>
 
 {% set sendReceipt = symbol("ts:@photon-ai/advanced-imessage#SendReceipt") %}
-All three methods return a `SendReceipt`:
-
-{% if sendReceipt and sendReceipt.members %}
-```ts
-interface SendReceipt {
-{% for m in sendReceipt.members %}{% if m.kind == "property" %}  {% if m.readonly %}readonly {% endif %}{{ m.name }}{% if m.optional %}?{% endif %}: {{ m.type.text }};
-{% endif %}{% endfor %}}
-```
-{% else %}
-```ts
-interface SendReceipt {
-  guid: MessageGuid;
-  clientMessageId?: string;
-}
-```
-{% endif %}
+All four APIs return a <TypeTooltip name="SendReceipt" type={`{{ sendReceipt.signature }}`} />.
 
 ### Available effects
 
 ```ts
 import { MessageEffect, TextEffect } from "@photon-ai/advanced-imessage";
-
-MessageEffect.slam; // impact send effect
-MessageEffect.confetti; // confetti burst
-MessageEffect.fireworks; // fireworks
-MessageEffect.balloons; // balloons
-// ...
-
-TextEffect.big; // big text animation
-TextEffect.small; // small text animation
-// ...
 ```
+
+{% set messageEffect = symbol("ts:@photon-ai/advanced-imessage#MessageEffect") %}
+{% set textEffect = symbol("ts:@photon-ai/advanced-imessage#TextEffect") %}
+
+<AccordionGroup>
+  <Accordion title="MessageEffect" description="{{ messageEffect.doc.summary }}">
+    | Member | Value |
+    |---|---|
+    {% for v in messageEffect.variants -%}
+    | `{{ messageEffect.name }}.{{ v.name }}` | {% if v.value %}`{{ v.value.text }}`{% else %}-{% endif %} |
+    {% endfor %}
+  </Accordion>
+  <Accordion title="TextEffect" description="{{ textEffect.doc.summary }}">
+    | Member | Value |
+    |---|---|
+    {% for v in textEffect.variants -%}
+    | `{{ textEffect.name }}.{{ v.name }}` | {% if v.value %}`{{ v.value.text }}`{% else %}-{% endif %} |
+    {% endfor %}
+  </Accordion>
+</AccordionGroup>
 
 ## Reactions
 
@@ -110,21 +119,7 @@ await im.messages.unreact(chat, messageGuid, Reaction.love);
 ```
 
 {% set cmdReceipt = symbol("ts:@photon-ai/advanced-imessage#CommandReceipt") %}
-All reaction methods return `CommandReceipt`:
-
-{% if cmdReceipt and cmdReceipt.members %}
-```ts
-interface CommandReceipt {
-{% for m in cmdReceipt.members %}{% if m.kind == "property" %}  {% if m.readonly %}readonly {% endif %}{{ m.name }}{% if m.optional %}?{% endif %}: {{ m.type.text }};
-{% endif %}{% endfor %}}
-```
-{% else %}
-```ts
-interface CommandReceipt {
-  guid: MessageGuid;
-}
-```
-{% endif %}
+All reaction methods return <TypeTooltip name="CommandReceipt" type={`{{ cmdReceipt.signature }}`} />.
 
 ## Edit & unsend
 
@@ -167,15 +162,14 @@ const all = await im.messages.list({ chatGuid: chat }).toArray({ limit: 500 });
 ```
 
 {% set listOpts = symbol("ts:@photon-ai/advanced-imessage#MessageListOptions") %}
-**`MessageListOptions` reference**
 
-{% if listOpts and listOpts.members %}
-| Option | Type | Description |
-|---|---|---|
-{% for m in listOpts.members -%}
-| `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
-{% endfor %}
-{% endif %}
+<Accordion title="MessageListOptions" description="{{ listOpts.doc.summary }}">
+  | Option | Type | Description |
+  |---|---|---|
+  {% for m in listOpts.members -%}
+  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
+  {% endfor %}
+</Accordion>
 
 ### Message statistics
 
@@ -185,6 +179,34 @@ stats.total; // number
 stats.sent; // number
 stats.received; // number
 ```
+
+## Catch up after disconnect
+
+`fetchMissed()` returns messages newer than a cursor from a previous `subscribe()` event. Use it on reconnect to replay anything missed before resuming the live stream.
+
+```ts
+let cursor = loadPersistedCursor();
+
+if (cursor) {
+  for await (const msg of im.messages.fetchMissed(cursor)) {
+    processMissedMessage(msg);
+  }
+}
+
+for await (const event of im.messages.subscribe()) {
+  if (event.cursor) cursor = event.cursor;
+  processEvent(event);
+}
+```
+
+{% set fetchMissedOpts = symbol("ts:@photon-ai/advanced-imessage#FetchMissedOptions") %}
+<Accordion title="FetchMissedOptions" description="{{ fetchMissedOpts.doc.summary }}">
+  | Option | Type | Description |
+  |---|---|---|
+  {% for m in fetchMissedOpts.members -%}
+  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
+  {% endfor %}
+</Accordion>
 
 ## Real-time events
 
@@ -203,14 +225,14 @@ for await (const event of im.messages.subscribe("message.received")) {
 }
 ```
 
-### Event types
-
-| Type | Extra fields |
-|---|---|
-| `message.sent` | `message`, `chatGuid`, `clientMessageId?` |
-| `message.received` | `message`, `chatGuid` |
-| `message.updated` | `message`, `chatGuid`, `updateType` (`edited` \| `unsent` \| `notified` \| `reaction`) |
-| `message.sendError` | `chatGuid`, `errorCode`, `errorMessage`, `clientMessageId?` |
+{% set messageEvent = symbol("ts:@photon-ai/advanced-imessage#MessageEvent") %}
+<Accordion title="Message event types" description="{{ messageEvent.doc.summary }}">
+  | `event.{{ messageEvent.discriminator }}` | Extra fields |
+  |---|---|
+  {% for v in messageEvent.variants -%}
+  | `{{ v.name }}` | {% if v.fields and v.fields|length %}{% for f in v.fields %}`{{ f.name }}{% if f.optional %}?{% endif %}`{% if not loop.last %}, {% endif %}{% endfor %}{% else %}-{% endif %} |
+  {% endfor %}
+</Accordion>
 
 ### Stream operators
 

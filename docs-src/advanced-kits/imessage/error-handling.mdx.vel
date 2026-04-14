@@ -3,6 +3,8 @@ title: "Error Handling"
 description: "Error class hierarchy and patterns for handling iMessage SDK errors"
 ---
 
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
 Every SDK method throws a subclass of `IMessageError` on failure. Use `instanceof` to branch on the specific error type - no boolean getters, no magic strings.
 
 ## Error hierarchy
@@ -65,46 +67,33 @@ try {
 ## IMessageError properties
 
 {% set imsgError = symbol("ts:@photon-ai/advanced-imessage#IMessageError") %}
-All error subclasses inherit:
+All error subclasses inherit from <TypeTooltip name="IMessageError" type={`{{ imsgError.signature }}`} />.
 
-{% if imsgError and imsgError.members %}
-```ts
-class IMessageError extends Error {
-{% for m in imsgError.members %}{% if m.kind == "property" %}  readonly {{ m.name }}: {{ m.type.text }};
-{% endif %}{% endfor %}}
-```
-
-| Property | Type | Description |
-|---|---|---|
-{% for m in imsgError.members %}{% if m.kind == "property" -%}
-| `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
-{% endif %}{% endfor %}
-{% else %}
-```ts
-class IMessageError extends Error {
-  readonly code: ErrorCode;
-  readonly retryable: boolean;
-  readonly grpcCode: number;
-  readonly context: Record<string, string>;
-}
-```
-{% endif %}
+<Accordion title="IMessageError properties" description="{{ imsgError.doc.summary }}">
+  | Property | Type | Description |
+  |---|---|---|
+  {% for m in imsgError.members %}{% if m.kind == "property" -%}
+  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
+  {% endif %}{% endfor %}
+</Accordion>
 
 The `retryable` flag is read from the server's gRPC trailing metadata (`x-retryable` header), so it is determined by the server on a per-response basis. By convention, `RateLimitError` and `ConnectionError` are typically retryable, but the server may override this for any error type.
 
 ## Error codes
 
 {% set errorCode = symbol("ts:@photon-ai/advanced-imessage#ErrorCode") %}
-`ErrorCode` has 22 values across 6 categories:
+`ErrorCode` has {{ errorCode.variants | length }} values across 6 categories:
 
-| Category | Error codes |
-|---|---|
-| Authentication | `unauthenticated`, `tokenExpired`, `tokenBlocked`, `unauthorized` |
-| Rate limiting | `dailyLimitExceeded`, `recipientLimitExceeded` |
-| Deduplication | `duplicateMessage` |
-| Not found | `chatNotFound`, `messageNotFound`, `attachmentNotFound`, `addressNotFound`, `scheduledMessageNotFound`, `pollNotFound` |
-| Validation | `invalidArgument`, `preconditionFailed`, `operationNotSupported`, `privateApiUnavailable` |
-| Infrastructure | `serviceUnavailable`, `timeout`, `internalError`, `databaseError`, `networkError` |
+<Accordion title="ErrorCode" description="{{ errorCode.doc.summary }}">
+  | Category | Error codes |
+  |---|---|
+  | Authentication | `unauthenticated`, `tokenExpired`, `tokenBlocked`, `unauthorized` |
+  | Rate limiting | `dailyLimitExceeded`, `recipientLimitExceeded` |
+  | Deduplication | `duplicateMessage` |
+  | Not found | `chatNotFound`, `messageNotFound`, `attachmentNotFound`, `addressNotFound`, `scheduledMessageNotFound`, `pollNotFound` |
+  | Validation | `invalidArgument`, `preconditionFailed`, `operationNotSupported`, `privateApiUnavailable` |
+  | Infrastructure | `serviceUnavailable`, `timeout`, `internalError`, `databaseError`, `networkError` |
+</Accordion>
 
 ```ts
 import { ErrorCode } from "@photon-ai/advanced-imessage";

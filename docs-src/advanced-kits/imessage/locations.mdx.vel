@@ -1,60 +1,49 @@
 ---
 title: "Locations"
-description: "Track Find My friend locations and subscribe to real-time updates"
+description: "Retrieve Find My Friends locations and subscribe to live updates"
 ---
 
-`im.locations` provides access to Find My friend locations - fetching the current cached snapshot and subscribing to real-time location updates.
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 
-## Get friend locations
+`im.locations` wraps Apple's Find My Friends backend - fetch the cached snapshot of friends who share their location, and subscribe to real-time updates as those locations change.
 
-`getFriends()` returns the current cached Find My snapshot and triggers a server-side background refresh. Optionally pass an array of friend IDs to filter the results.
+## Get current friend locations
 
 ```ts
-// All friends
 const friends = await im.locations.getFriends();
-
-// Specific friends only
-const filtered = await im.locations.getFriends(["friend-1", "friend-2"]);
-```
-
-Each friend in the returned array is a `FindMyFriend`:
-
-```ts
-interface FindMyFriend {
-  readonly id: string;
-  readonly name?: string;
-  readonly latitude?: number;
-  readonly longitude?: number;
-  readonly accuracy?: number;
-  readonly locationTimestamp?: Date;
-  readonly locationType: "legacy" | "live" | "shallow";
-  readonly longAddress?: string;
-  readonly shortAddress?: string;
-  readonly isLocatingInProgress: boolean;
-  readonly expiresAt?: Date;
+for (const friend of friends) {
+  console.log(friend.name, friend.latitude, friend.longitude);
 }
 ```
 
-**`locationType` values**
+{% set findMyFriend = symbol("ts:@photon-ai/advanced-imessage#FindMyFriend") %}
+Returns an array of <TypeTooltip name="FindMyFriend" type={`{{ findMyFriend.signature }}`} /> with each friend's last known position, accuracy, and address.
 
-| Value | Description |
-|---|---|
-| `"live"` | Real-time location with active sharing |
-| `"shallow"` | Cached or stale location |
-| `"legacy"` | Location from a legacy Find My source |
+Pass a list of friend ids to narrow the result:
 
-## Real-time events
+```ts
+const subset = await im.locations.getFriends(["friend-id-1", "friend-id-2"]);
+```
 
-`subscribe()` returns a `TypedEventStream<LocationEvent>`. While at least one subscriber is active, the server triggers periodic background refreshes.
+<Note>
+  `getFriends()` returns the **cached** snapshot and triggers a background
+  refresh on the server. For a live feed, subscribe to location events -
+  the subscription delivers updates as they arrive.
+</Note>
+
+## Real-time location updates
 
 ```ts
 for await (const event of im.locations.subscribe()) {
   // event.type === "location.updated"
   for (const friend of event.friends) {
-    console.log(friend.name, friend.latitude, friend.longitude);
+    updateMapPin(friend);
   }
 }
 ```
+
+{% set locationEvent = symbol("ts:@photon-ai/advanced-imessage#LocationEvent") %}
+Each update is a <TypeTooltip name="LocationEvent" type={`{{ locationEvent.signature }}`} /> carrying the full friends array - not a diff. Replace your local state rather than merging.
 
 Streams implement `Symbol.asyncDispose`:
 
@@ -64,3 +53,15 @@ for await (const event of stream) {
   console.log(event.friends.length, "friends updated");
 }
 ```
+
+## Location types
+
+Each `FindMyFriend` has a `locationType` field describing how fresh the fix is:
+
+<Accordion title="Location types" description="The freshness tier of a friend's location fix.">
+  | `locationType` | Meaning |
+  |---|---|
+  | `live` | Real-time position, actively being updated |
+  | `shallow` | Recent cached position, not being refreshed live |
+  | `legacy` | Older cached position from a prior session |
+</Accordion>

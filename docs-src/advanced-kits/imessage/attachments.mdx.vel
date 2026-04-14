@@ -3,17 +3,19 @@ title: "Attachments"
 description: "Upload, download, and stream file attachments"
 ---
 
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
 `im.attachments` handles file attachments - uploading before sending, streaming downloads, transparent iCloud recovery, and extracting Live Photos.
 
-## Supported file types
+## Common file types
 
 | Category | Formats | Notes |
 |---|---|---|
-| Images | HEIC, HEIF | Native Apple format used by iPhone cameras |
-| Video | MOV, MP4 | MOV for Live Photos, MP4 for general video |
-| Audio | M4A, CAF, MP3 | M4A for voice memos and audio messages |
-| Documents | PDF | |
-| Stickers | PNG, GIF, APNG | Animated stickers use APNG |
+| Images | HEIC, HEIF, JPEG, PNG, GIF, TIFF, BMP, WebP | HEIC/HEIF is preserved end-to-end between Apple devices; iOS transcodes to JPEG when bridging to non-Apple recipients |
+| Video | MOV, MP4 | H.264 for maximum compatibility; HEVC preserved between Apple devices, transcoded to H.264 otherwise. MOV is also the companion container for Live Photos |
+| Audio | M4A (AAC), MP3, WAV, AIFF, FLAC | Delivered as generic audio attachments. Native "voice bubbles" require CAF + Opus, the format Messages.app records into |
+| Stickers | PNG, APNG, GIF, JPEG, HEIC | PNG / APNG recommended. Animated stickers **must** use the `.apng` extension (a `.png` extension shows only frame 1). 500 KB per sticker |
+| Documents | Any file type | PDF, DOCX, XLSX, PPTX, TXT, CSV, ZIP, iWork, anything. Quick Look previews PDF, iWork, MS Office, and TXT inline; everything else shows as a file chip |
 
 <Note>
   iMessage stores and transfers images in HEIC/HEIF. If you're uploading a JPEG
@@ -21,6 +23,15 @@ description: "Upload, download, and stream file attachments"
   arrive as HEIC/HEIF. Convert them before displaying in non-Apple contexts.
 </Note>
 
+<Tip>
+  Building with JavaScript? Unfortunately the industry-standard `sharp` library requires you to manually build libvips to get HEIC support. Yes, we also struggled with this.
+
+  That's why we built [heif2jpeg](/utilities/heif2jpeg) for you. Use it. You won't regret it.
+</Tip>
+
+<Note>
+  Apple caps individual attachments at roughly **100 MB** - larger files are rejected, trimmed (video), or offered as an iCloud link instead. This is an Apple-side limit, not an SDK one.
+</Note>
 ## Upload an attachment
 
 Upload a file and get back an `AttachmentInfo` object. Use the `guid` property to pass to `im.messages.send()`.
@@ -36,13 +47,7 @@ await im.messages.send(chat, "", { attachment: info.guid });
 ```
 
 {% set attInput = symbol("ts:@photon-ai/advanced-imessage#AttachmentInput") %}
-`AttachmentInput` is a union type with two variants - file path or raw bytes:
-
-```ts
-type AttachmentInput =
-  | { data: Uint8Array; fileName: string; mimeType: string }
-  | { path: string; fileName?: string; mimeType?: string };
-```
+`upload()` takes an <TypeTooltip name="AttachmentInput" type={`{{ attInput.signature }}`} />, which is a union of file path or raw bytes.
 
 ## Upload a Live Photo
 
@@ -68,32 +73,7 @@ const info = await im.attachments.get(attachmentGuid);
 ```
 
 {% set attInfo = symbol("ts:@photon-ai/advanced-imessage#AttachmentInfo") %}
-{% if attInfo and attInfo.members %}
-```ts
-interface AttachmentInfo {
-{% for m in attInfo.members %}{% if m.kind == "property" %}  {% if m.readonly %}readonly {% endif %}{{ m.name }}{% if m.optional %}?{% endif %}: {{ m.type.text }};
-{% endif %}{% endfor %}}
-```
-{% else %}
-```ts
-interface AttachmentInfo {
-  guid: AttachmentGuid;
-  originalGuid?: AttachmentGuid;
-  mimeType: string;
-  fileName: string;
-  totalBytes: number;
-  transferState: TransferState;
-  hasLivePhoto: boolean;
-  height?: number;
-  hideAttachment: boolean;
-  isOutgoing: boolean;
-  isSticker: boolean;
-  uti: string;
-  width?: number;
-  _raw?: unknown;
-}
-```
-{% endif %}
+Returns an <TypeTooltip name="AttachmentInfo" type={`{{ attInfo.signature }}`} /> with file metadata, transfer state, and Live Photo / sticker flags.
 
 ## Count attachments
 
@@ -103,7 +83,8 @@ const total = await im.attachments.count();
 
 ## Download an attachment
 
-`download()` returns a `StreamedDownload` synchronously - both a streaming and a buffered consumption path.
+{% set streamDl = symbol("ts:@photon-ai/advanced-imessage#StreamedDownload") %}
+`download()` returns a <TypeTooltip name="StreamedDownload" type={`{{ streamDl.signature }}`} /> synchronously - both a streaming and a buffered consumption path.
 
 ```ts
 const dl = im.attachments.download(attachmentGuid);
@@ -119,24 +100,6 @@ for await (const chunk of dl.stream) {
 // Or buffer the whole thing
 const buffer = await dl.arrayBuffer(); // Uint8Array
 ```
-
-{% set streamDl = symbol("ts:@photon-ai/advanced-imessage#StreamedDownload") %}
-{% if streamDl and streamDl.members %}
-```ts
-interface StreamedDownload {
-{% for m in streamDl.members %}{% if m.kind == "property" %}  {% if m.readonly %}readonly {% endif %}{{ m.name }}{% if m.optional %}?{% endif %}: {{ m.type.text }};
-{% elif m.kind == "method" %}  {{ m.name }}{{ m.signature | replace("    ", "  ") }};
-{% endif %}{% endfor %}}
-```
-{% else %}
-```ts
-interface StreamedDownload {
-  totalBytes: number;
-  stream: ReadableStream<Uint8Array>;
-  arrayBuffer(): Promise<Uint8Array>;
-}
-```
-{% endif %}
 
 ### Quick buffer download
 
@@ -156,4 +119,4 @@ const videoDl = im.attachments.getLivePhoto(attachmentGuid);
 const videoBytes = await videoDl.arrayBuffer();
 ```
 
-`getLivePhoto()` returns a `StreamedDownload` synchronously, just like `download()`.
+`getLivePhoto()` returns a <TypeTooltip name="StreamedDownload" type={`{{ streamDl.signature }}`} /> synchronously, just like `download()`.
