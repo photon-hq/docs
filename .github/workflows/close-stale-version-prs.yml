@@ -15,6 +15,7 @@ jobs:
       - name: Close older version PRs for the same SDK
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
           NEW_PR: ${{ github.event.pull_request.number }}
           NEW_BRANCH: ${{ github.head_ref }}
         run: |
@@ -29,9 +30,9 @@ jobs:
           echo "New PR #$NEW_PR for SDK: $sdk_name"
 
           # Find other open PRs for the same SDK
-          gh pr list --state open --json number,headRefName --jq ".[] | select(.headRefName | startswith(\"docs/update-${sdk_name}-v\")) | .number" | while read -r pr_number; do
+          gh pr list --repo "$REPO" --state open --json number,headRefName --jq ".[] | select(.headRefName | startswith(\"docs/update-${sdk_name}-v\")) | .number" | while read -r pr_number; do
             if [ "$pr_number" != "$NEW_PR" ]; then
               echo "Closing stale PR #$pr_number"
-              gh pr close "$pr_number" --comment "Superseded by #$NEW_PR which targets a newer version."
+              gh pr close "$pr_number" --repo "$REPO" --comment "Superseded by #$NEW_PR which targets a newer version."
             fi
           done
