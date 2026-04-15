@@ -57,6 +57,12 @@
             "pages": [
               "utilities/heif2jpeg"
             ]
+          },
+          {
+            "group": "Opensource Kits",
+            "pages": [
+              "opensource/imessage-kit"
+            ]
           }
         ]
       },

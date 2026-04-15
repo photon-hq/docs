@@ -1,0 +1,404 @@
+---
+title: "imessage-kit"
+description: "Open-source, type-safe iMessage SDK for macOS — send, query, watch, and automate"
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+`@photon-ai/imessage-kit` is an MIT-licensed, macOS-only SDK that talks directly to the local Messages database and AppleScript bridge. Use it when you want to read, send, and automate iMessage on a Mac you control — automation tools, AI agents, chat-first apps.
+
+<Note>
+  For remote iMessage delivery, threaded replies, tapbacks, edits / unsends, and
+  live typing indicators, use
+  [`@photon-ai/advanced-imessage`](/advanced-kits/imessage/getting-started)
+  instead. That SDK talks to a hosted bridge and doesn't require macOS.
+</Note>
+
+## Requirements
+
+- **OS**: macOS only (reads the Messages SQLite database directly).
+- **Runtime**: Node.js ≥ 20 or Bun ≥ 1.0.
+- **Permission**: the process must have **Full Disk Access** granted. Open **System Settings → Privacy & Security → Full Disk Access** and add your terminal or IDE (Terminal, iTerm2, Warp, VS Code, Cursor…).
+
+## Install
+
+<CodeGroup>
+```bash Bun
+bun add @photon-ai/imessage-kit
+```
+
+```bash npm
+npm install @photon-ai/imessage-kit better-sqlite3
+```
+</CodeGroup>
+
+On Bun the SDK has zero runtime dependencies. On Node it uses `better-sqlite3` as an optional peer dependency.
+
+## Quick start
+
+```ts
+import { IMessageSDK } from "@photon-ai/imessage-kit";
+
+const sdk = new IMessageSDK();
+
+await sdk.send("+1234567890", "Hello from iMessage Kit!");
+
+await sdk.close();
+```
+
+{% set imsgConfig = symbol("ts:@photon-ai/imessage-kit#IMessageConfig") %}
+The constructor takes an optional <TypeTooltip name="IMessageConfig" type={`{{ imsgConfig.signature }}`} /> — override the default Messages database path, concurrent-send limit, debug logging, webhooks, and plugins.
+
+<Accordion title="IMessageConfig" description="{{ imsgConfig.doc.summary }}">
+  | Option | Type | Description |
+  |---|---|---|
+  {% for m in imsgConfig.members -%}
+  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
+  {% endfor %}
+</Accordion>
+
+## Sending
+
+`sdk.send(to, content)` auto-detects whether `to` is a recipient (phone number / email) or a `chatId` (group or DM).
+
+### Text
+
+```ts
+await sdk.send("+1234567890", "Hello World!");
+await sdk.send("user@example.com", "Hello!");
+```
+
+### Images and files
+
+```ts
+// Images (auto-selects iMessage image handling)
+await sdk.send("+1234567890", { images: ["/path/to/photo.jpg"] });
+
+// Arbitrary files
+await sdk.send("+1234567890", { files: ["/path/to/document.pdf"] });
+
+// Text + attachments
+await sdk.send("+1234567890", {
+  text: "Check this out!",
+  images: ["/path/to/photo.jpg"],
+  files: ["/path/to/report.pdf"],
+});
+
+// Convenience wrappers
+await sdk.sendFile("+1234567890", "/path/to/document.pdf");
+await sdk.sendFiles("+1234567890", ["/file1.pdf", "/file2.csv"], "Multiple files");
+```
+
+### Groups
+
+Group `chatId`s are returned by `listChats()`:
+
+```ts
+const groups = await sdk.listChats({ type: "group" });
+const chatId = groups[0].chatId;
+
+await sdk.send(chatId, "Hello group!");
+await sdk.send(chatId, { text: "Check these files", files: ["/report.pdf"] });
+```
+
+### Batch
+
+```ts
+const results = await sdk.sendBatch([
+  { to: "+1234567890", content: "Hi Alice" },
+  { to: "+0987654321", content: "Hi Bob" },
+]);
+
+for (const r of results) {
+  if (r.success) console.log("Sent to", r.to);
+  else console.error("Failed", r.to, r.error);
+}
+```
+
+Concurrency is controlled by `maxConcurrentSends` from the SDK config.
+
+## Querying messages
+
+{% set messageType = symbol("ts:@photon-ai/imessage-kit#Message") %}
+{% set msgFilter = symbol("ts:@photon-ai/imessage-kit#MessageFilter") %}
+
+```ts
+const result = await sdk.getMessages({
+  sender: "+1234567890",
+  unreadOnly: true,
+  limit: 20,
+  since: new Date("2026-01-01"),
+  search: "meeting",
+});
+```
+
+Returns a <TypeTooltip name="MessageQueryResult" type={`{{ symbol("ts:@photon-ai/imessage-kit#MessageQueryResult").signature }}`} />. Each entry is a <TypeTooltip name="Message" type={`{{ messageType.signature }}`} />.
+
+<Accordion title="MessageFilter" description="{{ msgFilter.doc.summary }}">
+  | Option | Type | Description |
+  |---|---|---|
+  {% for m in msgFilter.members -%}
+  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
+  {% endfor %}
+</Accordion>
+
+### Unread messages
+
+`getUnreadMessages()` groups results by sender:
+
+```ts
+const unread = await sdk.getUnreadMessages();
+console.log(`${unread.total} unread messages from ${unread.senderCount} senders`);
+
+for (const group of unread.groups) {
+  console.log(`${group.sender}: ${group.messages.length} messages`);
+}
+```
+
+## Listing chats
+
+{% set listChatsOpts = symbol("ts:@photon-ai/imessage-kit#ListChatsOptions") %}
+{% set chatSummary = symbol("ts:@photon-ai/imessage-kit#ChatSummary") %}
+
+```ts
+const all = await sdk.listChats();
+
+const groups = await sdk.listChats({
+  type: "group",
+  hasUnread: true,
+  sortBy: "recent",
+  search: "Project",
+  limit: 20,
+});
+
+for (const chat of groups) {
+  console.log(chat.chatId, chat.displayName, chat.unreadCount);
+}
+```
+
+Returns an array of <TypeTooltip name="ChatSummary" type={`{{ chatSummary.signature }}`} />.
+
+<Accordion title="ListChatsOptions" description="{{ listChatsOpts.doc.summary }}">
+  | Option | Type | Description |
+  |---|---|---|
+  {% for m in listChatsOpts.members -%}
+  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
+  {% endfor %}
+</Accordion>
+
+## Real-time watching
+
+{% set watcherEvents = symbol("ts:@photon-ai/imessage-kit#WatcherEvents") %}
+
+```ts
+await sdk.startWatching({
+  onMessage: (msg) => console.log(`New: ${msg.text}`),
+  onDirectMessage: (msg) => console.log(`DM from ${msg.sender}`),
+  onGroupMessage: (msg) => console.log(`Group: ${msg.chatId}`),
+  onError: (err) => console.error(err),
+});
+
+// Later
+sdk.stopWatching();
+```
+
+The watcher polls the Messages database and fires per registered callback — see <TypeTooltip name="WatcherEvents" type={`{{ watcherEvents.signature }}`} /> for every available hook.
+
+### Auto-reply with the message chain
+
+`sdk.message(msg)` returns a <TypeTooltip name="MessageChain" type={`{{ symbol("ts:@photon-ai/imessage-kit#MessageChain").signature }}`} /> — a fluent builder for filter-then-respond patterns:
+
+```ts
+await sdk.startWatching({
+  onDirectMessage: async (msg) => {
+    await sdk.message(msg).ifFromOthers().matchText(/hello/i).replyText("Hi there!").execute();
+  },
+});
+```
+
+Chain guards to skip tapbacks, filter by chat kind, match on predicates, and choose a response:
+
+```ts
+await sdk
+  .message(msg)
+  .ifUnread()
+  .ifNotReaction()
+  .ifGroupChat()
+  .when((m) => (m.sender ?? "").startsWith("+1"))
+  .matchText(/photo/i)
+  .replyImage(["/photo.jpg"])
+  .execute();
+```
+
+## Attachment helpers
+
+{% set attachment = symbol("ts:@photon-ai/imessage-kit#Attachment") %}
+
+```ts
+import {
+  attachmentExists,
+  downloadAttachment,
+  getAttachmentExtension,
+  getAttachmentMetadata,
+  getAttachmentSize,
+  isAudioAttachment,
+  isImageAttachment,
+  isVideoAttachment,
+  readAttachment,
+} from "@photon-ai/imessage-kit";
+
+const { messages } = await sdk.getMessages({ hasAttachments: true, limit: 1 });
+const attachment = messages[0].attachments[0];
+
+if (await attachmentExists(attachment)) {
+  const size = await getAttachmentSize(attachment);
+  const ext = getAttachmentExtension(attachment);
+
+  if (isImageAttachment(attachment)) {
+    // Stream or buffer the bytes
+    const bytes = await readAttachment(attachment);
+    await downloadAttachment(attachment, "/path/to/save.jpg");
+  }
+}
+```
+
+Each attachment is an <TypeTooltip name="Attachment" type={`{{ attachment.signature }}`} />.
+
+### Common media formats
+
+Messages carries a wide range of formats through without transcoding. The SDK's `isImage` / `isVideo` / `isAudio` helpers classify by the stored MIME type — there's no allowlist.
+
+| Category | Typical formats |
+|---|---|
+| Documents | PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, RTF |
+| Images | JPG, PNG, GIF, HEIC, WEBP, AVIF |
+| Contacts | VCF (vCard) |
+| Data | CSV, JSON, XML |
+| Archives | ZIP, RAR, 7Z |
+| Media | MP4, MOV, MP3, M4A |
+
+## Scheduling
+
+{% set schedulerConfig = symbol("ts:@photon-ai/imessage-kit#SchedulerConfig") %}
+{% set scheduleOpts = symbol("ts:@photon-ai/imessage-kit#ScheduleOptions") %}
+{% set recurringOpts = symbol("ts:@photon-ai/imessage-kit#RecurringScheduleOptions") %}
+
+### `MessageScheduler`
+
+```ts
+import { IMessageSDK, MessageScheduler } from "@photon-ai/imessage-kit";
+
+const sdk = new IMessageSDK();
+const scheduler = new MessageScheduler(
+  sdk,
+  { debug: true },
+  {
+    onSent: (task: any, result: any) => console.log(`Sent: ${task.id}`),
+    onError: (task: any, error: Error) => console.error(`Failed: ${error.message}`),
+    onComplete: (task: any) => console.log(`Completed: ${task.id}`),
+  },
+);
+
+const id = scheduler.schedule({
+  to: "+1234567890",
+  content: "Reminder!",
+  sendAt: new Date(Date.now() + 5 * 60_000),
+});
+
+scheduler.scheduleRecurring({
+  to: "+1234567890",
+  content: "Good morning!",
+  startAt: new Date("2026-01-01T08:00:00"),
+  interval: "daily",
+  endAt: new Date("2026-12-31"),
+});
+
+scheduler.reschedule(id, new Date(Date.now() + 60_000));
+scheduler.cancel(id);
+scheduler.getPending();
+
+scheduler.destroy();
+```
+
+The constructor takes `(sdk, config?, events?)` — three positional args. Config is <TypeTooltip name="SchedulerConfig" type={`{{ schedulerConfig.signature }}`} />; one-shot task shape is <TypeTooltip name="ScheduleOptions" type={`{{ scheduleOpts.signature }}`} /> and recurring is <TypeTooltip name="RecurringScheduleOptions" type={`{{ recurringOpts.signature }}`} />. The scheduler loop is internal — no `start()` call needed.
+
+### `Reminders` — natural-language scheduling
+
+{% set reminderOpts = symbol("ts:@photon-ai/imessage-kit#ReminderOptions") %}
+
+```ts
+import { IMessageSDK, Reminders } from "@photon-ai/imessage-kit";
+
+const sdk = new IMessageSDK();
+const reminders = new Reminders(sdk);
+
+reminders.in("5 minutes", "+1234567890", "Take a break!");
+reminders.in("2 hours", "+1234567890", "Call the client");
+reminders.at("5pm", "+1234567890", "End of day review");
+reminders.at("tomorrow 9am", "+1234567890", "Morning standup");
+reminders.exact(new Date("2026-12-25T10:00:00"), "+1234567890", "Merry Christmas!");
+
+reminders.list();
+reminders.cancel("reminder-id");
+reminders.destroy();
+```
+
+All scheduling calls take an optional <TypeTooltip name="ReminderOptions" type={`{{ reminderOpts.signature }}`} />.
+
+Supported expressions:
+- **Duration**: `"5 minutes"`, `"2 hours"`, `"1 day"`, `"30 seconds"`, `"1 week"`
+- **Time**: `"5pm"`, `"5:30pm"`, `"17:30"`
+- **Day + time**: `"tomorrow 9am"`, `"friday 2pm"`
+
+## Plugins
+
+{% set plugin = symbol("ts:@photon-ai/imessage-kit#Plugin") %}
+
+```ts
+import { definePlugin, loggerPlugin } from "@photon-ai/imessage-kit";
+
+sdk.use(loggerPlugin({ level: "info", colored: true }));
+
+sdk.use(
+  definePlugin({
+    name: "my-plugin",
+    onInit: async () => console.log("Initialized"),
+    onBeforeSend: async (to, content) => console.log("Sending to:", to, content),
+    onAfterSend: async (to, result) => console.log("Sent:", to, result),
+    onDestroy: async () => console.log("Destroyed"),
+  }),
+);
+```
+
+See <TypeTooltip name="Plugin" type={`{{ plugin.signature }}`} /> for the full hook surface. Hooks take positional args — `onBeforeSend(to, content)`, `onAfterSend(to, result)` — not a single object. `definePlugin()` is a helper that just returns its argument for type inference.
+
+## Error handling
+
+{% set imsgError = symbol("ts:@photon-ai/imessage-kit#IMessageError") %}
+
+```ts
+import {
+  ConfigError,
+  DatabaseError,
+  IMessageError,
+  PlatformError,
+  SendError,
+  WebhookError,
+} from "@photon-ai/imessage-kit";
+
+try {
+  await sdk.send("+1234567890", "Hello");
+} catch (error) {
+  if (error instanceof IMessageError) {
+    console.error(`[${error.code}] ${error.message}`);
+  }
+}
+```
+
+Every thrown error is an <TypeTooltip name="IMessageError" type={`{{ imsgError.signature }}`} />. The factory functions (`PlatformError`, `DatabaseError`, `SendError`, `WebhookError`, `ConfigError`) produce `IMessageError` instances tagged with the corresponding `code` — switch on `error.code` rather than `instanceof` for each subtype.
+
+## Links
+
+- **Source**: [github.com/photon-hq/imessage-kit](https://github.com/photon-hq/imessage-kit)
+- **LLM context**: [llms.txt](https://github.com/photon-hq/imessage-kit/blob/main/llms.txt), or `use context7: photon-hq/imessage-kit`
+- **Discord**: [Join](https://discord.gg/bZd4CMd2H5)
