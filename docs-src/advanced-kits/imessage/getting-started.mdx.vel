@@ -5,7 +5,7 @@ description: "Install the iMessage Kit and send your first message in minutes"
 
 `@photon-ai/advanced-imessage` is a TypeScript SDK that connects you to our advanced gRPC-based iMessage server.
 
-It gives you a strongly-typed, resource-oriented API for everything iMessage - sending texts, reacting, scheduling, streaming events, and more.
+It gives you a strongly-typed, resource-oriented API for everything iMessage - sending texts, reacting, streaming events, and more.
 
 ## Installation
 
@@ -68,7 +68,6 @@ im.groups             // rename, add/remove participants, icons
 im.attachments        // upload, download, Live Photos
 im.addresses          // lookup contact info
 im.polls              // create polls, vote
-im.scheduledMessages  // schedule, update, execute
 im.locations          // FindMy friend locations
 ```
 

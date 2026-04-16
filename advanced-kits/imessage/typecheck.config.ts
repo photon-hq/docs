@@ -9,15 +9,12 @@ import type {
   ChatGuid,
   MessageGuid,
   AttachmentGuid,
-  ScheduledMessageId,
   Chat,
   Message,
   AttachmentInfo,
   StreamedDownload,
   SendReceipt,
   CommandReceipt,
-  ScheduledMessage,
-  ScheduledMessageStatus,
   AddressInfo,
   ChatServiceType,
   TransferState,
@@ -56,7 +53,6 @@ declare const optionIdentifier: string;
 declare const cursor: string | undefined;
 declare const guid: any;
 declare const attachmentGuid: AttachmentGuid;
-declare const scheduledMessageId: ScheduledMessageId;
 declare const imageBytes: Uint8Array;
 declare const videoBytes: Uint8Array;
 declare let token: string;

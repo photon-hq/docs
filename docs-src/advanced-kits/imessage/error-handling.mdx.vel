@@ -90,7 +90,7 @@ The `retryable` flag is read from the server's gRPC trailing metadata (`x-retrya
   | Authentication | `unauthenticated`, `tokenExpired`, `tokenBlocked`, `unauthorized` |
   | Rate limiting | `dailyLimitExceeded`, `recipientLimitExceeded` |
   | Deduplication | `duplicateMessage` |
-  | Not found | `chatNotFound`, `messageNotFound`, `attachmentNotFound`, `addressNotFound`, `scheduledMessageNotFound`, `pollNotFound` |
+  | Not found | `chatNotFound`, `messageNotFound`, `attachmentNotFound`, `addressNotFound`, `pollNotFound` |
   | Validation | `invalidArgument`, `preconditionFailed`, `operationNotSupported`, `privateApiUnavailable` |
   | Infrastructure | `serviceUnavailable`, `timeout`, `internalError`, `databaseError`, `networkError` |
 </Accordion>
@@ -124,7 +124,7 @@ When `retry` is enabled, `ConnectionError` and `RateLimitError` are retried tran
 
 ## Escape hatch: `_raw`
 
-Most domain types carry `_raw` containing the raw gRPC response for debugging purposes. The types that include `_raw` are `Chat`, `Message`, `AttachmentInfo`, and `AddressInfo`. Other types such as `ScheduledMessage`, `FindMyFriend`, and `PollInfo` do not include `_raw`.
+Most domain types carry `_raw` containing the raw gRPC response for debugging purposes. The types that include `_raw` are `Chat`, `Message`, `AttachmentInfo`, and `AddressInfo`. Other types such as `FindMyFriend` and `PollInfo` do not include `_raw`.
 
 ```ts
 try {
