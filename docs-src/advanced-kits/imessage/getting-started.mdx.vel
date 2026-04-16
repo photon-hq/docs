@@ -29,6 +29,15 @@ bun add @photon-ai/advanced-imessage
 
 Requires Node.js 18+ or Bun.
 
+## Quotas
+
+<Warning>
+  Default per-server and per-line quotas apply. Contact [help@photon.codes](mailto:help@photon.codes) for an increase.
+
+  - **5,000 messages per server per day.** Counts every message your instance sends across all chats. Additional sends are rejected until the window resets.
+  - **50 new conversations initiated per line per day.** A "new conversation" is the first message your line sends to a recipient it has never messaged before. Replies within existing conversations don't count.
+</Warning>
+
 ## Quick start
 
 ```ts
