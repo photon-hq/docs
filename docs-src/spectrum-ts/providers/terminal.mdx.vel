@@ -1,0 +1,51 @@
+---
+title: "Terminal"
+description: "Read messages from stdin, write responses to stdout"
+---
+
+```ts
+import { terminal } from "spectrum-ts/providers/terminal";
+```
+
+The terminal provider reads from `stdin` and writes to `stdout`. Each line of input becomes a message; text content sent into the terminal space is printed to the console.
+
+```ts
+terminal.config();
+```
+
+No credentials, no config. Useful for local development, integration tests, and REPL-style bots.
+
+## Example
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { terminal } from "spectrum-ts/providers/terminal";
+
+const app = await Spectrum({
+  providers: [terminal.config()],
+});
+
+for await (const [space, message] of app.messages) {
+  if (message.content.type === "text") {
+    await space.send(`You said: ${message.content.text}`);
+  }
+}
+```
+
+Each line you type is a message; each reply prints to the same terminal.
+
+## Behaviour
+
+| Feature | Behaviour |
+|---|---|
+| `space.send(text)` | Prints to `stdout`. |
+| `space.send(attachment)` | No-op — the terminal can't render files. |
+| `space.startTyping` / `stopTyping` | No-op. |
+| `message.react` / `reply` | No-op (provider declares no `reactToMessage` / `replyToMessage` actions). |
+| `terminal(app).space(...)` | Always resolves to a single space with `id: "terminal"`. |
+
+## When to use it
+
+- **Iterating on bot logic** without hitting a real messaging platform.
+- **Integration tests** — drive a `for await` loop with scripted stdin input and assert on stdout.
+- **CLI tools** that want the same handler shape as a multi-platform deployment.

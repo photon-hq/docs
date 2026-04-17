@@ -1,0 +1,79 @@
+---
+title: "Content"
+description: "Build text, attachments, and platform-specific content for outgoing messages"
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+{% set ci = symbol("ts:spectrum-ts#ContentInput") %}
+{% set cb = symbol("ts:spectrum-ts#ContentBuilder") %}
+
+Spectrum provides three content builders — `text`, `attachment`, and `custom` — plus a string shortcut that's equivalent to `text()`. Any API that takes a <TypeTooltip name="ContentInput" type={`{{ ci.signature }}`} /> accepts a plain string or a <TypeTooltip name="ContentBuilder" type={`{{ cb.signature }}`} />.
+
+## Text
+
+```ts
+import { text } from "spectrum-ts";
+
+await space.send(text("Hello, world."));
+
+// Plain strings are equivalent:
+await space.send("Hello, world.");
+```
+
+## Attachments
+
+Pass a file path or a `Buffer`. MIME types are detected from the file extension; override with `options.mimeType` when you already have the bytes.
+
+```ts
+import { attachment } from "spectrum-ts";
+
+// From a file path — name and MIME type inferred
+await space.send(attachment("/path/to/photo.jpg"));
+
+// From a buffer — provide name and MIME type
+await space.send(attachment(buffer, {
+  name: "report.pdf",
+  mimeType: "application/pdf",
+}));
+```
+
+If the MIME type can't be inferred from the name and you didn't pass `options.mimeType`, `attachment()` throws when the content is built.
+
+## Custom
+
+Send structured, platform-specific payloads. Use this when the receiving platform supports rich content types that don't fit into text or attachments.
+
+```ts
+import { custom } from "spectrum-ts";
+
+await space.send(custom({ type: "card", title: "Order Confirmed" }));
+```
+
+The raw payload round-trips through the provider's `actions.send` — it's up to the provider to interpret it.
+
+## Composing multiple items
+
+All send methods take a variadic list. Items are sent sequentially as separate messages:
+
+```ts
+await space.send(
+  "Here's the file you requested:",
+  attachment("/path/to/document.pdf"),
+);
+```
+
+This runs one `send()` per item on the underlying provider — not a single compound message.
+
+## Replies
+
+`message.reply(...)` has the same variadic signature:
+
+```ts
+await message.reply(
+  "Thanks for the question.",
+  attachment("/path/to/answer.png"),
+);
+```
+
+On platforms without thread support, `reply()` resolves as a no-op. If you need guaranteed delivery, use `space.send(...)` instead.

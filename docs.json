@@ -26,6 +26,33 @@
         "tab": "Guides",
         "groups": [
           {
+            "group": "Spectrum",
+            "pages": [
+              "spectrum-ts/getting-started",
+              "spectrum-ts/messages",
+              "spectrum-ts/content",
+              "spectrum-ts/spaces-and-users",
+              "spectrum-ts/reactions-and-replies",
+              "spectrum-ts/platform-narrowing",
+              {
+                "group": "Providers",
+                "pages": [
+                  "spectrum-ts/providers",
+                  "spectrum-ts/providers/imessage",
+                  "spectrum-ts/providers/terminal",
+                  "spectrum-ts/providers/whatsapp-business"
+                ]
+              },
+              {
+                "group": "Advanced",
+                "pages": [
+                  "spectrum-ts/custom-events-and-lifecycle",
+                  "spectrum-ts/custom-platforms"
+                ]
+              }
+            ]
+          },
+          {
             "group": "Advanced SDKs",
             "pages": [
               {

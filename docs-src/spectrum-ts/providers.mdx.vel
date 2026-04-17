@@ -1,0 +1,51 @@
+---
+title: "Platform Providers"
+description: "Built-in providers and how to combine them"
+---
+
+Providers plug into Spectrum's type system and runtime. Each one exports a callable — call `provider.config(...)` to register it, and call `provider(app)` to [narrow](/spectrum-ts/platform-narrowing) into its platform-specific instance.
+
+## Built-in providers
+
+<CardGroup cols={2}>
+  <Card title="iMessage" icon="comment" href="/spectrum-ts/providers/imessage">
+    Local, cloud, and dedicated modes. Tapbacks, typing indicators, threaded replies, DMs and groups.
+  </Card>
+  <Card title="Terminal" icon="terminal" href="/spectrum-ts/providers/terminal">
+    Reads stdin, writes stdout. Zero config, great for local development and tests.
+  </Card>
+  <Card title="WhatsApp Business" icon="whatsapp" href="/spectrum-ts/providers/whatsapp-business">
+    Official WhatsApp Business Cloud API. Native reactions and replies, 1:1 conversations only.
+  </Card>
+</CardGroup>
+
+## Combining providers
+
+Drop any combination into `providers`:
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { imessage } from "spectrum-ts/providers/imessage";
+import { terminal } from "spectrum-ts/providers/terminal";
+import { whatsappBusiness } from "spectrum-ts/providers/whatsapp-business";
+
+const app = await Spectrum({
+  projectId: "...",
+  projectSecret: "...",
+  providers: [
+    imessage.config(),
+    whatsappBusiness.config({
+      accessToken: process.env.WA_TOKEN!,
+      phoneNumberId: process.env.WA_NUMBER_ID!,
+      appSecret: process.env.WA_SECRET!,
+    }),
+    terminal.config(),
+  ],
+});
+```
+
+`app.messages` merges messages from every provider. The `message.platform` field tells you which one delivered each message.
+
+## Writing your own
+
+If none of the built-ins fit, implement a provider with `definePlatform`. See [Building a custom platform](/spectrum-ts/custom-platforms).

@@ -1,0 +1,126 @@
+---
+title: "Messages"
+description: "Receive, narrow, and act on incoming messages"
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+{% set message = symbol("ts:spectrum-ts#Message") %}
+{% set content = symbol("ts:spectrum-ts#Content") %}
+
+Every incoming message arrives through `app.messages` as a `[Space, Message]` tuple. The space is already bound to the originating conversation — you don't need to resolve it yourself to reply.
+
+## Receiving messages
+
+```ts
+for await (const [space, message] of app.messages) {
+  // handle the message
+}
+```
+
+Messages from every configured provider merge into this single stream. The order reflects arrival time.
+
+## The Message shape
+
+Every message conforms to <TypeTooltip name="Message" type={`{{ message.signature }}`} />.
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>id</code></td>
+      <td>Platform-assigned message identifier.</td>
+    </tr>
+    <tr>
+      <td><code>content</code></td>
+      <td>Discriminated union on <code>type</code> — <code>"text"</code>, <code>"attachment"</code>, or <code>"custom"</code>.</td>
+    </tr>
+    <tr>
+      <td><code>sender</code></td>
+      <td>The <TypeTooltip name="User" type={`{{ symbol("ts:spectrum-ts#User").signature }}`} /> who sent the message.</td>
+    </tr>
+    <tr>
+      <td><code>space</code></td>
+      <td>The <TypeTooltip name="Space" type={`{{ symbol("ts:spectrum-ts#Space").signature }}`} /> the message was sent into.</td>
+    </tr>
+    <tr>
+      <td><code>platform</code></td>
+      <td>Name of the provider that delivered the message (e.g. <code>"iMessage"</code>, <code>"terminal"</code>).</td>
+    </tr>
+    <tr>
+      <td><code>timestamp</code></td>
+      <td><code>Date</code> of when the message was sent.</td>
+    </tr>
+    <tr>
+      <td><code>react(reaction)</code></td>
+      <td>React to this message. No-op on platforms that don't support reactions.</td>
+    </tr>
+    <tr>
+      <td><code>reply(...content)</code></td>
+      <td>Reply threaded to this message. Falls back silently on platforms without thread support.</td>
+    </tr>
+  </tbody>
+</table>
+
+## Narrowing content
+
+`Content` is a discriminated union. Narrow on `message.content.type` before accessing fields:
+
+```ts
+for await (const [space, message] of app.messages) {
+  switch (message.content.type) {
+    case "text":
+      console.log(message.content.text);
+      break;
+    case "attachment":
+      console.log(
+        `${message.content.name} (${message.content.mimeType})`,
+        message.content.data.byteLength,
+      );
+      break;
+    case "custom":
+      console.log(message.content.raw);
+      break;
+  }
+}
+```
+
+<Accordion title="Content" description="The incoming content variants that every Message carries.">
+  | Type | Fields |
+  |---|---|
+  | `"text"` | `text: string` |
+  | `"attachment"` | `data: Buffer`, `mimeType: string`, `name: string` |
+  | `"custom"` | `raw: unknown` — platform-specific structured data |
+</Accordion>
+
+## Filtering out your own messages
+
+On platforms where your account also receives its own sends, guard with a platform-specific check — for example, iMessage carries an `isFromMe` flag on the raw message extra you can expose through a provider `message.schema`.
+
+For unified logic, compare the sender to a known identity:
+
+```ts
+for await (const [space, message] of app.messages) {
+  if (message.sender.id === myAccountId) continue;
+  // handle incoming
+}
+```
+
+## Acting on a message
+
+Every message is its own context. You can reply, react, or send new content into the space:
+
+```ts
+for await (const [space, message] of app.messages) {
+  await message.react("love");              // react
+  await message.reply("Got it");            // threaded reply
+  await space.send("Here's more context");  // fresh send into the space
+}
+```
+
+See [Content](/spectrum-ts/content) for all the ways to build outgoing messages, and [Reactions and replies](/spectrum-ts/reactions-and-replies) for the details of `react` and `reply`.

@@ -1,0 +1,156 @@
+---
+title: "Building a Custom Platform"
+description: "Use definePlatform to plug a new messaging platform into Spectrum"
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+{% set pd = symbol("ts:spectrum-ts#PlatformDef") %}
+{% set ep = symbol("ts:spectrum-ts#EventProducer") %}
+{% set schemaMsg = symbol("ts:spectrum-ts#SchemaMessage") %}
+
+`definePlatform` is the entry point for building your own provider. It takes a name and a definition object, and returns a callable that:
+
+- exposes a `.config()` method for registering the provider on `Spectrum()`
+- accepts a Spectrum instance, space, or message for [narrowing](/spectrum-ts/platform-narrowing)
+- carries any `static` properties you declare (like iMessage's `tapbacks`)
+
+The full definition shape is <TypeTooltip name="PlatformDef" type={`{{ pd.signature }}`} />.
+
+## Shape
+
+```ts
+import { definePlatform } from "spectrum-ts";
+import z from "zod";
+
+export const myPlatform = definePlatform("my-platform", {
+  // Validate provider config
+  config: z.object({
+    apiKey: z.string(),
+  }),
+
+  // Resolve a user from a string ID
+  user: {
+    resolve: async ({ input, client }) => ({
+      id: input.userID,
+      displayName: await client.lookupUser(input.userID),
+    }),
+  },
+
+  // Resolve or create a conversation
+  space: {
+    resolve: async ({ input, client }) => ({
+      id: await client.findOrCreateConversation(input.users.map(u => u.id)),
+    }),
+  },
+
+  // Client lifecycle
+  lifecycle: {
+    createClient: async ({ config }) => new MyPlatformClient(config.apiKey),
+    destroyClient: async ({ client }) => { await client.disconnect(); },
+  },
+
+  // Event streams
+  events: {
+    async *messages({ client }) {
+      for await (const msg of client.onMessage()) {
+        yield {
+          id: msg.id,
+          content: { type: "text", text: msg.body },
+          sender: { id: msg.authorId },
+          space: { id: msg.channelId },
+          timestamp: new Date(msg.ts),
+        };
+      }
+    },
+  },
+
+  // Actions
+  actions: {
+    send: async ({ space, content, client }) => {
+      if (content.type === "text") {
+        await client.send(space.id, content.text);
+      }
+    },
+    // Optional:
+    // startTyping, stopTyping, reactToMessage, replyToMessage
+  },
+
+  // Optional static properties
+  static: {
+    reactions: { thumbsUp: "+1", thumbsDown: "-1" } as const,
+  },
+});
+```
+
+## Field reference
+
+| Field | Required | Description |
+|---|---|---|
+| `config` | Yes | A Zod schema that validates the object passed to `platform.config()`. If every field is optional, `platform.config()` can be called with no arguments. |
+| `user.resolve` | Yes | Resolves a user from a string ID. Returns at minimum `{ id: string }`. |
+| `user.schema` | No | Optional Zod schema for extra user properties. |
+| `space.resolve` | Yes | Resolves or creates a conversation. Receives an array of users plus optional params. |
+| `space.schema` | No | Optional Zod schema for the resolved space. |
+| `space.params` | No | Zod schema for additional space creation parameters — surfaces as the second arg to `platform(app).space()`. |
+| `lifecycle.createClient` | Yes | Creates the platform client. Receives `config`, `projectId`, `projectSecret` (both may be `undefined`). |
+| `lifecycle.destroyClient` | Yes | Tears down the client on shutdown. |
+| `events.messages` | Yes | Async generator that yields incoming messages. |
+| `events.[custom]` | No | Additional async generators for platform-specific events — exposed on `app.[eventName]`. |
+| `actions.send` | Yes | Sends a single content item to a space. Invoked once per item when multiple are passed. |
+| `actions.startTyping` | No | Shows a typing indicator. |
+| `actions.stopTyping` | No | Hides a typing indicator. |
+| `actions.reactToMessage` | No | Reacts to a message. Missing → `message.react(...)` becomes a no-op. |
+| `actions.replyToMessage` | No | Sends a threaded reply. Missing → `message.reply(...)` becomes a no-op. |
+| `message.schema` | No | Zod schema for extra properties on incoming messages. |
+| `static` | No | Constants attached to the platform object (e.g. tapback names). |
+
+## Event producers
+
+Every event generator receives `{ client, config }` and returns an `AsyncIterable`. The signature is <TypeTooltip name="EventProducer" type={`{{ ep.signature }}`} />.
+
+```ts
+events: {
+  async *messages({ client }) { /* ... */ },
+  async *typing({ client }) {
+    for await (const ev of client.typing()) {
+      yield { spaceId: ev.chatId, userId: ev.user };
+    }
+  },
+},
+```
+
+Non-`messages` events are auto-wired as flat properties on both the Spectrum instance (`app.typing`) and the narrowed platform instance (`myPlatform(app).typing`).
+
+## Message extras
+
+Declare a `message.schema` to add extra typed fields to every incoming message. The extractor surfaces them through a narrowed message:
+
+```ts
+message: {
+  schema: z.object({
+    threadId: z.string().optional(),
+    reactions: z.array(z.string()),
+  }),
+},
+```
+
+Use <TypeTooltip name="SchemaMessage" type={`{{ schemaMsg.signature }}`} /> when you need the message shape in your own types.
+
+## Registering your platform
+
+Exported platforms work like the built-ins — register with `.config()` and use narrowing for the typed surface:
+
+```ts
+const app = await Spectrum({
+  providers: [
+    myPlatform.config({ apiKey: process.env.MY_KEY! }),
+  ],
+});
+
+const mine = myPlatform(app);
+const user = await mine.user("user-123");
+const space = await mine.space(user);
+
+await space.send("Hello from my custom platform.");
+```
