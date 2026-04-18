@@ -157,58 +157,83 @@ code, pre, .code-block, .code-block * {
   display: none;
 }
 
-/* Navbar CTA button */
-a[href="https://photon.codes/contact"] {
-  --border-color: rgba(12, 138, 176, 0.55);
+/* Shared pill-button visual for the marketing-site CTA pair (Dashboard + Contact).
+   Mirrors the Framer styling on https://photon.codes/spectrum:
+   - 1.5px translucent border matching bg hue
+   - inset white glow (box-shadow) that shifts on hover
+   - subtle scale(1.02) hover transform */
+#navbar a[href^="https://app.photon.codes"],
+#navbar li.navbar-link > a[href="https://photon.codes/contact"] {
   --corner-shape-fallback: 0.945;
   position: relative !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 0px !important;
-  background-color: rgb(23, 181, 230) !important;
+  justify-content: center !important;
   corner-shape: superellipse(1.1);
   border-radius: calc(40px * var(--one-if-corner-shape-supported, var(--corner-shape-fallback, 1))) !important;
   box-shadow: rgba(255, 255, 255, 0.5) 0px 0px 5px 2px inset !important;
-  border: 1.5px solid var(--border-color) !important;
+  border-style: solid !important;
+  border-width: 1.5px !important;
   padding: 8px 14px !important;
   color: rgb(255, 255, 255) !important;
   font-family: 'Inter', sans-serif !important;
   font-size: 14px !important;
   font-weight: 500 !important;
   text-shadow: rgba(128, 128, 128, 0.25) 0px 0px 4px;
-  margin-left: 8px !important;
-  transition: gap 0.2s ease, transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  transition: box-shadow 0.35s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
   transform: scale(1);
 }
 
-a[href="https://photon.codes/contact"]:hover {
-  gap: 4px !important;
-  transform: scale(1.05) !important;
+#navbar a[href^="https://app.photon.codes"]:hover,
+#navbar li.navbar-link > a[href="https://photon.codes/contact"]:hover {
+  box-shadow: rgba(255, 255, 255, 0.5) 0px -2.77px 7.82px 2px inset !important;
+  transform: scale(1.02) !important;
 }
 
-/* Arrow icon (slides in on hover) */
-a[href="https://photon.codes/contact"]::after {
-  content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='20' height='20'%3E%3Cpath d='M 0 0 L 5.5 5.25 L 0 10.5' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' stroke='white' transform='translate(13.75 6.75)'/%3E%3Cpath d='M 14.25 0 L 0 0' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' stroke='white' transform='translate(4.75 12)'/%3E%3C/svg%3E");
-  display: inline-block;
-  width: 0;
-  height: 20px;
-  opacity: 0;
-  overflow: hidden;
-  line-height: 0;
-  transition: opacity 0.2s ease, width 0.2s ease;
-  vertical-align: middle;
+/* Dashboard = filled primary */
+#navbar a[href^="https://app.photon.codes"] {
+  background-color: rgb(41, 152, 217) !important;
+  border-color: rgba(41, 152, 217, 0.62) !important;
+  margin-left: 8px !important;
 }
 
-a[href="https://photon.codes/contact"]:hover::after {
-  opacity: 1;
-  width: 20px;
+/* Contact = black outlined */
+#navbar li.navbar-link > a[href="https://photon.codes/contact"] {
+  background-color: rgb(0, 0, 0) !important;
+  border-color: rgba(255, 255, 255, 0.62) !important;
 }
 
-/* Hide vertical line and extra margin when button is inside mobile popup */
-[data-headlessui-portal] a[href="https://photon.codes/contact"] {
+/* Hide vertical link divider and extra margins when Dashboard renders inside the
+   mobile popup (its own layout rules take over there). */
+[data-headlessui-portal] a[href^="https://app.photon.codes"] {
   margin-left: 0 !important;
 }
 
-[data-headlessui-portal] a[href="https://photon.codes/contact"]::before {
+[data-headlessui-portal] a[href^="https://app.photon.codes"]::before {
   display: none;
+}
+
+/* Pin the Contact <li> to the right edge of the navbar, next to the Dashboard CTA.
+   Dashboard is `position: fixed; right: 28px` in the Mintlify Almond theme, so we
+   use the same coordinate space for Contact. */
+#navbar li.navbar-link:has(> a[href="https://photon.codes/contact"]) {
+  position: fixed !important;
+  right: calc(28px + 111px + 8px) !important;
+  top: 0 !important;
+  height: 56px !important;
+  display: flex !important;
+  align-items: center !important;
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  z-index: 10;
+}
+
+/* Inside the mobile popup, restore normal flow */
+[data-headlessui-portal] li.navbar-link:has(> a[href="https://photon.codes/contact"]) {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  transform: none !important;
 }

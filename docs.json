@@ -131,10 +131,16 @@
     "dark": "/logo/dark.svg"
   },
   "navbar": {
+    "links": [
+      {
+        "label": "Contact",
+        "href": "https://photon.codes/contact"
+      }
+    ],
     "primary": {
       "type": "button",
-      "label": "Contact",
-      "href": "https://photon.codes/contact"
+      "label": "Dashboard",
+      "href": "https://app.photon.codes"
     }
   },
   "contextual": {
