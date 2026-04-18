@@ -5,5 +5,8 @@ node_modules
 
 # Vellum generated output (built from docs-src/*.vel templates)
 advanced-kits/imessage/*.mdx
+advanced-kits/whatsapp/*.mdx
 opensource/*.mdx
+spectrum-ts/*.mdx
+spectrum-ts/**/*.mdx
 

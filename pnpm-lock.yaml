@@ -20,6 +20,9 @@ importers:
       '@photon-ai/imessage-kit':
         specifier: ^2.1.2
         version: 2.1.2
+      '@photon-ai/whatsapp-business':
+        specifier: ^0.1.1
+        version: 0.1.1
       '@types/node':
         specifier: ^25.6.0
         version: 25.6.0

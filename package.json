@@ -15,6 +15,7 @@
     "@photon-ai/advanced-imessage": "^0.4.2",
     "@photon-ai/advanced-imessage-kit": "^1.14.3",
     "@photon-ai/imessage-kit": "^2.1.2",
+    "@photon-ai/whatsapp-business": "^0.1.1",
     "@types/node": "^25.6.0",
     "@typescript/native-preview": "7.0.0-dev.20260413.1",
     "@vellum-docs/cli": "^0.2.4",

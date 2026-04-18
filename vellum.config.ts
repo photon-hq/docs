@@ -6,7 +6,7 @@ import { MintlifyProfile } from '@vellum-docs/profile-mintlify'
 const config: VellumConfig = {
   root: new URL('.', import.meta.url).pathname,
   sources: {
-    ts: { include: [], packages: ['@photon-ai/advanced-imessage', '@photon-ai/imessage-kit', 'spectrum-ts'] },
+    ts: { include: [], packages: ['@photon-ai/advanced-imessage', '@photon-ai/imessage-kit', '@photon-ai/whatsapp-business', 'spectrum-ts'] },
   },
   templates: 'docs-src',
   outDir: '.',

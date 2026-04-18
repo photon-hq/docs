@@ -71,6 +71,19 @@
                 ]
               },
               {
+                "group": "WhatsApp Business",
+                "icon": "whatsapp",
+                "pages": [
+                  "advanced-kits/whatsapp/getting-started",
+                  "advanced-kits/whatsapp/messages",
+                  "advanced-kits/whatsapp/interactive-messages",
+                  "advanced-kits/whatsapp/templates",
+                  "advanced-kits/whatsapp/events",
+                  "advanced-kits/whatsapp/media",
+                  "advanced-kits/whatsapp/error-handling"
+                ]
+              },
+              {
                 "group": "Legacy",
                 "icon": "hat-cowboy",
                 "pages": [
