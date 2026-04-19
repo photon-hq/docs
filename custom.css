@@ -190,6 +190,40 @@ code, pre, .code-block, .code-block * {
   transform: scale(1.02) !important;
 }
 
+/* Shared gap animation for both buttons (creates the space between label and arrow on hover) */
+#navbar a[href^="https://app.photon.codes"],
+#navbar li.navbar-link > a[href="https://photon.codes/contact"] {
+  gap: 0 !important;
+  transition: box-shadow 0.35s ease,
+              transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              gap 0.25s ease !important;
+}
+
+#navbar a[href^="https://app.photon.codes"]:hover,
+#navbar li.navbar-link > a[href="https://photon.codes/contact"]:hover {
+  gap: 4px !important;
+}
+
+/* Arrow icon (slides in on hover) for both Dashboard and Contact */
+#navbar a[href^="https://app.photon.codes"]::after,
+#navbar li.navbar-link > a[href="https://photon.codes/contact"]::after {
+  content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='20' height='20'%3E%3Cpath d='M 0 0 L 5.5 5.25 L 0 10.5' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' stroke='white' transform='translate(13.75 6.75)'/%3E%3Cpath d='M 14.25 0 L 0 0' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' stroke='white' transform='translate(4.75 12)'/%3E%3C/svg%3E");
+  display: inline-block;
+  width: 0;
+  height: 20px;
+  opacity: 0;
+  overflow: hidden;
+  line-height: 0;
+  transition: opacity 0.25s ease, width 0.25s ease;
+  vertical-align: middle;
+}
+
+#navbar a[href^="https://app.photon.codes"]:hover::after,
+#navbar li.navbar-link > a[href="https://photon.codes/contact"]:hover::after {
+  opacity: 1;
+  width: 20px;
+}
+
 /* Dashboard = filled primary */
 #navbar a[href^="https://app.photon.codes"] {
   background-color: rgb(41, 152, 217) !important;
@@ -228,6 +262,13 @@ code, pre, .code-block, .code-block * {
   padding: 0 !important;
   margin: 0 !important;
   z-index: 10;
+  transition: right 0.25s ease !important;
+}
+
+/* When Dashboard is hovered (arrow slides in, button grows ~24px), shift Contact left
+   so the two buttons don't collide. */
+#navbar:has(a[href^="https://app.photon.codes"]:hover) li.navbar-link:has(> a[href="https://photon.codes/contact"]) {
+  right: calc(28px + 111px + 8px + 24px) !important;
 }
 
 /* Inside the mobile popup, restore normal flow */
