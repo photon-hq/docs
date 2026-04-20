@@ -215,7 +215,7 @@ for await (const event of im.messages.subscribe()) {
 ```ts
 // All message events
 for await (const event of im.messages.subscribe()) {
-  event.type; // "message.sent" | "message.received" | "message.updated" | "message.sendError"
+  event.type; // "message.sent" | "message.received" | "message.updated"
 }
 
 // Only incoming messages - TS knows the exact shape
