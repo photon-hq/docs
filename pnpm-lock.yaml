@@ -12,8 +12,8 @@ importers:
         specifier: ^4.19.0
         version: 4.19.0(@typescript-eslint/rule-tester@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(@typescript-eslint/typescript-estree@8.58.2(typescript@5.9.3))(@typescript-eslint/utils@8.58.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(@vue/compiler-sfc@3.5.32)(eslint-plugin-format@2.0.1(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
       '@photon-ai/advanced-imessage':
-        specifier: ^0.4.2
-        version: 0.4.2
+        specifier: ^0.6.0
+        version: 0.6.0
       '@photon-ai/advanced-imessage-kit':
         specifier: ^1.14.3
         version: 1.14.3(typescript@5.9.3)
@@ -839,8 +839,12 @@ packages:
     peerDependencies:
       typescript: ^5.9.3
 
-  '@photon-ai/advanced-imessage@0.4.2':
-    resolution: {integrity: sha512-w66rA8vnAYcZWJHFbahERt0WkwxPnRbg8B1SmKlScNk4jO0jx9nsuaj2wuh8mtoPnT+LFwkB5Zd2avHLC8eIKQ==}
+  '@photon-ai/advanced-imessage@0.4.3':
+    resolution: {integrity: sha512-/mZJi/13hp8f4nejIjarP8W3NMVpXGuC2ar+hozw00iU/CjW1nMEdpAFWTaeMeI+YHwMDc+xglHdZhkgFr3OcA==}
+    engines: {node: '>=18'}
+
+  '@photon-ai/advanced-imessage@0.6.0':
+    resolution: {integrity: sha512-6pkkS9Pb2T4G1pO7dtUfrV7koklFMq16vSG+RNrXGrKtidTM/2j1HdyGc8BhNZgg5OabDWoq2vA6owp2jFy1Iw==}
     engines: {node: '>=18'}
 
   '@photon-ai/imessage-kit@2.1.2':
@@ -1139,6 +1143,9 @@ packages:
 
   ajv@6.14.0:
     resolution: {integrity: sha512-IWrosm/yrn43eiKqkfkHis7QioDleaXQHdDVPKg0FSwwd/DuvyX79TZnFOnYpB7dcsFAMmtFztZuXPDvSePkFw==}
+
+  ajv@6.15.0:
+    resolution: {integrity: sha512-fgFx7Hfoq60ytK2c7DhnF8jIvzYgOMxfugjLOSMHjLIPgenqa7S7oaagATUq99mV6IYvN2tRmC0wnTYX6iPbMw==}
 
   ansi-regex@5.0.1:
     resolution: {integrity: sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==}
@@ -2243,8 +2250,8 @@ packages:
     resolution: {integrity: sha512-orRsuYpJVw8LdAwqqLykBj9ecS5/cRHlI5+nvTo8LcCKmzDmqVORXtOIYEEQuL9D4BxtA1lm5isAqzQZCoQ6Eg==}
     engines: {node: '>=4'}
 
-  postcss@8.5.9:
-    resolution: {integrity: sha512-7a70Nsot+EMX9fFU3064K/kdHWZqGVY+BADLyXc8Dfv+mTLLVl6JzJpPaCZ2kQL9gIJvKXSLMHhqdRRjwQeFtw==}
+  postcss@8.5.10:
+    resolution: {integrity: sha512-pMMHxBOZKFU6HgAZ4eyGnwXF/EvPGGqUr0MnZ5+99485wwW41kW91A4LOGxSHhgugZmSChL5AlElNdwlNgcnLQ==}
     engines: {node: ^10 || ^12 || >=14}
 
   prebuild-install@7.1.3:
@@ -3127,7 +3134,15 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@photon-ai/advanced-imessage@0.4.2':
+  '@photon-ai/advanced-imessage@0.4.3':
+    dependencies:
+      '@grpc/grpc-js': 1.14.3
+      long: 5.3.2
+      nice-grpc: 2.1.15
+      nice-grpc-common: 2.0.3
+      protobufjs: 7.5.4
+
+  '@photon-ai/advanced-imessage@0.6.0':
     dependencies:
       '@grpc/grpc-js': 1.14.3
       long: 5.3.2
@@ -3279,7 +3294,7 @@ snapshots:
       '@typescript-eslint/parser': 8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
       '@typescript-eslint/typescript-estree': 8.58.1(typescript@5.9.3)
       '@typescript-eslint/utils': 8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
-      ajv: 6.14.0
+      ajv: 6.15.0
       eslint: 9.39.4(jiti@2.6.1)
       json-stable-stringify-without-jsonify: 1.0.1
       lodash.merge: 4.6.2
@@ -3473,7 +3488,7 @@ snapshots:
       '@vue/shared': 3.5.32
       estree-walker: 2.0.2
       magic-string: 0.30.21
-      postcss: 8.5.9
+      postcss: 8.5.10
       source-map-js: 1.2.1
 
   '@vue/compiler-ssr@3.5.32':
@@ -3494,6 +3509,13 @@ snapshots:
   acorn@8.16.0: {}
 
   ajv@6.14.0:
+    dependencies:
+      fast-deep-equal: 3.1.3
+      fast-json-stable-stringify: 2.1.0
+      json-schema-traverse: 0.4.1
+      uri-js: 4.4.1
+
+  ajv@6.15.0:
     dependencies:
       fast-deep-equal: 3.1.3
       fast-json-stable-stringify: 2.1.0
@@ -4851,7 +4873,7 @@ snapshots:
       cssesc: 3.0.0
       util-deprecate: 1.0.2
 
-  postcss@8.5.9:
+  postcss@8.5.10:
     dependencies:
       nanoid: 3.3.11
       picocolors: 1.1.1
@@ -5052,7 +5074,7 @@ snapshots:
 
   spectrum-ts@0.3.0(typescript@5.9.3):
     dependencies:
-      '@photon-ai/advanced-imessage': 0.4.2
+      '@photon-ai/advanced-imessage': 0.4.3
       '@photon-ai/imessage-kit': 3.0.0-rc.1
       '@photon-ai/whatsapp-business': 0.1.1
       '@repeaterjs/repeater': 3.0.6
