@@ -3,6 +3,8 @@ name: Deploy dist
 on:
   push:
     branches: [main]
+  repository_dispatch:
+    types: [spectrum-cloud-release]
 
 jobs:
   deploy:
