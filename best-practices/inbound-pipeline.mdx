@@ -12,19 +12,7 @@ actually
 do you know if the train runs on holidays
 ```
 
-Four messages in eight seconds. If your agent fires a generation on each one, you get four overlapping replies - and the model never sees the actual question. The fix is to debounce: wait for the burst to settle, then handle all four messages as one turn.
-
-## Adaptive debouncing
-
-A static debounce window is fine until it isn't. Five seconds feels snappy when the user is mid-thought, sluggish when they're sending one message and waiting for a reply. The trick is to track conversation **momentum** - how many messages have arrived recently - and pick the debounce window from that.
-
-| Recent message count | Debounce window | What it means |
-|---|---|---|
-| 3+ | 3s | User is mid-burst - flush soon, they'll keep going |
-| 1–2 | 5s | Normal cadence |
-| 0 | 7s | Cold start - give them time to finish a thought |
-
-Momentum is persisted (so process restarts don't reset it) and decays over time - a per-chat counter with a ~30-minute decay window works well.
+Four messages in eight seconds. If your agent fires a generation on each one, you get four overlapping replies - and the model never sees the actual question. The fix is to debounce: wait a few seconds for the burst to settle, and handle whatever has accumulated as one turn.
 
 ```mermaid
 sequenceDiagram
@@ -32,18 +20,20 @@ sequenceDiagram
   participant Q as Batch queue
   participant H as Batch handler
 
-  U->>Q: "hey" (momentum=0, debounce=7s)
-  Q->>Q: schedule flush in 7s
-  U->>Q: "wait" (momentum=1, debounce=5s)
-  Q->>Q: reset flush timer to 5s
-  U->>Q: "actually" (momentum=2, debounce=5s)
+  U->>Q: "hey"
+  Q->>Q: schedule flush in 5s
+  U->>Q: "wait"
   Q->>Q: reset flush timer
-  U->>Q: "do you know..." (momentum=3, debounce=3s)
-  Q->>Q: reset flush timer to 3s
-  Note over Q: 3s elapse, no new message
+  U->>Q: "actually"
+  Q->>Q: reset flush timer
+  U->>Q: "do you know..."
+  Q->>Q: reset flush timer
+  Note over Q: 5s elapse, no new message
   Q->>H: flush - drain all four messages
   H->>H: generate one reply
 ```
+
+A few seconds of fixed debounce gets you most of the way there. The harder problems are what happens after the flush.
 
 ## Drain in the handler, not the enqueuer
 
