@@ -41,13 +41,22 @@ The SDK has four sending APIs. Use the simplest one that covers your use case.
     </Accordion>
   </Tab>
   <Tab title="Multipart">
-    Use `sendMultipart()` when you want per-part formatting or mentions without the builder's fluent style.
+    Use `sendMultipart()` when you want per-part formatting, mentions, or inline attachments without the builder's fluent style.
 
     ```ts
     await im.messages.sendMultipart(chat, [
       { text: "Hey " },
       { mention: "alice@icloud.com", text: "@Alice" },
       { text: "!" },
+    ]);
+    ```
+
+    Include uploaded attachments by referencing their GUID:
+
+    ```ts
+    await im.messages.sendMultipart(chat, [
+      { text: "Check this out" },
+      { attachmentGuid, attachmentName: "photo.jpg" },
     ]);
     ```
 
@@ -64,6 +73,7 @@ The SDK has four sending APIs. Use the simplest one that covers your use case.
       MessageBuilder.multipart()
         .addText("Hey ")
         .addMention("@Alice", "alice@icloud.com")
+        .addUploadedAttachment(attachmentGuid, { name: "photo.jpg" })
         .addText("!")
         .withEffect(MessageEffect.slam)
         .asReplyTo(someGuid)

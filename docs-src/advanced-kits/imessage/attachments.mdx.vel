@@ -39,11 +39,25 @@ Upload a file and get back an `AttachmentInfo` object. Use the `guid` property t
 ```ts
 const info = await im.attachments.upload({
   path: "/path/to/photo.jpg",
-  fileName: "photo.jpg", // optional display name
-  mimeType: "image/jpeg", // optional override
+  fileName: "photo.jpg",
+  mimeType: "image/jpeg",
 });
 
 await im.messages.send(chat, "", { attachment: info.guid });
+```
+
+In multipart messages, reference the uploaded attachment's GUID directly:
+
+```ts
+const info = await im.attachments.upload({
+  path: "/path/to/photo.jpg",
+  fileName: "photo.jpg",
+});
+
+await im.messages.sendMultipart(chat, [
+  { text: "Check this out" },
+  { attachmentGuid: info.guid, attachmentName: "photo.jpg" },
+]);
 ```
 
 {% set attInput = symbol("ts:@photon-ai/advanced-imessage#AttachmentInput") %}
