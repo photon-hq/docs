@@ -23,7 +23,7 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Spectrum",
         "groups": [
           {
             "group": "Spectrum",
@@ -51,9 +51,14 @@
                 ]
               }
             ]
-          },
+          }
+        ]
+      },
+      {
+        "tab": "Platform SDKs",
+        "groups": [
           {
-            "group": "Advanced SDKs",
+            "group": "Advanced kits",
             "pages": [
               {
                 "group": "iMessage",
@@ -93,15 +98,15 @@
             ]
           },
           {
-            "group": "Utilities",
-            "pages": [
-              "utilities/heif2jpeg"
-            ]
-          },
-          {
             "group": "Opensource Kits",
             "pages": [
               "opensource/imessage-kit"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "utilities/heif2jpeg"
             ]
           }
         ]
