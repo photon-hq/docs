@@ -53,7 +53,7 @@
             ]
           },
           {
-            "group": "Native IM agent patterns",
+            "group": "Best Practices",
             "pages": [
               "best-practices/architecture",
               "best-practices/inbound-pipeline",
