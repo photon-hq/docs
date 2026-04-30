@@ -51,6 +51,15 @@
                 ]
               }
             ]
+          },
+          {
+            "group": "Native IM agent patterns",
+            "pages": [
+              "best-practices/architecture",
+              "best-practices/inbound-pipeline",
+              "best-practices/outbound-pacing",
+              "best-practices/recovery-and-state"
+            ]
           }
         ]
       },
