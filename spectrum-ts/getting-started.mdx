@@ -1,0 +1,138 @@
+---
+title: "Getting Started"
+description: "Install spectrum-ts and send your first message across platforms"
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+`spectrum-ts` is a unified messaging SDK for TypeScript. Write your logic once, deliver it across every platform — iMessage, WhatsApp Business, your terminal, or a custom platform you build yourself.
+
+<Note>
+  Spectrum is in early preview. APIs may change between releases.
+</Note>
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install spectrum-ts
+```
+
+```bash pnpm
+pnpm add spectrum-ts
+```
+
+```bash yarn
+yarn add spectrum-ts
+```
+
+```bash bun
+bun add spectrum-ts
+```
+</CodeGroup>
+
+Requires TypeScript 5 or later.
+
+## Core concepts
+
+Spectrum is built around four primitives:
+
+| Primitive | What it represents |
+|---|---|
+| **Message** | An incoming piece of content — text, attachments, or structured data — from any platform. |
+| **Space** | A conversation context. A DM, a group chat, a terminal session. You send messages *into* a space. |
+| **User** | A participant on a platform, identified by a platform-specific ID. |
+| **Platform provider** | A platform adapter (iMessage, terminal, WhatsApp, or your own) that translates platform-specific protocols into Spectrum's unified interface. |
+
+Every message arrives as a `[Space, Message]` tuple. The space gives you the ability to respond; the message gives you the content and metadata.
+
+## Quickstart
+
+### Get your credentials
+
+Find your `PROJECT_ID` and `SECRET_KEY` in your project **Settings** on the [dashboard](https://app.photon.codes/).
+
+### Run your first app
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { imessage } from "spectrum-ts/providers/imessage";
+
+const app = await Spectrum({
+  projectId: "your-project-id",
+  projectSecret: "your-project-secret",
+  providers: [
+    imessage.config(),
+  ],
+});
+
+for await (const [space, message] of app.messages) {
+  if (message.content.type === "text") {
+    console.log(`[${message.platform}] ${message.sender.id}: ${message.content.text}`);
+    await space.send("hello world");
+  }
+}
+```
+
+Projectless providers (like `terminal`) can be used without credentials:
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { terminal } from "spectrum-ts/providers/terminal";
+
+const app = await Spectrum({
+  providers: [terminal.config()],
+});
+```
+
+## The app instance
+
+
+`Spectrum()` returns a <TypeTooltip name="SpectrumInstance" type={`type SpectrumInstance<Providers extends PlatformProviderConfig[] = PlatformProviderConfig[]> = SpectrumLike<Providers> & CustomEventStreams<Providers> & {
+    readonly messages: AsyncIterable<[
+        Space,
+        Message
+    ]>;
+    stop(): Promise<void>;
+    send(space: Space, ...content: [
+        ContentInput,
+        ...ContentInput[]
+    ]): Promise<void>;
+    responding<T>(space: Space, fn: () => T | Promise<T>): Promise<T>;
+};`} /> — an object that merges a message stream with platform-specific custom event streams.
+
+```ts
+app.messages                 // AsyncIterable<[Space, Message]>
+await app.send(space, ...)   // send into a space
+await app.responding(space, fn)  // run fn with a typing indicator
+await app.stop()             // graceful shutdown
+```
+
+Custom events emitted by providers are exposed as flat async iterables on the same object — see [Custom events and lifecycle](/spectrum-ts/custom-events-and-lifecycle).
+
+## Multi-platform in three lines
+
+Combine providers to receive and send across platforms simultaneously:
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { imessage } from "spectrum-ts/providers/imessage";
+import { terminal } from "spectrum-ts/providers/terminal";
+
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [
+    imessage.config(),
+    terminal.config(),
+  ],
+});
+
+for await (const [space, message] of app.messages) {
+  await space.responding(async () => {
+    await message.reply("Hello from Spectrum.");
+  });
+}
+```
+
+Messages from every provider merge into the single `app.messages` stream. The `message.platform` field identifies the source.
