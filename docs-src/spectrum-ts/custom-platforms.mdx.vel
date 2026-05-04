@@ -46,7 +46,7 @@ export const myPlatform = definePlatform("my-platform", {
 
   // Client lifecycle
   lifecycle: {
-    createClient: async ({ config }) => new MyPlatformClient(config.apiKey),
+    createClient: async ({ config, store }) => new MyPlatformClient(config.apiKey),
     destroyClient: async ({ client }) => { await client.disconnect(); },
   },
 
@@ -93,8 +93,8 @@ export const myPlatform = definePlatform("my-platform", {
 | `space.resolve` | Yes | Resolves or creates a conversation. Receives an array of users plus optional params. |
 | `space.schema` | No | Optional Zod schema for the resolved space. |
 | `space.params` | No | Zod schema for additional space creation parameters — surfaces as the second arg to `platform(app).space()`. |
-| `lifecycle.createClient` | Yes | Creates the platform client. Receives `config`, `projectId`, `projectSecret` (both may be `undefined`). |
-| `lifecycle.destroyClient` | Yes | Tears down the client on shutdown. |
+| `lifecycle.createClient` | Yes | Creates the platform client. Receives `config`, `projectId`, `projectSecret` (both may be `undefined`), and `store`. |
+| `lifecycle.destroyClient` | No | Tears down the client on shutdown. Omit if no cleanup is needed. |
 | `events.messages` | Yes | Async generator that yields incoming messages. |
 | `events.[custom]` | No | Additional async generators for platform-specific events — exposed on `app.[eventName]`. |
 | `actions.send` | Yes | Sends a single content item to a space. Invoked once per item when multiple are passed. |
@@ -107,7 +107,7 @@ export const myPlatform = definePlatform("my-platform", {
 
 ## Event producers
 
-Every event generator receives `{ client, config }` and returns an `AsyncIterable`. The signature is <TypeTooltip name="EventProducer" type={`{{ ep.signature }}`} />.
+Every event generator receives `{ client, config, store }` and returns an `AsyncIterable`. The signature is <TypeTooltip name="EventProducer" type={`{{ ep.signature }}`} />.
 
 ```ts
 events: {

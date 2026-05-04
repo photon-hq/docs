@@ -42,7 +42,7 @@ Use the flat form on `app` when you want a merged feed across platforms; use the
 await app.stop();
 ```
 
-This closes the merged message stream, drains and disposes every custom event stream, and tears down every platform client via its `lifecycle.destroyClient` hook. It's idempotent — calling `stop()` twice is safe.
+This closes the merged message stream, drains and disposes every custom event stream, and tears down every platform client via its `lifecycle.destroyClient` hook (if one is defined). It's idempotent — calling `stop()` twice is safe.
 
 ### Signal handling
 
