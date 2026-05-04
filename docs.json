@@ -23,7 +23,7 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Spectrum",
         "groups": [
           {
             "group": "Spectrum",
@@ -53,7 +53,20 @@
             ]
           },
           {
-            "group": "Advanced SDKs",
+            "group": "Best Practices",
+            "pages": [
+              "best-practices/architecture",
+              "best-practices/inbound-pipeline",
+              "best-practices/recovery-and-state"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Platform SDKs",
+        "groups": [
+          {
+            "group": "Advanced kits",
             "pages": [
               {
                 "group": "iMessage",
@@ -93,15 +106,15 @@
             ]
           },
           {
-            "group": "Utilities",
-            "pages": [
-              "utilities/heif2jpeg"
-            ]
-          },
-          {
             "group": "Opensource Kits",
             "pages": [
               "opensource/imessage-kit"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "utilities/heif2jpeg"
             ]
           }
         ]
