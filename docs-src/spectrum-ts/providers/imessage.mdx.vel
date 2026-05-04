@@ -70,7 +70,7 @@ Cloud mode routes your messages through dedicated phone numbers ("lines") provis
 
 ### Auto-scale
 
-When traffic to a dedicated line approaches its per-line capacity, Spectrum can automatically provision an additional line so deliverability isn't affected. Enable it in your project settings if you'd rather not get paged when a line saturates.
+When traffic to a dedicated line approaches its per-line capacity, Spectrum can automatically provision an additional line so deliverability isn't affected. It's an opt-in feature on the Business plan. Enable it in your project settings if you'd rather not get paged when a line saturates.
 
 <Note>
   These are managed Spectrum Cloud features. If you're on the open-source path (`imessage.config({ local: true })` or your own dedicated relay), you provide your own iCloud account and managed-line concepts don't apply.
