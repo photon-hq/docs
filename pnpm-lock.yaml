@@ -57,8 +57,8 @@ importers:
         specifier: ^0.44.0
         version: 0.44.0
       spectrum-ts:
-        specifier: 1.2.1
-        version: 1.2.1(typescript@5.9.3)
+        specifier: 1.4.0
+        version: 1.4.0(typescript@5.9.3)
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -2461,8 +2461,8 @@ packages:
   spdx-license-ids@3.0.23:
     resolution: {integrity: sha512-CWLcCCH7VLu13TgOH+r8p1O/Znwhqv/dbb6lqWy67G+pT1kHmeD/+V36AVb/vq8QMIQwVShJ6Ssl5FPh0fuSdw==}
 
-  spectrum-ts@1.2.1:
-    resolution: {integrity: sha512-5JQ+mKZqzMCEnDcfALxKlLuapbOYxOX+KIQY0aaloXF+7xoYNCrhmU4ccngtghDQX2fcQLbnPGSzSD6Vz+iryA==}
+  spectrum-ts@1.4.0:
+    resolution: {integrity: sha512-Oi4780CZJxmWsQVAvZyLH791V0KPJRXvgfD2nglnXTcq2fyNEbHJNvM9g1gJGcjFqR9hYvkS6xfcfJIa2g/DIQ==}
     peerDependencies:
       ffmpeg-static: ^5
       typescript: ^5
@@ -5269,7 +5269,7 @@ snapshots:
 
   spdx-license-ids@3.0.23: {}
 
-  spectrum-ts@1.2.1(typescript@5.9.3):
+  spectrum-ts@1.4.0(typescript@5.9.3):
     dependencies:
       '@photon-ai/advanced-imessage': 0.6.0
       '@photon-ai/imessage-kit': 3.0.0

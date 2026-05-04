@@ -66,11 +66,10 @@ Cloud mode routes your messages through phone numbers ("lines") provisioned by S
 | **Business** | **Dedicated.** All of your end users text the same number, which belongs to your project. | A normal iMessage, always from the same number. |
 
 End-user delivery is identical in both modes; the distinction is which number sends.
-Cloud mode routes your messages through dedicated phone numbers ("lines") provisioned by Spectrum. Each project gets one or more dedicated lines, and all your end users text the same number(s).
 
 ### Auto-scale
 
-When traffic to a dedicated line approaches its per-line capacity, Spectrum can automatically provision an additional line so deliverability isn't affected. It's an opt-in feature on the Business plan. Enable it in your project settings if you'd rather not get paged when a line saturates.
+When traffic to a dedicated line approaches its per-line capacity, Spectrum can automatically provision an additional line so deliverability isn't affected. Auto-scale is an opt-in feature on the Business plan. Enable it in your project settings if you'd rather not get paged when a line saturates.
 
 <Note>
   These are managed Spectrum Cloud features. If you're on the open-source path (`imessage.config({ local: true })` or your own dedicated relay), you provide your own iCloud account and managed-line concepts don't apply.
@@ -113,13 +112,17 @@ Space creation requires cloud or dedicated mode. In local mode `space()` throws 
 
 ### Per-phone routing
 
-If your account has multiple phone numbers, you can pin a conversation to a specific line by passing `phone` as a space parameter:
+If your account has multiple dedicated phone numbers, you can pin a conversation to a specific line by passing `phone` as a space parameter:
 
 ```ts
 const dm = await im.space(alice, { phone: "+15559999999" });
 ```
 
-When omitted, Spectrum picks a phone at random from the available lines. All subsequent actions on that space — sending, typing, replies, edits, reactions, and lookups — route through the chosen number.
+When omitted, Spectrum picks a phone at random from the available dedicated lines. All subsequent actions on that space — sending, typing, replies, edits, reactions, and lookups — route through the chosen number.
+
+<Note>
+  Per-phone routing applies to dedicated lines (Business plan) only. On shared-pool plans the `phone` parameter is ignored — all conversations route through the shared pool automatically.
+</Note>
 
 ## Tapback constants
 
