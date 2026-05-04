@@ -58,6 +58,14 @@ The iMessage provider supports three connection modes — local, cloud, and dedi
 
 ## Line model
 
+Cloud mode routes your messages through phone numbers ("lines") provisioned by Spectrum. Which lines you get depends on your plan, and the difference is mostly invisible to end users.
+
+| Plan | Line allocation | What end users see |
+|---|---|---|
+| **Free / Pro** | **Shared pool.** Each of your end users is routed through a different number from a shared pool. | A normal iMessage from a number that may differ across recipients. |
+| **Business** | **Dedicated.** All of your end users text the same number, which belongs to your project. | A normal iMessage, always from the same number. |
+
+End-user delivery is identical in both modes; the distinction is which number sends.
 Cloud mode routes your messages through dedicated phone numbers ("lines") provisioned by Spectrum. Each project gets one or more dedicated lines, and all your end users text the same number(s).
 
 ### Auto-scale
