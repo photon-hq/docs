@@ -38,7 +38,7 @@ Every message conforms to <TypeTooltip name="Message" type={`{{ message.signatur
     </tr>
     <tr>
       <td><code>content</code></td>
-      <td>Discriminated union on <code>type</code> — <code>"text"</code>, <code>"attachment"</code>, or <code>"custom"</code>.</td>
+      <td>Discriminated union on <code>type</code> — see <a href="#narrowing-content">Narrowing content</a> for the full set of variants.</td>
     </tr>
     <tr>
       <td><code>sender</code></td>
@@ -80,8 +80,29 @@ for await (const [space, message] of app.messages) {
     case "attachment":
       console.log(
         `${message.content.name} (${message.content.mimeType})`,
-        message.content.data.byteLength,
+        await message.content.read(),
       );
+      break;
+    case "voice":
+      console.log(`voice note (${message.content.duration}s)`);
+      break;
+    case "contact":
+      console.log(message.content.name?.formatted, message.content.phones);
+      break;
+    case "richlink":
+      console.log(message.content.url, await message.content.title());
+      break;
+    case "reaction":
+      console.log(`${message.content.emoji} on ${message.content.target.id}`);
+      break;
+    case "poll":
+      console.log(message.content.title, message.content.options);
+      break;
+    case "poll_option":
+      console.log(`vote ${message.content.selected ? "+" : "-"}`, message.content.title);
+      break;
+    case "group":
+      console.log(`group of ${message.content.items.length} items`);
       break;
     case "custom":
       console.log(message.content.raw);
@@ -90,13 +111,22 @@ for await (const [space, message] of app.messages) {
 }
 ```
 
-<Accordion title="Content" description="The incoming content variants that every Message carries.">
+<Accordion title="Content" description="The incoming content variants that every Message carries. Most platforms only emit a subset — narrow defensively.">
   | Type | Fields |
   |---|---|
   | `"text"` | `text: string` |
-  | `"attachment"` | `data: Buffer`, `mimeType: string`, `name: string` |
+  | `"attachment"` | `name: string`, `mimeType: string`, `size?: number`, `read()`, `stream()` |
+  | `"voice"` | `name?: string`, `mimeType: string`, `duration?: number`, `size?: number`, `read()`, `stream()` |
+  | `"contact"` | `name?`, `phones?`, `emails?`, `addresses?`, `org?`, `urls?`, `birthday?`, `note?`, `photo?`, `user?` |
+  | `"richlink"` | `url: string`, `title()`, `summary()`, `cover()` |
+  | `"reaction"` | `emoji: string`, `target: Message` |
+  | `"poll"` | `title: string`, `options: { title: string }[]` |
+  | `"poll_option"` | `option: { title }`, `poll: Poll`, `selected: boolean`, `title: string` — sent as a vote |
+  | `"group"` | `items: Message[]` — bundled multi-message unit |
   | `"custom"` | `raw: unknown` — platform-specific structured data |
 </Accordion>
+
+Outgoing-only variants like `"effect"` (an iMessage screen effect wrapping inner content) appear on messages you sent and are echoed by the platform; see [iMessage](/spectrum-ts/providers/imessage) for the builder.
 
 ## Filtering out your own messages
 
