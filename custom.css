@@ -278,3 +278,11 @@ code, pre, .code-block, .code-block * {
   right: auto !important;
   transform: none !important;
 }
+
+/* AI assistant sidebar — sit below the 56px navbar so its height matches the
+   visible content window instead of overlapping the topbar. */
+div:has(> #chat-assistant-sheet) {
+  margin-top: 56px !important;
+  height: calc(100vh - 56px) !important;
+  top: 56px !important;
+}
