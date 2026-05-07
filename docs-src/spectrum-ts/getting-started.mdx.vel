@@ -7,10 +7,6 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 
 `spectrum-ts` is a unified messaging SDK for TypeScript. Write your logic once, deliver it across every platform — iMessage, WhatsApp Business, your terminal, or a custom platform you build yourself.
 
-<Note>
-  Spectrum is in early preview. APIs may change between releases.
-</Note>
-
 ## Installation
 
 <CodeGroup>
