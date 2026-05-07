@@ -1,0 +1,72 @@
+---
+title: iMessage deliverability
+description: Designing messaging flows that don't get a line flagged by Apple's filtering.
+---
+
+iMessage is end-to-end encrypted, so Apple can't read message content: they filter on behavior. Patterns that look automated, cold, or burst-y will get a line flagged regardless of what the messages actually say. The guidance below is what we see work and fail in production.
+
+## Inbound-first is the decision that matters
+
+The single most important design call is whether users text you first or you text users. Inbound-first integrations never surface the "Report Junk" banner that Apple shows on every message from an unknown number. Outbound-first integrations do, and after a couple of unanswered messages it tends to get tapped.
+
+How to make inbound-first work in practice:
+
+- **Pre-populate the first message.** Ship `sms:+1...&body=Hey!` deep links so tapping opens Messages with text pre-filled. Zero friction, and the user is the one who hits send.
+- **Share a contact card early.** Push a native iMessage contact card (or a `.VCF` for Android) shortly after the first exchange. Once they save it, you're a known contact and "Report Junk" is gone for good.
+
+## Capacity
+
+Two quotas govern how much traffic a deployment can carry. They're enforced limits.
+
+| Limit | Guidance |
+|---|---|
+| **5,000 messages per server per day** | Counts every send across all chats on a server. Past this, sends are rejected until the window resets. Email [help@photon.codes](mailto:help@photon.codes) for an increase. |
+| **50 new conversations per line per day** | A "new conversation" is the first message a line sends to a recipient it has never messaged before. Replies within existing conversations don't count. Most relevant if you're initiating outbound. |
+
+When a server hits 70-80% utilization, stop assigning new users to it. When the whole pool gets there, add capacity. On the Business plan, [auto-scale](/spectrum-ts/providers/imessage#auto-scale) handles the second step automatically.
+
+### What gets a line flagged
+
+Because Apple filters on behavior, the same five patterns account for nearly every flag we see:
+
+1. **Burst sending**: 100+ messages from one line in a tight window
+2. **No conversation**: broadcasting without exchange
+3. **Hammering non-responders**: more than 2–3 follow-ups
+4. **Cold outreach**: texting people who never opted in
+5. **Off-hours sending**: 3am messages signal automation
+
+Avoid all five and blocks are rare. When a line does get flagged, the cause is almost always one of the first three within the hour before.
+
+## Do
+
+- **Design for inbound-first.** Users text you, not the other way around.
+- **Pace messages naturally.** Don't fire several within seconds. Bursts of 100/min look automated because they are.
+- **Make outreach conversational.** If you need to push an update (digest, accountability ping), open with a question and wait: "Ready for your update?"
+- **Share a contact card after the first exchange.** Once saved, the "Report Junk" surface is gone.
+- **Round-robin new users across lines.** Spread load before any one line stands out.
+- **Watch the dashboard.** When a line goes Flagged, review what the agent was doing in the hour before — the cause is almost always there.
+
+## Don't
+
+- **Push past the per-server quota.** Add capacity; horizontal scaling is the design.
+- **Include links or media in the first message.** Apple suppresses link-clicking until a reply lands. Ship a text-only opener built to get a response.
+- **Leave fallback lines dormant.** Apple deactivates lines with no traffic for ~2 months. Every line you keep around needs some traffic.
+- **Bombard non-responders.** Cap at 2–3 follow-ups, spaced across days, not hours.
+- **Segment Android users onto separate lines.** Spread them through the pool — they may be your power users.
+- **Use iMessage for cold outreach.** Cold belongs on A2P channels (Twilio etc.). iMessage is for warm conversations.
+
+## Privacy
+
+You don't need to store phone numbers in your own systems. Spectrum's space IDs are stable identifiers. Use them as your primary key and call the API to resolve a phone number when you actually need one. The mapping stays on our side.
+
+## Recovering from an outage
+
+In rare cases, if Spectrum Cloud is degraded and you're missing webhook deliveries:
+
+1. **Pull from the API.** Chat history is available via the chat endpoint as long as you haven't deleted it.
+2. **Let retries do their job.** We retry failed webhooks up to 10 times over 2 hours.
+3. **Reach out.** If you've lost events outside the retry window, contact support — we can replay them manually.
+
+## Getting help
+
+If you're scaling past a handful of lines, talk to us. We do capacity planning with customers, surface per-line analytics in the dashboard, and run a shared Slack or Discord channel with engineering for production deployments.

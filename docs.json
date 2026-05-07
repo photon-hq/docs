@@ -57,7 +57,8 @@
             "pages": [
               "best-practices/architecture",
               "best-practices/inbound-pipeline",
-              "best-practices/recovery-and-state"
+              "best-practices/recovery-and-state",
+              "best-practices/imessage-deliverability"
             ]
           }
         ]

@@ -75,6 +75,15 @@ When traffic to a dedicated line approaches its per-line capacity, Spectrum can 
   These are managed Spectrum Cloud features. If you're on the open-source path (`imessage.config({ local: true })` or your own dedicated relay), you provide your own iCloud account and managed-line concepts don't apply.
 </Note>
 
+## Quotas
+
+<Warning>
+  Default per-server and per-line quotas apply. Contact [help@photon.codes](mailto:help@photon.codes) for an increase.
+
+  - **5,000 messages per server per day.** Counts every message your instance sends across all chats. Additional sends are rejected until the window resets.
+  - **50 new conversations initiated per line per day.** A "new conversation" is the first message your line sends to a recipient it has never messaged before. Replies within existing conversations don't count.
+</Warning>
+
 ## Space types
 
 iMessage spaces carry a `type` field — `"dm"` or `"group"` — and a `phone` field indicating which phone number the conversation is routed through. Both are accessible through narrowing:
