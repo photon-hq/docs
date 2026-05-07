@@ -9,7 +9,7 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 
 ## Create a scheduled message
 
-```ts
+```js
 const scheduled = await im.scheduledMessages.create({
   chat: directChat("+1234567890"),
   projectId: "my-project",
@@ -37,7 +37,7 @@ Returns a <TypeTooltip name="ScheduledMessage" type={`{{ schedMsg.signature }}`}
 
 ## Get a scheduled message
 
-```ts
+```js
 const scheduled = await im.scheduledMessages.get(scheduledMessageId);
 ```
 
@@ -45,7 +45,7 @@ const scheduled = await im.scheduledMessages.get(scheduledMessageId);
 
 `list()` takes no parameters and returns a plain array of all scheduled messages:
 
-```ts
+```js
 const messages = await im.scheduledMessages.list();
 for (const msg of messages) {
   console.log(msg.scheduledFor, msg.status);
@@ -56,7 +56,7 @@ for (const msg of messages) {
 
 Only pass the fields you want to change. Returns the updated <TypeTooltip name="ScheduledMessage" type={`{{ schedMsg.signature }}`} />.
 
-```ts
+```js
 const updated = await im.scheduledMessages.update(scheduledMessageId, {
   scheduledFor: new Date("2026-01-01T00:00:00Z"),
   text: "Happy New Year! (updated)",
@@ -65,13 +65,13 @@ const updated = await im.scheduledMessages.update(scheduledMessageId, {
 
 ## Delete a scheduled message
 
-```ts
+```js
 await im.scheduledMessages.delete(scheduledMessageId);
 ```
 
 ## Delete all scheduled messages
 
-```ts
+```js
 await im.scheduledMessages.deleteAll();
 ```
 
@@ -79,7 +79,7 @@ await im.scheduledMessages.deleteAll();
 
 Trigger a scheduled message before its scheduled time:
 
-```ts
+```js
 await im.scheduledMessages.execute(scheduledMessageId);
 ```
 
@@ -87,7 +87,7 @@ await im.scheduledMessages.execute(scheduledMessageId);
 
 Execute all scheduled messages that have passed their `scheduledFor` time:
 
-```ts
+```js
 const executed = await im.scheduledMessages.executeDue();
 ```
 
@@ -95,7 +95,7 @@ Returns an array of <TypeTooltip name="ScheduledMessage" type={`{{ schedMsg.sign
 
 ## Real-time schedule events
 
-```ts
+```js
 for await (const event of im.scheduledMessages.subscribe()) {
   // event.type === "schedule.changed"
   console.log(event.action, event.scheduledMessage);
