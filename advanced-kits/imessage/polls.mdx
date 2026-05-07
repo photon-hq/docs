@@ -1,0 +1,86 @@
+---
+title: "Polls"
+description: "Create polls, cast votes, add options, and stream poll events"
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+`im.polls` manages polls attached to messages in a chat - creation, voting, adding options, and real-time poll event subscription.
+
+## Create a poll
+
+```ts
+const receipt = await im.polls.create(chat, "What should we order?", ["Pizza", "Sushi", "Burgers"]);
+```
+
+
+Returns a <TypeTooltip name="CommandReceipt" type={`interface CommandReceipt {
+    readonly guid: MessageGuid;
+}`} /> whose `guid` is the GUID of the poll message - store it to vote or add options later.
+
+## Vote on an option
+
+Pass the option's server-assigned `optionIdentifier` (from `PollInfo.options[].optionIdentifier`):
+
+```ts
+await im.polls.vote(chat, pollMessageGuid, optionIdentifier);
+```
+
+## Remove your vote
+
+```ts
+await im.polls.unvote(chat, pollMessageGuid);
+```
+
+## Add a new option
+
+Any participant can append an option to an existing poll:
+
+```ts
+await im.polls.addOption(chat, pollMessageGuid, "Thai");
+```
+
+## Get poll state
+
+```ts
+const poll = await im.polls.get(pollMessageGuid);
+```
+
+
+
+
+Returns a <TypeTooltip name="PollInfo" type={`interface PollInfo {
+    readonly chatGuid: ChatGuid;
+    readonly messageGuid: MessageGuid;
+    readonly options: readonly PollOption[];
+    readonly title: string;
+    readonly votes: readonly PollVote[];
+}`} /> with the current title, <TypeTooltip name="PollOption" type={`interface PollOption {
+    readonly creatorHandle?: string;
+    readonly optionIdentifier?: string;
+    readonly text: string;
+}`} />s, and <TypeTooltip name="PollVote" type={`interface PollVote {
+    readonly optionIdentifier: string;
+    readonly participantAddress?: string;
+}`} />s.
+
+## Real-time poll events
+
+```ts
+for await (const event of im.polls.subscribe()) {
+  // event.type === "poll.changed"
+  console.log(event.action, event.pollMessageGuid);
+}
+```
+
+
+<Accordion title="PollEvent actions" description="An event indicating a poll was created or interacted with.">
+  | `event.action` | When it fires |
+  |---|---|
+  | `created` | A new poll was created in the chat |
+  | `voted` | A participant cast a vote |
+  | `unvoted` | A participant removed their vote |
+  | `optionAdded` | A participant appended a new option |
+</Accordion>
+
+Every `PollEvent` also carries `chatGuid`, `pollMessageGuid`, `message` (the message containing the poll), and `timestamp`.

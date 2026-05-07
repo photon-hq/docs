@@ -1,0 +1,228 @@
+---
+title: "Chats & Groups"
+description: "Create and manage conversations, typing indicators, and group membership"
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+`im.chats` manages direct and group conversations. `im.groups` handles group-specific operations like renaming, adding participants, and changing icons.
+
+## Chats
+
+### Create a chat
+
+```ts
+const { chat, sendReceipt } = await im.chats.create(["+1234567890"], {
+  message: "Hey!",
+  service: "iMessage",
+  subject: "Optional subject",
+  effectId: MessageEffect.confetti,
+  clientMessageId: "my-idempotency-key",
+});
+```
+
+`sendReceipt` is present only when an initial `message` was provided.
+
+
+
+<Accordion title="CreateChatOptions" description="Optional parameters for creating a new chat.">
+  | Option | Type | Description |
+  |---|---|---|
+  | `clientMessageId` | `string` | Client-provided idempotency key for the initial message. |
+  | `effectId` | `string` | Full-screen or bubble effect for the initial message. |
+  | `message` | `string` | Initial message text to send with the chat creation. |
+  | `service` | `ChatServiceType` | Transport service to use for the new chat. |
+  | `subject` | `string` | Subject line for the initial message. |
+  
+</Accordion>
+
+### Get a chat
+
+```ts
+const chat = await im.chats.get(chatGuid);
+```
+
+
+The returned <TypeTooltip name="Chat" type={`interface Chat {
+    readonly _raw?: unknown;
+    readonly chatIdentifier?: string;
+    readonly displayName?: string;
+    readonly groupId?: string;
+    readonly guid: ChatGuid;
+    readonly isArchived: boolean;
+    readonly isFiltered: boolean;
+    readonly isGroup: boolean;
+    readonly lastMessage?: Message$1;
+    readonly participants: readonly AddressInfo$1[];
+    readonly service: ChatServiceType;
+    readonly unreadCount?: number;
+}`} /> object contains the chat's identifiers, participants, latest message, and status flags.
+
+### Count chats
+
+```ts
+const total = await im.chats.count();
+const totalWithArchived = await im.chats.count({ includeArchived: true });
+```
+
+### Typing indicators
+
+```ts
+// Show typing bubble
+await im.chats.startTyping(chatGuid);
+
+// Stop typing bubble
+await im.chats.stopTyping(chatGuid);
+```
+
+### Share contact info
+
+```ts
+await im.chats.shareContactInfo(chatGuid);
+```
+
+### Get participants
+
+```ts
+const participants = await im.chats.getParticipants(chatGuid);
+```
+
+
+Returns an array of <TypeTooltip name="AddressInfo" type={`interface AddressInfo$1 {
+    readonly _raw?: unknown;
+    readonly address: string;
+    readonly country?: string;
+    readonly service: ChatServiceType;
+    readonly uncanonicalizedId?: string;
+}`} />.
+
+### Leave a chat
+
+```ts
+await im.chats.leave(chatGuid);
+```
+
+### Mark as read
+
+```ts
+await im.chats.markRead(chatGuid);
+```
+
+### Real-time chat events
+
+```ts
+for await (const event of im.chats.subscribe()) {
+  event.type;
+}
+
+for await (const event of im.chats.subscribe("chat.typingIndicator")) {
+  console.log(event.isTyping, event.displayName);
+}
+```
+
+
+<Accordion title="Chat event types" description="Events related to chat-level state changes.">
+  | `event.type` | Extra fields |
+  |---|---|
+  | `chat.created` | `timestamp`, `chatGuid` |
+  | `chat.left` | `timestamp`, `chatGuid` |
+  | `chat.readStatusChanged` | `timestamp`, `chatGuid`, `isRead` |
+  | `chat.typingIndicator` | `timestamp`, `chatGuid`, `isTyping`, `displayName?` |
+  
+</Accordion>
+
+## Groups
+
+### Rename a group
+
+```ts
+const updatedChat = await im.groups.setDisplayName(chatGuid, "New Group Name");
+```
+
+### Manage participants
+
+```ts
+const updatedChat = await im.groups.addParticipant(chatGuid, "newperson@icloud.com");
+const updatedChat2 = await im.groups.removeParticipant(chatGuid, "oldperson@icloud.com");
+```
+
+### Group icons
+
+```ts
+// Get icon
+const iconBytes = await im.groups.getIcon(chatGuid);
+// iconBytes: Uint8Array | null
+
+// Change icon (pass raw image bytes)
+await im.groups.setIcon(chatGuid, imageBytes); // imageBytes: Uint8Array
+
+// Remove icon
+await im.groups.removeIcon(chatGuid);
+```
+
+### Group backgrounds
+
+```ts
+// Get background
+const bgInfo = await im.groups.getBackground(chatGuid);
+
+// Set background (pass raw image bytes)
+const bgInfo2 = await im.groups.setBackground(chatGuid, imageBytes);
+
+// Remove background
+await im.groups.removeBackground(chatGuid);
+```
+
+
+`getBackground` returns <TypeTooltip name="BackgroundInfo" type={`interface BackgroundInfo {
+    readonly backgroundId?: string;
+    readonly channelGuid?: string;
+    readonly imageUrl?: string;
+}`} /> or `null`. 
+
+`setBackground` returns the newly applied <TypeTooltip name="BackgroundInfo" type={`interface BackgroundInfo {
+    readonly backgroundId?: string;
+    readonly channelGuid?: string;
+    readonly imageUrl?: string;
+}`} />.
+
+### Group events
+
+Group changes are emitted as a single `group.changed` event with a discriminated `change` field:
+
+```ts
+for await (const event of im.groups.subscribe()) {
+  // event.type === "group.changed"
+  switch (event.change.type) {
+    case "renamed":
+      console.log("New name:", event.change.name);
+      break;
+    case "participantAdded":
+      console.log("Added:", event.change.address);
+      break;
+    case "participantRemoved":
+      console.log("Removed:", event.change.address);
+      break;
+    case "iconChanged":
+    case "iconRemoved":
+    case "backgroundChanged":
+    case "backgroundRemoved":
+      // handle icon/background changes
+      break;
+  }
+}
+```
+
+
+<Accordion title="Group change types" description="Discriminated union describing the specific change within a group chat.">
+  | `change.type` | Extra fields |
+  |---|---|
+  | `renamed` | `name` |
+  | `participantAdded` | `address` |
+  | `participantRemoved` | `address` |
+  | `iconChanged` | - |
+  | `iconRemoved` | - |
+  | `backgroundChanged` | - |
+  | `backgroundRemoved` | - |
+  
+</Accordion>

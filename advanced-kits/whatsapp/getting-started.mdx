@@ -1,0 +1,151 @@
+---
+title: "Getting Started"
+description: "Connect the WhatsApp Business SDK and send your first message"
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+`@photon-ai/whatsapp-business` is a TypeScript SDK for the WhatsApp Business API. It connects to our managed gRPC gateway, which fronts Meta's Cloud API — you get typed message sending, a resumable event stream, and media handling without wiring webhooks yourself.
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @photon-ai/whatsapp-business
+```
+
+```bash pnpm
+pnpm add @photon-ai/whatsapp-business
+```
+
+```bash yarn
+yarn add @photon-ai/whatsapp-business
+```
+
+```bash bun
+bun add @photon-ai/whatsapp-business
+```
+</CodeGroup>
+
+Requires Node.js 18+ or Bun.
+
+## Credentials
+
+Three values are required. Get them in one of two ways:
+
+<Tabs>
+  <Tab title="Spectrum Cloud (one-click)">
+    Sign up at [app.photon.codes](https://app.photon.codes), toggle WhatsApp on in your project, finish the guided config, and copy the credentials.
+
+    Use these directly with `createClient`, or pass them to [`spectrum-ts`](/spectrum-ts/getting-started) to combine WhatsApp with iMessage and other platforms behind one unified API.
+  </Tab>
+  <Tab title="Bring your own Meta app">
+    1. Create an app at [developers.facebook.com](https://developers.facebook.com/apps) and add the **WhatsApp** product. ([docs](https://developers.facebook.com/docs/whatsapp/cloud-api/get-started))
+    2. Under **WhatsApp → API Setup**, copy your `phone_number_id`.
+    3. Generate a **permanent access token** via a System User — the 24-hour token on the API Setup page is not suitable for production:
+       1. Open [Business Settings → System users](https://business.facebook.com/settings/system-users), click **Add**, and create a user with **Admin** role.
+       2. **Assign assets** → pick your app (enable *Manage app*) and your WhatsApp account (enable *Manage WhatsApp Business Accounts*).
+       3. **Generate new token**, select your app, check the `whatsapp_business_messaging`, `whatsapp_business_management`, and `business_management` scopes. Copy the token — it never expires. ([docs](https://developers.facebook.com/docs/whatsapp/business-management-api/get-started))
+    4. Under **App Settings → Basic**, copy your `app_secret`.
+    5. Under **WhatsApp → Configuration**, set the webhook ([docs](https://developers.facebook.com/docs/whatsapp/cloud-api/guides/set-up-webhooks)):
+       - **Callback URL:** `https://whatsapp-business.spectrum.photon.codes/webhook`
+       - **Verify token:** anything (the handshake always returns the challenge)
+       - Subscribe to the `messages` field
+    6. Pass the three credentials to `createClient`.
+
+    The webhook endpoint is free, public, and shared across developers. You don't register with us, and we never persist your `access_token` or `app_secret`.
+  </Tab>
+</Tabs>
+
+## Quick start
+
+```ts
+import { createClient } from "@photon-ai/whatsapp-business";
+
+const client = createClient({
+  accessToken: process.env.WA_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WA_PHONE_NUMBER_ID!,
+  appSecret: process.env.WA_APP_SECRET!,
+});
+
+await client.messages.send({
+  to: "+15551234567",
+  text: "Hello from the SDK!",
+});
+
+for await (const event of client.events.subscribe()) {
+  if (event.type === "message") {
+    console.log(event.message);
+  }
+}
+```
+
+## createClient
+
+
+```ts
+const client = createClient(options: ClientOptions): WhatsAppClient;
+```
+
+| Option | Type | Description |
+|---|---|---|
+| `retry` | `boolean \| RetryOptions` | Enable automatic retry with exponential backoff for retryable errors. Pass `true` for default settings, or a `RetryOptions` object to customise the behaviour. |
+| `timeout` | `number` | Default timeout in milliseconds for unary RPC calls. Sets a deadline on each call unless one is already provided. |
+
+
+The returned `WhatsAppClient` exposes three resources:
+
+```ts
+client.messages  // send, markRead
+client.events    // subscribe, fetchMissed
+client.media     // upload, getUrl, delete
+```
+
+## Disposing the client
+
+The client implements `Symbol.asyncDispose`, so `await using` handles teardown automatically:
+
+```ts
+await using client = createClient({
+  accessToken: "...",
+  phoneNumberId: "...",
+  appSecret: "...",
+});
+// closed automatically when the block exits
+```
+
+Or close it explicitly:
+
+```ts
+await client.close();
+```
+
+## Your first echo bot
+
+```ts
+import { createClient } from "@photon-ai/whatsapp-business";
+
+const client = createClient({
+  accessToken: process.env.WA_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WA_PHONE_NUMBER_ID!,
+  appSecret: process.env.WA_APP_SECRET!,
+});
+
+for await (const event of client.events.subscribe()) {
+  if (event.type !== "message") continue;
+  if (event.message.content.type !== "text") continue;
+
+  await client.messages.send({
+    to: event.message.from,
+    text: event.message.content.body,
+  });
+}
+```
+
+- `event.type` is narrowed to `"message"` or `"status"` — only messages get a `.message` field.
+- `InboundContent` is a discriminated union; switch on `content.type` before reading fields.
+- `event.message.from` is the WhatsApp ID of the sender — pass it straight to `send.to`.
+
+## Reconnection and missed events
+
+The stream reconnects automatically when the connection drops, and fetches any events buffered in the meantime. See [Events](/advanced-kits/whatsapp/events) for cursor management and [Error handling](/advanced-kits/whatsapp/error-handling) for when to retry.

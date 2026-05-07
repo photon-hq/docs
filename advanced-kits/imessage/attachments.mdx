@@ -1,0 +1,153 @@
+---
+title: "Attachments"
+description: "Upload, download, and stream file attachments"
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+`im.attachments` handles file attachments - uploading before sending, streaming downloads, transparent iCloud recovery, and extracting Live Photos.
+
+## Common file types
+
+| Category | Formats | Notes |
+|---|---|---|
+| Images | HEIC, HEIF, JPEG, PNG, GIF, TIFF, BMP, WebP | HEIC/HEIF is preserved end-to-end between Apple devices; iOS transcodes to JPEG when bridging to non-Apple recipients |
+| Video | MOV, MP4 | H.264 for maximum compatibility; HEVC preserved between Apple devices, transcoded to H.264 otherwise. MOV is also the companion container for Live Photos |
+| Audio | M4A (AAC), MP3, WAV, AIFF, FLAC | Delivered as generic audio attachments. Native "voice bubbles" require CAF + Opus, the format Messages.app records into |
+| Stickers | PNG, APNG, GIF, JPEG, HEIC | PNG / APNG recommended. Animated stickers **must** use the `.apng` extension (a `.png` extension shows only frame 1). 500 KB per sticker |
+| Documents | Any file type | PDF, DOCX, XLSX, PPTX, TXT, CSV, ZIP, iWork, anything. Quick Look previews PDF, iWork, MS Office, and TXT inline; everything else shows as a file chip |
+
+<Note>
+  iMessage stores and transfers images in HEIC/HEIF. If you're uploading a JPEG
+  or PNG, the server will accept it, but images received from iMessage will
+  arrive as HEIC/HEIF. Convert them before displaying in non-Apple contexts.
+</Note>
+
+<Tip>
+  Building with JavaScript? Unfortunately the industry-standard `sharp` library requires you to manually build libvips to get HEIC support. Yes, we also struggled with this.
+
+  That's why we built [heif2jpeg](/utilities/heif2jpeg) for you. Use it. You won't regret it.
+</Tip>
+
+<Note>
+  Apple caps individual attachments at roughly **100 MB** - larger files are rejected, trimmed (video), or offered as an iCloud link instead. This is an Apple-side limit, not an SDK one.
+</Note>
+## Upload an attachment
+
+Upload a file and get back an `AttachmentInfo` object. Use the `guid` property to pass to `im.messages.send()`.
+
+```ts
+const info = await im.attachments.upload({
+  path: "/path/to/photo.jpg",
+  fileName: "photo.jpg", // optional display name
+  mimeType: "image/jpeg", // optional override
+});
+
+await im.messages.send(chat, "", { attachment: info.guid });
+```
+
+
+`upload()` takes an <TypeTooltip name="AttachmentInput" type={`type AttachmentInput = {
+    readonly data: Uint8Array;
+    readonly fileName: string;
+    readonly mimeType: string;
+} | {
+    readonly path: string;
+    readonly fileName?: string;
+    readonly mimeType?: string;
+};`} />, which is a union of file path or raw bytes.
+
+## Upload a Live Photo
+
+Upload a paired HEIC image + MOV video as a Live Photo:
+
+```ts
+const info = await im.attachments.uploadLivePhoto({
+  image: {
+    data: imageBytes, // Uint8Array
+    fileName: "photo.heic",
+    mimeType: "image/heic",
+  },
+  video: {
+    data: videoBytes, // Uint8Array
+  },
+});
+```
+
+## Get attachment metadata
+
+```ts
+const info = await im.attachments.get(attachmentGuid);
+```
+
+
+Returns an <TypeTooltip name="AttachmentInfo" type={`interface AttachmentInfo$1 {
+    readonly _raw?: unknown;
+    readonly fileName: string;
+    readonly guid: AttachmentGuid;
+    readonly hasLivePhoto: boolean;
+    readonly height?: number;
+    readonly hideAttachment: boolean;
+    readonly isOutgoing: boolean;
+    readonly isSticker: boolean;
+    readonly mimeType: string;
+    readonly originalGuid?: AttachmentGuid;
+    readonly totalBytes: number;
+    readonly transferState: TransferState$1;
+    readonly uti: string;
+    readonly width?: number;
+}`} /> with file metadata, transfer state, and Live Photo / sticker flags.
+
+## Count attachments
+
+```ts
+const total = await im.attachments.count();
+```
+
+## Download an attachment
+
+
+`download()` returns a <TypeTooltip name="StreamedDownload" type={`interface StreamedDownload {
+    arrayBuffer(): Promise<Uint8Array>;
+    readonly stream: ReadableStream<Uint8Array>;
+    readonly totalBytes: number;
+}`} /> synchronously - both a streaming and a buffered consumption path.
+
+```ts
+const dl = im.attachments.download(attachmentGuid);
+
+dl.totalBytes; // file size, known from the first chunk
+
+// Stream it
+for await (const chunk of dl.stream) {
+  // ReadableStream<Uint8Array>
+  process(chunk);
+}
+
+// Or buffer the whole thing
+const buffer = await dl.arrayBuffer(); // Uint8Array
+```
+
+### Quick buffer download
+
+A convenience method that combines `download()` and `arrayBuffer()`:
+
+```ts
+const bytes = await im.attachments.downloadBuffer(attachmentGuid);
+// bytes: Uint8Array
+```
+
+## Live Photos
+
+Extract the video component from a Live Photo attachment:
+
+```ts
+const videoDl = im.attachments.getLivePhoto(attachmentGuid);
+const videoBytes = await videoDl.arrayBuffer();
+```
+
+`getLivePhoto()` returns a <TypeTooltip name="StreamedDownload" type={`interface StreamedDownload {
+    arrayBuffer(): Promise<Uint8Array>;
+    readonly stream: ReadableStream<Uint8Array>;
+    readonly totalBytes: number;
+}`} /> synchronously, just like `download()`.

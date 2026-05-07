@@ -1,0 +1,99 @@
+---
+title: "Media"
+description: "Upload, fetch, and delete images, video, audio, and documents"
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+
+
+
+
+The `media` resource handles the lifecycle of every file you send or receive. Uploaded media gets a `mediaId` you reference from `messages.send`; inbound media arrives as a `mediaId` you resolve to a signed URL.
+
+## Upload
+
+```ts
+import { readFile } from "node:fs/promises";
+
+const { mediaId } = await client.media.upload({
+  file: await readFile("/path/to/photo.jpg"),
+  mimeType: "image/jpeg",
+  filename: "photo.jpg",
+});
+
+await client.messages.send({
+  to: "+15551234567",
+  image: { id: mediaId, caption: "Here's the photo" },
+});
+```
+
+`file` accepts a `Buffer` or `Uint8Array` — stream the file yourself if it doesn't fit in memory.
+
+<Accordion title="UploadOptions" description="">
+  | Option | Type | Description |
+  |---|---|---|
+  | `file` | `Buffer \| Uint8Array` |  |
+  | `filename` | `string` |  |
+  | `mimeType` | `string` |  |
+  
+</Accordion>
+
+Returns an <TypeTooltip name="UploadResult" type={`interface UploadResult {
+    readonly mediaId: string;
+}`} />. Save the `mediaId` only long enough to use it — WhatsApp expires uploaded media after ~30 days.
+
+## Get URL
+
+Resolve an inbound `mediaId` to a signed, time-limited URL plus metadata:
+
+```ts
+for await (const event of client.events.subscribe()) {
+  if (event.type !== "message") continue;
+  if (event.message.content.type !== "image") continue;
+
+  const { url, mimeType, fileSize, sha256 } = await client.media.getUrl(
+    event.message.content.media.id,
+  );
+
+  // Fetch the bytes yourself
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.WA_ACCESS_TOKEN}` },
+  });
+  const bytes = await response.arrayBuffer();
+}
+```
+
+<Accordion title="MediaUrlResult" description="">
+  | Field | Type | Description |
+  |---|---|---|
+  | `fileSize` | `number` |  |
+  | `mimeType` | `string` |  |
+  | `sha256` | `string` |  |
+  | `url` | `string` |  |
+  
+</Accordion>
+
+The URL is signed by Meta and requires your access token in the `Authorization` header when you fetch it.
+
+## Delete
+
+```ts
+await client.media.delete(mediaId);
+```
+
+Removes the uploaded file from Meta's storage. Safe to skip if you're happy to let the 30-day expiration handle cleanup — delete explicitly when you need the space freed immediately (e.g. compliance requirements).
+
+## Supported MIME types
+
+WhatsApp restricts which types are accepted per content category. The SDK passes whatever you give it — validation happens server-side.
+
+| Category | Common types |
+|---|---|
+| Image | `image/jpeg`, `image/png` |
+| Video | `video/mp4`, `video/3gpp` |
+| Audio | `audio/aac`, `audio/mp4`, `audio/mpeg`, `audio/amr`, `audio/ogg` (voice notes only) |
+| Document | Any MIME — PDFs, spreadsheets, archives |
+| Sticker | `image/webp` |
+
+Check the [official limits table](https://developers.facebook.com/docs/whatsapp/cloud-api/reference/media) for current size caps — they change per account tier.

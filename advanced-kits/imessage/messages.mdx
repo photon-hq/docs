@@ -1,0 +1,309 @@
+---
+title: "Messages"
+description: "Send, react to, edit, and list iMessages"
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+`im.messages` covers everything related to individual messages - sending plain text, rich multipart messages, reacting, editing, unsending, paginated listing, and real-time event subscriptions.
+
+## Sending Messages
+
+The SDK has four sending APIs. Use the simplest one that covers your use case.
+
+<Tabs>
+  <Tab title="Plain text">
+    ```ts
+    await im.messages.send(chat, "Hello!");
+    ```
+  </Tab>
+  <Tab title="With options">
+    ```ts
+    import { MessageEffect } from "@photon-ai/advanced-imessage";
+
+    await im.messages.send(chat, "Hello!", {
+      effect: MessageEffect.confetti,
+      replyTo: someMessageGuid,
+      subject: "Hey",
+      attachment: attachmentGuid,
+      audioMessage: false,
+    });
+    ```
+
+    
+
+    <Accordion title="SendOptions" description="Optional parameters for `messages.send()` (the Tier 2 API).">
+      | Option | Type | Description |
+      |---|---|---|
+      | `attachment` | `AttachmentGuid` | A previously uploaded attachment to include. |
+      | `audioMessage` | `boolean` | Send as an audio message. |
+      | `clientMessageId` | `string` | Client-provided idempotency key. |
+      | `ddScan` | `boolean` | Enable data-detector scanning (links, phone numbers, etc.). |
+      | `effect` | `MessageEffect` | Full-screen or bubble effect to apply. |
+      | `formatting` | `readonly TextFormatInput[]` | Inline text formatting instructions. |
+      | `replyTo` | `MessageGuid \| { readonly guid: MessageGuid; readonly partIndex?: number; }` | Reply to an existing message, optionally targeting a specific part. |
+      | `richLink` | `boolean` | Enable rich link previews. |
+      | `sticker` | `{ readonly attachment: AttachmentGuid; readonly target: MessageGuid; readonly placement?: StickerPlacement$1; }` | Place a sticker on an existing message. |
+      | `subject` | `string` | Subject line. |
+      
+    </Accordion>
+  </Tab>
+  <Tab title="Multipart">
+    Use `sendMultipart()` when you want per-part formatting or mentions without the builder's fluent style.
+
+    ```ts
+    await im.messages.sendMultipart(chat, [
+      { text: "Hey " },
+      { mention: "alice@icloud.com", text: "@Alice" },
+      { text: "!" },
+    ]);
+    ```
+
+    Formatting is specified per-part via `MessagePart.formatting` rather than at the top level; every other `SendOptions` field applies normally.
+  </Tab>
+  <Tab title="MessageBuilder">
+    Use the builder when you want chained, fluent construction - same capability as `sendMultipart()` with a more readable surface.
+
+    ```ts
+    import { MessageBuilder, MessageEffect } from "@photon-ai/advanced-imessage";
+
+    await im.messages.sendComposed(
+      chat,
+      MessageBuilder.multipart()
+        .addText("Hey ")
+        .addMention("@Alice", "alice@icloud.com")
+        .addText("!")
+        .withEffect(MessageEffect.slam)
+        .asReplyTo(someGuid)
+        .build(),
+    );
+    ```
+  </Tab>
+</Tabs>
+
+
+All four APIs return a <TypeTooltip name="SendReceipt" type={`interface SendReceipt {
+    readonly clientMessageId?: string;
+    readonly guid: MessageGuid;
+}`} />.
+
+### Available effects
+
+```ts
+import { MessageEffect, TextEffect } from "@photon-ai/advanced-imessage";
+```
+
+
+
+
+<AccordionGroup>
+  <Accordion title="MessageEffect" description="Full-screen and bubble effects that can be applied when sending a message.">
+    | Member | Value |
+    |---|---|
+    | `MessageEffect.slam` | `"com.apple.MobileSMS.expressivesend.impact"` |
+    | `MessageEffect.loud` | `"com.apple.MobileSMS.expressivesend.loud"` |
+    | `MessageEffect.gentle` | `"com.apple.MobileSMS.expressivesend.gentle"` |
+    | `MessageEffect.invisible` | `"com.apple.MobileSMS.expressivesend.invisibleink"` |
+    | `MessageEffect.confetti` | `"com.apple.messages.effect.CKConfettiEffect"` |
+    | `MessageEffect.fireworks` | `"com.apple.messages.effect.CKFireworksEffect"` |
+    | `MessageEffect.balloons` | `"com.apple.messages.effect.CKBalloonEffect"` |
+    | `MessageEffect.heart` | `"com.apple.messages.effect.CKHeartEffect"` |
+    | `MessageEffect.lasers` | `"com.apple.messages.effect.CKLasersEffect"` |
+    | `MessageEffect.celebration` | `"com.apple.messages.effect.CKHappyBirthdayEffect"` |
+    | `MessageEffect.sparkles` | `"com.apple.messages.effect.CKSparklesEffect"` |
+    | `MessageEffect.spotlight` | `"com.apple.messages.effect.CKSpotlightEffect"` |
+    | `MessageEffect.echo` | `"com.apple.messages.effect.CKEchoEffect"` |
+    
+  </Accordion>
+  <Accordion title="TextEffect" description="Per-character text effects (iOS 18+) that animate individual words or phrases within a message.">
+    | Member | Value |
+    |---|---|
+    | `TextEffect.big` | `"big"` |
+    | `TextEffect.small` | `"small"` |
+    | `TextEffect.shake` | `"shake"` |
+    | `TextEffect.nod` | `"nod"` |
+    | `TextEffect.explode` | `"explode"` |
+    | `TextEffect.ripple` | `"ripple"` |
+    | `TextEffect.bloom` | `"bloom"` |
+    | `TextEffect.jitter` | `"jitter"` |
+    
+  </Accordion>
+</AccordionGroup>
+
+## Reactions
+
+```ts
+import { Reaction } from "@photon-ai/advanced-imessage";
+
+// Tapback
+await im.messages.react(chat, messageGuid, Reaction.love);
+await im.messages.react(chat, messageGuid, Reaction.like, { partIndex: 1 });
+
+// Emoji reaction (iOS 17+)
+await im.messages.reactEmoji(chat, messageGuid, "🔥");
+
+// Remove a tapback
+await im.messages.unreact(chat, messageGuid, Reaction.love);
+```
+
+
+All reaction methods return <TypeTooltip name="CommandReceipt" type={`interface CommandReceipt {
+    readonly guid: MessageGuid;
+}`} />.
+
+## Edit & unsend
+
+```ts
+// Edit text (iOS 16+)
+await im.messages.edit(chat, messageGuid, "Corrected text", {
+  backwardCompatText: "Edited: Corrected text",
+  partIndex: 0,
+});
+
+// Retract a message (iOS 16+)
+await im.messages.unsend(chat, messageGuid, { partIndex: 0 });
+```
+
+## Querying messages
+
+### Get a single message
+
+```ts
+const message = await im.messages.get(guid);
+```
+
+### List with auto-pagination
+
+`list()` returns a `Paginated<Message>` that is both `await`able and `for await`able - no pagination API to learn.
+
+```ts
+// First page
+const page = await im.messages.list({ chatGuid: chat, limit: 25 });
+page.data; // Message[]
+page.meta; // { total, offset, limit }
+
+// Stream all messages
+for await (const message of im.messages.list({ chatGuid: chat })) {
+  console.log(message.text);
+}
+
+// Buffer all, with a safety cap
+const all = await im.messages.list({ chatGuid: chat }).toArray({ limit: 500 });
+```
+
+
+
+<Accordion title="MessageListOptions" description="Query parameters for `messages.list()`.">
+  | Option | Type | Description |
+  |---|---|---|
+  | `after` | `Date` | Return only messages created after this date. |
+  | `afterCursor` | `string` | Resume cursor from a stream event. When set, returns messages with ROWID  cursor position, overriding `after`. Sort is forced to ascending by ROWID (chronological order for catch-up). `offset` and `limit` still apply for pagination within catch-up results. |
+  | `before` | `Date` | Return only messages created before this date. |
+  | `chatGuid` | `ChatGuid` | Restrict to messages in a specific chat. |
+  | `limit` | `number` | Maximum number of messages per page. |
+  | `offset` | `number` | Offset into the result set (for manual pagination). |
+  | `sort` | `SortDirection$1` | Sort order for results. |
+  | `withAttachments` | `boolean` | Include attachment metadata in the response. |
+  | `withChats` | `boolean` | Include chat metadata in the response. |
+  
+</Accordion>
+
+### Message statistics
+
+```ts
+const stats = await im.messages.stats();
+stats.total; // number
+stats.sent; // number
+stats.received; // number
+```
+
+## Catch up after disconnect
+
+`fetchMissed()` returns messages newer than a cursor from a previous `subscribe()` event. Use it on reconnect to replay anything missed before resuming the live stream.
+
+```ts
+let cursor = loadPersistedCursor();
+
+if (cursor) {
+  for await (const msg of im.messages.fetchMissed(cursor)) {
+    processMissedMessage(msg);
+  }
+}
+
+for await (const event of im.messages.subscribe()) {
+  if (event.cursor) cursor = event.cursor;
+  processEvent(event);
+}
+```
+
+
+<Accordion title="FetchMissedOptions" description="Options for `messages.fetchMissed()`.">
+  | Option | Type | Description |
+  |---|---|---|
+  | `chatGuid` | `ChatGuid` | Restrict to messages in a specific chat. |
+  | `limit` | `number` | Maximum number of messages per page. |
+  
+</Accordion>
+
+## Real-time events
+
+`subscribe()` returns a `TypedEventStream<MessageEvent>`. Pass an event type string to narrow the type automatically.
+
+```ts
+// All message events
+for await (const event of im.messages.subscribe()) {
+  event.type; // "message.sent" | "message.received" | "message.updated" | "message.sendError"
+}
+
+// Only incoming messages - TS knows the exact shape
+for await (const event of im.messages.subscribe("message.received")) {
+  console.log(event.message.text);
+  console.log(event.chatGuid);
+}
+```
+
+
+<Accordion title="Message event types" description="Events related to individual messages.">
+  | `event.type` | Extra fields |
+  |---|---|
+  | `message.sent` | `timestamp`, `message`, `clientMessageId?`, `chatGuid`, `cursor?` |
+  | `message.received` | `timestamp`, `message`, `chatGuid`, `cursor?` |
+  | `message.updated` | `timestamp`, `message`, `updateType`, `chatGuid`, `cursor?` |
+  | `message.sendError` | `timestamp`, `chatGuid`, `clientMessageId?`, `errorCode`, `errorMessage`, `cursor?` |
+  
+</Accordion>
+
+### Stream operators
+
+`TypedEventStream` supports `.filter()`, `.map()`, and `.take()`:
+
+```ts
+const incoming = im.messages
+  .subscribe("message.received")
+  .filter((e) => e.message.text !== undefined)
+  .map((e) => ({ from: e.message.sender?.address, text: e.message.text! }));
+
+for await (const { from, text } of incoming) {
+  console.log(`[${from}] ${text}`);
+}
+```
+
+Streams implement `Symbol.asyncDispose`:
+
+```ts
+await using stream = im.messages.subscribe("message.received");
+for await (const event of stream) {
+  ...
+}
+```
+
+## Miscellaneous
+
+```ts
+// Acknowledge a silenced message notification
+await im.messages.notifySilenced(chat, messageGuid);
+
+// Extract embedded media from a rich message (link preview images, etc.)
+const items = await im.messages.getEmbeddedMedia(chat, messageGuid);
+// items: Array<{ data: Uint8Array; mimeType: string }>
+```

@@ -1,0 +1,50 @@
+---
+title: "Addresses"
+description: "Resolve address metadata, check Focus Mode, and verify iMessage availability"
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+`im.addresses` looks up information about phone numbers and email addresses - canonicalizes them, reports Focus Mode status, and checks whether they're reachable on iMessage.
+
+## Get address metadata
+
+```ts
+const info = await im.addresses.get("+1 (234) 567-8900");
+```
+
+
+Returns an <TypeTooltip name="AddressInfo" type={`interface AddressInfo$1 {
+    readonly _raw?: unknown;
+    readonly address: string;
+    readonly country?: string;
+    readonly service: ChatServiceType;
+    readonly uncanonicalizedId?: string;
+}`} /> with the canonical address, service type, and country metadata. Pass either a phone number or an email - the SDK normalizes the input.
+
+## Check Focus Mode status
+
+```ts
+const isFocused = await im.addresses.getFocusStatus("+1234567890");
+```
+
+Returns `true` when the recipient has a Focus mode (Do Not Disturb, Sleep, Work, etc.) currently active. Useful for deciding whether to delay non-urgent messages.
+
+<Note>
+  Focus Mode status is only exposed by iMessage between Apple devices. For
+  SMS recipients it always resolves to `false`.
+</Note>
+
+## Check iMessage availability
+
+```ts
+const available = await im.addresses.checkAvailability("+1234567890");
+```
+
+Returns `true` when the address is reachable on iMessage. Currently the only supported service type is `"iMessage"` - pass nothing or pass `"iMessage"` explicitly:
+
+```ts
+await im.addresses.checkAvailability("+1234567890", "iMessage");
+```
+
+Use this before initiating a conversation to avoid a silent SMS fallback.

@@ -1,0 +1,121 @@
+---
+title: "Templates"
+description: "Send pre-approved message templates with typed parameters"
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+
+
+Templates are the only way to send outside the 24-hour customer service window. Create them in the WhatsApp Business Manager, wait for approval, then fill in the variables with the SDK's builder.
+
+## The builder
+
+The `template` helper returns an immutable builder — chain `.body()`, `.header()`, `.button()`, and `.carousel()` to add components:
+
+```ts
+import { template, text } from "@photon-ai/whatsapp-business";
+
+const msg = template("order_confirmation", "en_US")
+  .body(text("Alice"), text("#A42"), text("$129.00"));
+
+await client.messages.send({ to: "+15551234567", template: msg });
+```
+
+Each chain call returns a new builder — the original is untouched, so you can build partial templates and reuse them.
+
+## Parameter helpers
+
+Every variable in your template matches one of these factories. The type name is the `type` field on the parameter.
+
+| Helper | Use for |
+|---|---|
+| `text(value)` | Plain text variables. |
+| `image(media)` | Header images. |
+| `video(media)` | Header video. |
+| `document(media)` | Header documents. |
+| `location(loc)` | Header location. |
+| `payload(value)` | Quick-reply button payload. |
+| `couponCode(value)` | Coupon code button. |
+| `actionJson(value)` | Catalog / flow action JSON. |
+
+```ts
+import { template, text, image } from "@photon-ai/whatsapp-business";
+
+const msg = template("shipping_update", "en_US")
+  .header(image({ id: mediaId }))
+  .body(text("Alice"), text("1Z999AA10123456784"));
+```
+
+## Header, body, buttons
+
+```ts
+const msg = template("promo_launch", "en_US")
+  .header(text("Spring sale"))
+  .body(text("Alice"), text("30%"))
+  .button(0, payload("apply_code"))      // quick-reply button
+  .urlButton(1, text("spring-30"));      // dynamic URL suffix
+```
+
+`button(index, ...)` — quick-reply button, payload parameter.
+`urlButton(index, ...)` — URL button, text parameter appended to the approved base URL.
+
+Indexes correspond to the button positions defined when the template was approved.
+
+## Carousel templates
+
+Carousels are body templates with per-card components:
+
+```ts
+import { template, text, image } from "@photon-ai/whatsapp-business";
+
+const msg = template("weekly_picks", "en_US")
+  .body(text("Alice"))
+  .carousel([
+    {
+      cardIndex: 0,
+      components: [
+        { type: "header", parameters: [{ type: "image", image: { id: card1Id } }] },
+        { type: "body", parameters: [{ type: "text", text: "Item 1" }] },
+      ],
+    },
+    {
+      cardIndex: 1,
+      components: [
+        { type: "header", parameters: [{ type: "image", image: { id: card2Id } }] },
+        { type: "body", parameters: [{ type: "text", text: "Item 2" }] },
+      ],
+    },
+  ]);
+```
+
+Each card's `components` list uses the same `TemplateComponentInput` shape the body builder produces — you can construct them with `template(...)` sub-builders or inline them.
+
+## Raw template input
+
+The builder always satisfies <TypeTooltip name="TemplateInput" type={`interface TemplateInput {
+    readonly components?: readonly TemplateComponentInput[];
+    readonly languageCode: string;
+    readonly name: string;
+}`} />, so if you prefer a declarative object you can skip the builder and pass one directly:
+
+```ts
+await client.messages.send({
+  to: "+15551234567",
+  template: {
+    name: "order_confirmation",
+    languageCode: "en_US",
+    components: [
+      {
+        type: "body",
+        parameters: [
+          { type: "text", text: "Alice" },
+          { type: "text", text: "#A42" },
+        ],
+      },
+    ],
+  },
+});
+```
+
+Use whichever reads better in context — the wire format is identical.

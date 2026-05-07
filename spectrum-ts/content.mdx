@@ -1,0 +1,233 @@
+---
+title: "Content"
+description: "Build text, attachments, voice, contacts, polls, rich links, groups, and platform-specific content for outgoing messages"
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+
+
+
+Spectrum exposes a family of content builders — `text`, `attachment`, `voice`, `contact`, `richlink`, `poll`, `group`, and `custom` — plus a string shortcut that's equivalent to `text()`. Any API that takes a <TypeTooltip name="ContentInput" type={`type ContentInput = string | ContentBuilder;`} /> accepts a plain string or a <TypeTooltip name="ContentBuilder" type={`interface ContentBuilder {
+    build(): Promise<Content>;
+}`} />.
+
+## Text
+
+```ts
+import { text } from "spectrum-ts";
+
+await space.send(text("Hello, world."));
+
+// Plain strings are equivalent:
+await space.send("Hello, world.");
+```
+
+## Attachments
+
+Pass a file path or a `Buffer`. MIME types are detected from the file extension; override with `options.mimeType` when you already have the bytes.
+
+```ts
+import { attachment } from "spectrum-ts";
+
+// From a file path — name and MIME type inferred
+await space.send(attachment("/path/to/photo.jpg"));
+
+// From a buffer — provide name and MIME type
+await space.send(attachment(buffer, {
+  name: "report.pdf",
+  mimeType: "application/pdf",
+}));
+```
+
+If the MIME type can't be inferred from the name and you didn't pass `options.mimeType`, `attachment()` throws when the content is built.
+
+## Voice
+
+Send a voice note. Same input shape as `attachment` — a path or a `Buffer` plus optional metadata.
+
+```ts
+import { voice } from "spectrum-ts";
+
+// From a file path
+await space.send(voice("/path/to/note.m4a"));
+
+// From a buffer — duration in seconds is optional but useful for waveform UIs
+await space.send(voice(buffer, {
+  name: "note.m4a",
+  mimeType: "audio/mp4",
+  duration: 12,
+}));
+```
+
+Platforms that don't support voice notes typically downgrade to a regular audio attachment. If the MIME type can't be inferred and `options.mimeType` is omitted, the builder throws at send time.
+
+<Accordion title="Voice" description="Resolved voice content delivered alongside the message.">
+  | Field | Type | Description |
+  |---|---|---|
+  | `mimeType` | `string` | The audio MIME type (e.g. `audio/mp4`). |
+  | `name` | `string` (optional) | Filename for the underlying clip. |
+  | `duration` | `number` (optional) | Length in seconds. |
+  | `size` | `number` (optional) | Byte length, when known up front. |
+  | `read()` | `() => Promise<Buffer>` | Materialize the bytes. |
+  | `stream()` | `() => Promise<ReadableStream>` | Stream the bytes — preferred for large clips. |
+</Accordion>
+
+## Contacts
+
+Share contact cards. The `contact()` builder takes either a structured `ContactInput`, a vCard string, a `vcf` instance, or a known `User` paired with optional `ContactDetails`.
+
+<Tabs>
+  <Tab title="Structured">
+    ```ts
+    import { contact } from "spectrum-ts";
+
+    await space.send(contact({
+      name: { first: "Ada", last: "Lovelace" },
+      phones: [{ value: "+15551234567", type: "mobile" }],
+      emails: [{ value: "ada@example.com", type: "work" }],
+    }));
+    ```
+  </Tab>
+  <Tab title="From a User">
+    ```ts
+    import { contact } from "spectrum-ts";
+
+    // Attach extra details on top of an existing platform user
+    await space.send(contact(alice, {
+      name: { first: "Alice", last: "Anderson" },
+      org: { name: "Acme", title: "Engineer" },
+    }));
+    ```
+  </Tab>
+  <Tab title="From vCard">
+    ```ts
+    import { contact, fromVCard } from "spectrum-ts";
+
+    const vcf = await readFile("/path/to/ada.vcf", "utf8");
+    await space.send(contact(vcf));
+
+    // Or parse first if you want to inspect/edit the fields
+    const parsed = fromVCard(vcf);
+    await space.send(contact({ ...parsed, note: "Met at conference" }));
+    ```
+  </Tab>
+</Tabs>
+
+`fromVCard(vcf)` parses a vCard string into a `ContactInput`; `toVCard(contact)` serializes a resolved `Contact` back to vCard.
+
+<Accordion title="ContactInput" description="The fields you can populate on a contact card. All fields are optional except where the receiving platform requires at least one identifying field.">
+  | Field | Type | Description |
+  |---|---|---|
+  | `name` | `{ formatted?, first?, last?, middle?, prefix?, suffix? }` | Structured display name. |
+  | `phones` | `Array<{ value, type? }>` | Phone numbers. `type` is `"mobile" \| "home" \| "work" \| "other"`. |
+  | `emails` | `Array<{ value, type? }>` | Email addresses. `type` is `"home" \| "work" \| "other"`. |
+  | `addresses` | `Array<{ street?, city?, region?, postalCode?, country?, type? }>` | Postal addresses. |
+  | `org` | `{ name?, title?, department? }` | Employer / org info. |
+  | `urls` | `string[]` | Associated URLs. |
+  | `birthday` | `string` | ISO date. |
+  | `note` | `string` | Free-form note. |
+  | `photo` | `{ mimeType, read() }` | Profile photo bytes. |
+  | `raw` | `unknown` | Provider-specific extras passed through untouched. |
+</Accordion>
+
+## Rich links
+
+Render a URL as a rich preview card with title, summary, and cover image. Spectrum scrapes Open Graph metadata at send time; pass just the URL and the builder fills in the rest.
+
+```ts
+import { richlink } from "spectrum-ts";
+
+await space.send(richlink("https://example.com/article"));
+```
+
+`title()`, `summary()`, and `cover()` are lazy async accessors — the metadata fetch happens only if the receiving platform needs it. Platforms without rich-link support fall back to the URL as plain text.
+
+<Accordion title="Richlink" description="Resolved rich-link content with lazy metadata accessors.">
+  | Field | Type | Description |
+  |---|---|---|
+  | `url` | `string` | The original URL. |
+  | `title()` | `() => Promise<string \| undefined>` | OG title. |
+  | `summary()` | `() => Promise<string \| undefined>` | OG description. |
+  | `cover()` | `() => Promise<{ mimeType?, read(), stream() } \| undefined>` | OG image. |
+</Accordion>
+
+## Polls
+
+
+
+Send a poll with a title and a list of choices. Each choice can be a plain string or a <TypeTooltip name="PollChoiceInput" type={`type PollChoiceInput = string | {
+    title: string;
+};`} /> object — use `option()` when you want the explicit form.
+
+```ts
+import { poll, option } from "spectrum-ts";
+
+// Variadic strings
+await space.send(poll("Lunch?", "Pizza", "Sushi", "Tacos"));
+
+// Or an array, optionally using option() for clarity
+await space.send(poll("Lunch?", [
+  option("Pizza"),
+  option("Sushi"),
+  option("Tacos"),
+]));
+```
+
+Poll responses arrive as `poll_option` content — see [Messages](/spectrum-ts/messages) for narrowing on incoming votes.
+
+## Groups
+
+
+
+A `group` bundles multiple messages into one logical unit (an album of images, a multi-attachment reply). Each item is delivered as its own `Message`, but they ship together so the receiving platform can render them as a single visual group when supported.
+
+```ts
+import { group, attachment } from "spectrum-ts";
+
+await space.send(group(
+  attachment("/path/to/photo-1.jpg"),
+  attachment("/path/to/photo-2.jpg"),
+  attachment("/path/to/photo-3.jpg"),
+));
+```
+
+Groups don't nest, and reactions can't be group members — the builder enforces both at construction time. Platforms that don't support grouping fall back to sending each item sequentially.
+
+## Custom
+
+Send structured, platform-specific payloads. Use this when the receiving platform supports rich content types that don't fit into the built-in builders.
+
+```ts
+import { custom } from "spectrum-ts";
+
+await space.send(custom({ type: "card", title: "Order Confirmed" }));
+```
+
+The raw payload round-trips through the provider's `actions.send` — it's up to the provider to interpret it.
+
+## Composing multiple items
+
+All send methods take a variadic list. Items are sent sequentially as separate messages:
+
+```ts
+await space.send(
+  "Here's the file you requested:",
+  attachment("/path/to/document.pdf"),
+);
+```
+
+This runs one `send()` per item on the underlying provider — not a single compound message. Reach for `group(...)` instead when you specifically want them rendered as one bundled unit.
+
+## Replies
+
+`message.reply(...)` has the same variadic signature:
+
+```ts
+await message.reply(
+  "Thanks for the question.",
+  attachment("/path/to/answer.png"),
+);
+```
+
+On platforms without thread support, `reply()` resolves as a no-op. If you need guaranteed delivery, use `space.send(...)` instead.

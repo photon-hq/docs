@@ -1,0 +1,154 @@
+---
+title: "Scheduled Messages"
+description: "Schedule, manage, and monitor messages to be sent at a future time"
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+`im.scheduledMessages` lets you create messages that the server will send at a specified time. You can update or delete them before they fire, execute them immediately, and stream lifecycle events.
+
+## Create a scheduled message
+
+```ts
+const scheduled = await im.scheduledMessages.create({
+  chat: directChat("+1234567890"),
+  projectId: "my-project",
+  text: "Happy New Year!",
+  scheduledFor: new Date("2025-12-31T23:59:00Z"),
+  service: "iMessage",
+  subject: "NYE",
+  effectId: MessageEffect.fireworks,
+  clientMessageId: "nye-2025",
+});
+```
+
+
+
+
+<Accordion title="CreateScheduledMessageOptions" description="Parameters for scheduling a new message.">
+  | Field | Type | Required | Description |
+  |---|---|---|---|
+  | `schedule` | `{ readonly type: "once"; } \| { readonly type: "recurring"; readonly intervalSeconds: number; }` | No | Optional recurrence schedule. Defaults to a one-time send. |
+  | `scheduledFor` | `Date` | Yes | When to send the message. |
+  
+</Accordion>
+
+Returns a <TypeTooltip name="ScheduledMessage" type={`interface ScheduledMessage {
+    readonly createdAt: Date;
+    readonly errorMessage?: string;
+    readonly id: ScheduledMessageId;
+    readonly payload: Uint8Array;
+    readonly schedule: Uint8Array;
+    readonly scheduledFor: Date;
+    readonly sentAt?: Date;
+    readonly status: ScheduledMessageStatus$1;
+    readonly type: string;
+}`} /> with the assigned id, lifecycle status, and timestamps.
+
+## Get a scheduled message
+
+```ts
+const scheduled = await im.scheduledMessages.get(scheduledMessageId);
+```
+
+## List scheduled messages
+
+`list()` takes no parameters and returns a plain array of all scheduled messages:
+
+```ts
+const messages = await im.scheduledMessages.list();
+for (const msg of messages) {
+  console.log(msg.scheduledFor, msg.status);
+}
+```
+
+## Update a scheduled message
+
+Only pass the fields you want to change. Returns the updated <TypeTooltip name="ScheduledMessage" type={`interface ScheduledMessage {
+    readonly createdAt: Date;
+    readonly errorMessage?: string;
+    readonly id: ScheduledMessageId;
+    readonly payload: Uint8Array;
+    readonly schedule: Uint8Array;
+    readonly scheduledFor: Date;
+    readonly sentAt?: Date;
+    readonly status: ScheduledMessageStatus$1;
+    readonly type: string;
+}`} />.
+
+```ts
+const updated = await im.scheduledMessages.update(scheduledMessageId, {
+  scheduledFor: new Date("2026-01-01T00:00:00Z"),
+  text: "Happy New Year! (updated)",
+});
+```
+
+## Delete a scheduled message
+
+```ts
+await im.scheduledMessages.delete(scheduledMessageId);
+```
+
+## Delete all scheduled messages
+
+```ts
+await im.scheduledMessages.deleteAll();
+```
+
+## Execute immediately
+
+Trigger a scheduled message before its scheduled time:
+
+```ts
+await im.scheduledMessages.execute(scheduledMessageId);
+```
+
+## Execute all due messages
+
+Execute all scheduled messages that have passed their `scheduledFor` time:
+
+```ts
+const executed = await im.scheduledMessages.executeDue();
+```
+
+Returns an array of <TypeTooltip name="ScheduledMessage" type={`interface ScheduledMessage {
+    readonly createdAt: Date;
+    readonly errorMessage?: string;
+    readonly id: ScheduledMessageId;
+    readonly payload: Uint8Array;
+    readonly schedule: Uint8Array;
+    readonly scheduledFor: Date;
+    readonly sentAt?: Date;
+    readonly status: ScheduledMessageStatus$1;
+    readonly type: string;
+}`} /> for each message that was executed.
+
+## Real-time schedule events
+
+```ts
+for await (const event of im.scheduledMessages.subscribe()) {
+  // event.type === "schedule.changed"
+  console.log(event.action, event.scheduledMessage);
+}
+```
+
+
+<Accordion title="ScheduleEvent actions" description="An event indicating a scheduled message changed lifecycle state.">
+  | `event.action` | When it fires |
+  |---|---|
+  | `created` | A new scheduled message was created |
+  | `updated` | A scheduled message was modified |
+  | `deleted` | A scheduled message was removed |
+  | `sent` | The server sent the message successfully |
+  | `failed` | The server failed to send the message |
+</Accordion>
+
+
+<Accordion title="ScheduledMessageStatus" description="Lifecycle status of a scheduled message.">
+  | Value | Description |
+  |---|---|
+  | `"pending"` | Waiting to be sent |
+  | `"inProgress"` | Currently being processed |
+  | `"complete"` | Sent successfully |
+  | `"failed"` | Failed to send (check `errorMessage`) |
+</Accordion>
