@@ -27,7 +27,7 @@ bun add spectrum-ts
 ```
 </CodeGroup>
 
-Requires TypeScript 5 or later.
+Requires TypeScript 5 or later (TypeScript 6 is also supported).
 
 ## Core concepts
 

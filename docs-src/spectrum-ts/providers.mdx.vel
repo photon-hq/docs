@@ -23,26 +23,50 @@ Providers plug into Spectrum's type system and runtime. Each one exports a calla
 
 Drop any combination into `providers`:
 
-```ts
-import { Spectrum } from "spectrum-ts";
-import { imessage } from "spectrum-ts/providers/imessage";
-import { terminal } from "spectrum-ts/providers/terminal";
-import { whatsappBusiness } from "spectrum-ts/providers/whatsapp-business";
+<Tabs>
+  <Tab title="Aggregate import">
+    ```ts
+    import { Spectrum } from "spectrum-ts";
+    import { imessage, terminal, whatsappBusiness } from "spectrum-ts/providers";
 
-const app = await Spectrum({
-  projectId: "...",
-  projectSecret: "...",
-  providers: [
-    imessage.config(),
-    whatsappBusiness.config({
-      accessToken: process.env.WA_TOKEN!,
-      phoneNumberId: process.env.WA_NUMBER_ID!,
-      appSecret: process.env.WA_SECRET!,
-    }),
-    terminal.config(),
-  ],
-});
-```
+    const app = await Spectrum({
+      projectId: "...",
+      projectSecret: "...",
+      providers: [
+        imessage.config(),
+        whatsappBusiness.config({
+          accessToken: process.env.WA_TOKEN!,
+          phoneNumberId: process.env.WA_NUMBER_ID!,
+          appSecret: process.env.WA_SECRET!,
+        }),
+        terminal.config(),
+      ],
+    });
+    ```
+  </Tab>
+  <Tab title="Individual imports">
+    ```ts
+    import { Spectrum } from "spectrum-ts";
+    import { imessage } from "spectrum-ts/providers/imessage";
+    import { terminal } from "spectrum-ts/providers/terminal";
+    import { whatsappBusiness } from "spectrum-ts/providers/whatsapp-business";
+
+    const app = await Spectrum({
+      projectId: "...",
+      projectSecret: "...",
+      providers: [
+        imessage.config(),
+        whatsappBusiness.config({
+          accessToken: process.env.WA_TOKEN!,
+          phoneNumberId: process.env.WA_NUMBER_ID!,
+          appSecret: process.env.WA_SECRET!,
+        }),
+        terminal.config(),
+      ],
+    });
+    ```
+  </Tab>
+</Tabs>
 
 `app.messages` merges messages from every provider. The `message.platform` field tells you which one delivered each message.
 
