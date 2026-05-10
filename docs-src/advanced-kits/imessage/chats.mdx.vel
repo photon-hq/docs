@@ -12,16 +12,15 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 ### Create a chat
 
 ```ts
-const { chat, sendReceipt } = await im.chats.create(["+1234567890"], {
+const { chat: newChat, initialMessage } = await im.chats.create(["+1234567890"], {
   message: "Hey!",
-  service: "iMessage",
   subject: "Optional subject",
-  effectId: MessageEffect.confetti,
+  effect: MessageEffect.confetti,
   clientMessageId: "my-idempotency-key",
 });
 ```
 
-`sendReceipt` is present only when an initial `message` was provided.
+`initialMessage` is present only when an initial `message` was provided.
 
 {% set createChatOpts = symbol("ts:@photon-ai/advanced-imessage#CreateChatOptions") %}
 
@@ -36,7 +35,7 @@ const { chat, sendReceipt } = await im.chats.create(["+1234567890"], {
 ### Get a chat
 
 ```ts
-const chat = await im.chats.get(chatGuid);
+const myChat = await im.chats.get(chatGuid);
 ```
 
 {% set chatType = symbol("ts:@photon-ai/advanced-imessage#Chat") %}
@@ -52,11 +51,9 @@ const totalWithArchived = await im.chats.count({ includeArchived: true });
 ### Typing indicators
 
 ```ts
-// Show typing bubble
-await im.chats.startTyping(chatGuid);
+await im.chats.setTyping(chatGuid, true);
 
-// Stop typing bubble
-await im.chats.stopTyping(chatGuid);
+await im.chats.setTyping(chatGuid, false);
 ```
 
 ### Share contact info
@@ -65,36 +62,27 @@ await im.chats.stopTyping(chatGuid);
 await im.chats.shareContactInfo(chatGuid);
 ```
 
-### Get participants
-
-```ts
-const participants = await im.chats.getParticipants(chatGuid);
-```
-
-{% set addressInfo = symbol("ts:@photon-ai/advanced-imessage#AddressInfo") %}
-Returns an array of <TypeTooltip name="AddressInfo" type={`{{ addressInfo.signature }}`} />.
-
-### Leave a chat
-
-```ts
-await im.chats.leave(chatGuid);
-```
-
 ### Mark as read
 
 ```ts
 await im.chats.markRead(chatGuid);
 ```
 
+### Chat backgrounds
+
+```ts
+const hasBackground = await im.chats.hasBackground(chatGuid);
+
+await im.chats.setBackground(chatGuid, imageBytes);
+
+await im.chats.removeBackground(chatGuid);
+```
+
 ### Real-time chat events
 
 ```ts
-for await (const event of im.chats.subscribe()) {
+for await (const event of im.chats.subscribeEvents()) {
   event.type;
-}
-
-for await (const event of im.chats.subscribe("chat.typingIndicator")) {
-  console.log(event.isTyping, event.displayName);
 }
 ```
 
@@ -118,64 +106,44 @@ const updatedChat = await im.groups.setDisplayName(chatGuid, "New Group Name");
 ### Manage participants
 
 ```ts
-const updatedChat = await im.groups.addParticipant(chatGuid, "newperson@icloud.com");
-const updatedChat2 = await im.groups.removeParticipant(chatGuid, "oldperson@icloud.com");
+const updatedChat2 = await im.groups.addParticipants(chatGuid, ["newperson@icloud.com"]);
+const updatedChat3 = await im.groups.removeParticipants(chatGuid, ["oldperson@icloud.com"]);
 ```
 
 ### Group icons
 
 ```ts
-// Get icon
-const iconBytes = await im.groups.getIcon(chatGuid);
-// iconBytes: Uint8Array | null
+const icon = await im.groups.getIcon(chatGuid);
 
-// Change icon (pass raw image bytes)
-await im.groups.setIcon(chatGuid, imageBytes); // imageBytes: Uint8Array
+await im.groups.setIcon(chatGuid, imageBytes);
 
-// Remove icon
 await im.groups.removeIcon(chatGuid);
 ```
 
-### Group backgrounds
+### Leave a group
 
 ```ts
-// Get background
-const bgInfo = await im.groups.getBackground(chatGuid);
-
-// Set background (pass raw image bytes)
-const bgInfo2 = await im.groups.setBackground(chatGuid, imageBytes);
-
-// Remove background
-await im.groups.removeBackground(chatGuid);
+await im.groups.leave(chatGuid);
 ```
-
-{% set backgroundInfo = symbol("ts:@photon-ai/advanced-imessage#BackgroundInfo") %}
-`getBackground` returns <TypeTooltip name="BackgroundInfo" type={`{{ backgroundInfo.signature }}`} /> or `null`. 
-
-`setBackground` returns the newly applied <TypeTooltip name="BackgroundInfo" type={`{{ backgroundInfo.signature }}`} />.
 
 ### Group events
 
 Group changes are emitted as a single `group.changed` event with a discriminated `change` field:
 
 ```ts
-for await (const event of im.groups.subscribe()) {
-  // event.type === "group.changed"
+for await (const event of im.groups.subscribeEvents()) {
   switch (event.change.type) {
-    case "renamed":
-      console.log("New name:", event.change.name);
+    case "displayNameChanged":
+      console.log("New name:", event.change.displayName);
       break;
     case "participantAdded":
-      console.log("Added:", event.change.address);
+      console.log("Added:", event.change.participant.address);
       break;
     case "participantRemoved":
-      console.log("Removed:", event.change.address);
+      console.log("Removed:", event.change.participant.address);
       break;
     case "iconChanged":
     case "iconRemoved":
-    case "backgroundChanged":
-    case "backgroundRemoved":
-      // handle icon/background changes
       break;
   }
 }

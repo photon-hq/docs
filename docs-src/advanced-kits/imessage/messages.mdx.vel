@@ -9,24 +9,22 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 
 ## Sending Messages
 
-The SDK has four sending APIs. Use the simplest one that covers your use case.
+The SDK has three sending APIs. Use the simplest one that covers your use case.
 
 <Tabs>
   <Tab title="Plain text">
     ```ts
-    await im.messages.send(chat, "Hello!");
+    await im.messages.sendText(chat, "Hello!");
     ```
   </Tab>
   <Tab title="With options">
     ```ts
     import { MessageEffect } from "@photon-ai/advanced-imessage";
 
-    await im.messages.send(chat, "Hello!", {
+    await im.messages.sendText(chat, "Hello!", {
       effect: MessageEffect.confetti,
       replyTo: someMessageGuid,
       subject: "Hey",
-      attachment: attachmentGuid,
-      audioMessage: false,
     });
     ```
 
@@ -41,40 +39,30 @@ The SDK has four sending APIs. Use the simplest one that covers your use case.
     </Accordion>
   </Tab>
   <Tab title="Multipart">
-    Use `sendMultipart()` when you want per-part formatting or mentions without the builder's fluent style.
+    Use `sendMultipart()` when you want per-part formatting or mentions.
 
     ```ts
     await im.messages.sendMultipart(chat, [
       { text: "Hey " },
-      { mention: "alice@icloud.com", text: "@Alice" },
+      { mentionedAddress: "alice@icloud.com", text: "@Alice" },
       { text: "!" },
     ]);
     ```
 
     Formatting is specified per-part via `MessagePart.formatting` rather than at the top level; every other `SendOptions` field applies normally.
   </Tab>
-  <Tab title="MessageBuilder">
-    Use the builder when you want chained, fluent construction - same capability as `sendMultipart()` with a more readable surface.
-
-    ```ts
-    import { MessageBuilder, MessageEffect } from "@photon-ai/advanced-imessage";
-
-    await im.messages.sendComposed(
-      chat,
-      MessageBuilder.multipart()
-        .addText("Hey ")
-        .addMention("@Alice", "alice@icloud.com")
-        .addText("!")
-        .withEffect(MessageEffect.slam)
-        .asReplyTo(someGuid)
-        .build(),
-    );
-    ```
-  </Tab>
 </Tabs>
 
-{% set sendReceipt = symbol("ts:@photon-ai/advanced-imessage#SendReceipt") %}
-All four APIs return a <TypeTooltip name="SendReceipt" type={`{{ sendReceipt.signature }}`} />.
+{% set messageType = symbol("ts:@photon-ai/advanced-imessage#Message") %}
+All sending APIs return a <TypeTooltip name="Message" type={`{{ messageType.signature }}`} />.
+
+### Send an attachment
+
+Upload first, then send by GUID:
+
+```ts
+await im.messages.sendAttachment(chat, attachmentGuid);
+```
 
 ### Available effects
 
@@ -105,21 +93,15 @@ import { MessageEffect, TextEffect } from "@photon-ai/advanced-imessage";
 ## Reactions
 
 ```ts
-import { Reaction } from "@photon-ai/advanced-imessage";
-
-// Tapback
-await im.messages.react(chat, messageGuid, Reaction.love);
-await im.messages.react(chat, messageGuid, Reaction.like, { partIndex: 1 });
+await im.messages.setReaction(chat, messageGuid, { kind: "love" }, true);
+await im.messages.setReaction(chat, messageGuid, { kind: "like" }, true, { partIndex: 1 });
 
 // Emoji reaction (iOS 17+)
-await im.messages.reactEmoji(chat, messageGuid, "🔥");
+await im.messages.setReaction(chat, messageGuid, { kind: "emoji", emoji: "🔥" }, true);
 
 // Remove a tapback
-await im.messages.unreact(chat, messageGuid, Reaction.love);
+await im.messages.setReaction(chat, messageGuid, { kind: "love" }, false);
 ```
-
-{% set cmdReceipt = symbol("ts:@photon-ai/advanced-imessage#CommandReceipt") %}
-All reaction methods return <TypeTooltip name="CommandReceipt" type={`{{ cmdReceipt.signature }}`} />.
 
 ## Edit & unsend
 
@@ -139,31 +121,28 @@ await im.messages.unsend(chat, messageGuid, { partIndex: 0 });
 ### Get a single message
 
 ```ts
-const message = await im.messages.get(guid);
+const message = await im.messages.get(chat, messageGuid);
 ```
 
-### List with auto-pagination
-
-`list()` returns a `Paginated<Message>` that is both `await`able and `for await`able - no pagination API to learn.
+### List recent messages
 
 ```ts
-// First page
-const page = await im.messages.list({ chatGuid: chat, limit: 25 });
-page.data; // Message[]
-page.meta; // { total, offset, limit }
-
-// Stream all messages
-for await (const message of im.messages.list({ chatGuid: chat })) {
-  console.log(message.text);
-}
-
-// Buffer all, with a safety cap
-const all = await im.messages.list({ chatGuid: chat }).toArray({ limit: 500 });
+const page = await im.messages.listRecent({ pageSize: 25 });
+page.messages;
+page.nextPageToken;
 ```
 
-{% set listOpts = symbol("ts:@photon-ai/advanced-imessage#MessageListOptions") %}
+### List messages in a chat
 
-<Accordion title="MessageListOptions" description="{{ listOpts.doc.summary }}">
+```ts
+const page2 = await im.messages.listInChat(chat, { pageSize: 25 });
+page2.messages;
+page2.nextPageToken;
+```
+
+{% set listOpts = symbol("ts:@photon-ai/advanced-imessage#MessageListFilter") %}
+
+<Accordion title="MessageListFilter" description="{{ listOpts.doc.summary }}">
   | Option | Type | Description |
   |---|---|---|
   {% for m in listOpts.members -%}
@@ -171,57 +150,29 @@ const all = await im.messages.list({ chatGuid: chat }).toArray({ limit: 500 });
   {% endfor %}
 </Accordion>
 
-### Message statistics
-
-```ts
-const stats = await im.messages.stats();
-stats.total; // number
-stats.sent; // number
-stats.received; // number
-```
-
 ## Catch up after disconnect
 
-`fetchMissed()` returns messages newer than a cursor from a previous `subscribe()` event. Use it on reconnect to replay anything missed before resuming the live stream.
+`im.events.catchUp()` replays durable events newer than a sequence cursor. Use it on reconnect to replay anything missed before resuming the live stream.
 
 ```ts
-let cursor = loadPersistedCursor();
-
-if (cursor) {
-  for await (const msg of im.messages.fetchMissed(cursor)) {
-    processMissedMessage(msg);
+for await (const event of im.events.catchUp(42)) {
+  if (event.type === "catchup.complete") {
+    console.log("caught up to sequence", event.headSequence);
+    break;
   }
 }
-
-for await (const event of im.messages.subscribe()) {
-  if (event.cursor) cursor = event.cursor;
-  processEvent(event);
-}
 ```
-
-{% set fetchMissedOpts = symbol("ts:@photon-ai/advanced-imessage#FetchMissedOptions") %}
-<Accordion title="FetchMissedOptions" description="{{ fetchMissedOpts.doc.summary }}">
-  | Option | Type | Description |
-  |---|---|---|
-  {% for m in fetchMissedOpts.members -%}
-  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
-  {% endfor %}
-</Accordion>
 
 ## Real-time events
 
-`subscribe()` returns a `TypedEventStream<MessageEvent>`. Pass an event type string to narrow the type automatically.
+`subscribeEvents()` returns a `TypedEventStream<MessageEvent>`. Filter on `event.type` to handle specific event kinds.
 
 ```ts
-// All message events
-for await (const event of im.messages.subscribe()) {
-  event.type; // "message.sent" | "message.received" | "message.updated" | "message.sendError"
-}
-
-// Only incoming messages - TS knows the exact shape
-for await (const event of im.messages.subscribe("message.received")) {
-  console.log(event.message.text);
-  console.log(event.chatGuid);
+for await (const event of im.messages.subscribeEvents()) {
+  if (event.type === "message.received") {
+    console.log(event.message.content.text);
+    console.log(event.chatGuid);
+  }
 }
 ```
 
@@ -240,9 +191,14 @@ for await (const event of im.messages.subscribe("message.received")) {
 
 ```ts
 const incoming = im.messages
-  .subscribe("message.received")
-  .filter((e) => e.message.text !== undefined)
-  .map((e) => ({ from: e.message.sender?.address, text: e.message.text! }));
+  .subscribeEvents()
+  .filter(
+    (e): e is Extract<MessageEvent, { type: "message.received" }> => e.type === "message.received",
+  )
+  .map((e) => ({
+    from: e.message.sender?.address,
+    text: e.message.content.text,
+  }));
 
 for await (const { from, text } of incoming) {
   console.log(`[${from}] ${text}`);
@@ -252,19 +208,18 @@ for await (const { from, text } of incoming) {
 Streams implement `Symbol.asyncDispose`:
 
 ```ts
-await using stream = im.messages.subscribe("message.received");
+await using stream = im.messages.subscribeEvents();
 for await (const event of stream) {
-  ...
+  if (event.type === "message.received") {
+    console.log(event.message.content.text);
+  }
 }
 ```
 
 ## Miscellaneous
 
 ```ts
-// Acknowledge a silenced message notification
 await im.messages.notifySilenced(chat, messageGuid);
 
-// Extract embedded media from a rich message (link preview images, etc.)
-const items = await im.messages.getEmbeddedMedia(chat, messageGuid);
-// items: Array<{ data: Uint8Array; mimeType: string }>
+const media = await im.messages.getEmbeddedMedia(chat, messageGuid);
 ```

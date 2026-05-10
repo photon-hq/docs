@@ -41,7 +41,7 @@ import {
 } from "@photon-ai/advanced-imessage";
 
 try {
-  await im.messages.send(chat, "Hello!");
+  await im.messages.sendText(chat, "Hello!");
 } catch (err) {
   if (err instanceof RateLimitError) {
     // back off and retry
@@ -128,7 +128,7 @@ Most domain types carry `_raw` containing the raw gRPC response for debugging pu
 
 ```ts
 try {
-  await im.messages.send(chat, "Hello!");
+  await im.messages.sendText(chat, "Hello!");
 } catch (err) {
   if (err instanceof IMessageError) {
     console.log(err.code, err.grpcCode, err.retryable, err.context);

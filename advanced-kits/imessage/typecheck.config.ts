@@ -6,35 +6,48 @@ const config: TypecheckConfig = {
   importPreamble: `
 import type {
   AdvancedIMessage,
-  ChatGuid,
-  MessageGuid,
-  AttachmentGuid,
-  ScheduledMessageId,
   Chat,
   Message,
   AttachmentInfo,
-  StreamedDownload,
-  SendReceipt,
-  CommandReceipt,
-  ScheduledMessage,
-  ScheduledMessageStatus,
-  AddressInfo,
+  AttachmentInput,
+  UploadAttachmentResult,
+  DownloadAttachmentChunk,
+  CompanionInfo,
+  SendOptions,
+  MessagePart,
+  MessageListFilter,
+  MessageListPage,
+  SettableMessageReaction,
+  EmbeddedMedia,
   ChatServiceType,
   TransferState,
   StickerPlacement,
-  BackgroundInfo,
   TextFormatInput,
+  MultiServiceAddressInfo,
+  SingleServiceAddressInfo,
+  CreateChatOptions,
+  CreateChatResult,
+  Poll,
+  PollOption,
+  PollParticipantVote,
+  GroupIcon,
+  GroupChange,
+  SharedFriendLocation,
+  SharedFriendLocationUpdated,
+  RetryOptions,
+  ClientOptions,
+  ChatEvent,
+  GroupEvent,
+  MessageEvent,
+  PollEvent,
+  CatchUpEvent,
+  IdempotencyOptions,
 } from "@photon-ai/advanced-imessage";
 
 import {
   createClient,
-  directChat,
-  groupChat,
-  parseChatGuid,
-  MessageBuilder,
   MessageEffect,
   TextEffect,
-  Reaction,
   ErrorCode,
   AuthenticationError,
   ConnectionError,
@@ -46,27 +59,20 @@ import {
 `.trim(),
   declarePreamble: `
 declare const im: AdvancedIMessage;
-declare const chat: ChatGuid;
-declare const chatGuid: ChatGuid;
-declare const messageGuid: MessageGuid;
-declare const someMessageGuid: MessageGuid;
-declare const someGuid: MessageGuid;
-declare const pollMessageGuid: MessageGuid;
+declare const chat: string;
+declare const chatGuid: string;
+declare const messageGuid: string;
+declare const someMessageGuid: string;
+declare const someGuid: string;
+declare const pollMessageGuid: string;
 declare const optionIdentifier: string;
-declare const cursor: string | undefined;
-declare const guid: any;
-declare const attachmentGuid: AttachmentGuid;
-declare const scheduledMessageId: ScheduledMessageId;
+declare const attachmentGuid: string;
 declare const imageBytes: Uint8Array;
 declare const videoBytes: Uint8Array;
 declare let token: string;
 declare const err: unknown;
 declare function sleep(ms: number): Promise<void>;
 declare function refreshToken(): Promise<string>;
-declare function process(...args: any[]): void;
-declare function loadPersistedCursor(): string | undefined;
-declare function processMissedMessage(msg: Message): void;
-declare function processEvent(event: any): void;
 declare function updateMapPin(friend: any): void;
 `.trim(),
 }

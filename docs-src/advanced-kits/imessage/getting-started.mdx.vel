@@ -5,7 +5,7 @@ description: "Install the iMessage Kit and send your first message in minutes"
 
 `@photon-ai/advanced-imessage` is a TypeScript SDK that connects you to our advanced gRPC-based iMessage server.
 
-It gives you a strongly-typed, resource-oriented API for everything iMessage - sending texts, reacting, scheduling, streaming events, and more.
+It gives you a strongly-typed, resource-oriented API for everything iMessage - sending texts, reacting, editing, streaming events, and more.
 
 ## Installation
 
@@ -41,14 +41,14 @@ Requires Node.js 18+ or Bun.
 ## Quick start
 
 ```ts
-import { createClient, directChat } from "@photon-ai/advanced-imessage";
+import { createClient } from "@photon-ai/advanced-imessage";
 
 const im = createClient({
   address: "your-instance.imsg.photon.codes:443",
   token: "your-token",
 });
 
-await im.messages.send(directChat("+1234567890"), "Hello!");
+await im.messages.sendText(chat, "Hello!");
 
 await im.close();
 ```
@@ -71,14 +71,14 @@ const im = createClient(options: ClientOptions): AdvancedIMessage;
 The returned `AdvancedIMessage` object exposes one property per resource:
 
 ```ts
-im.messages           // send, react, edit, list, subscribe
-im.chats              // create, get, typing indicators, subscribe
-im.groups             // rename, add/remove participants, icons
-im.attachments        // upload, download, Live Photos
-im.addresses          // lookup contact info
-im.polls              // create polls, vote
-im.scheduledMessages  // schedule, update, execute
-im.locations          // FindMy friend locations
+im.messages      // send, react, edit, list, subscribe
+im.chats         // create, get, typing indicators, subscribe
+im.groups        // rename, add/remove participants, icons
+im.attachments   // upload, download
+im.addresses     // lookup contact info
+im.polls         // create polls, vote
+im.events        // catch up after disconnect
+im.locations     // FindMy friend locations
 ```
 
 ## Disposing the client
@@ -108,46 +108,34 @@ const im = createClient({
   token: "your-token",
 });
 
-for await (const event of im.messages.subscribe("message.received")) {
+for await (const event of im.messages.subscribeEvents()) {
+  if (event.type !== "message.received") continue;
   const { message, chatGuid } = event;
 
-  if (!message.text) continue;
+  if (!message.content.text) continue;
 
-  await im.messages.send(chatGuid, message.text);
+  await im.messages.sendText(chatGuid, message.content.text);
 }
 ```
 
 The loop runs forever, echoing every text message back to the sender's chat. A few things to note:
 
-- `subscribe("message.received")` narrows the event type - `message` and `chatGuid` are fully typed with no casts needed.
+- `subscribeEvents()` returns a `TypedEventStream<MessageEvent>` - filter on `event.type` to handle specific event kinds.
 - Messages without text (images, reactions, etc.) are skipped with the `continue` guard.
-- `chatGuid` is already a `ChatGuid` - pass it directly to `send()`.
+- `chatGuid` is already a string - pass it directly to `sendText()`.
 
 ### Prevent the bot from echoing itself
 
-Filter out messages sent by the server account to avoid infinite loops:
+Filter out messages sent by the server account to avoid infinite loops. Every event carries `isFromMe` on the event context:
 
 ```ts
-for await (const event of im.messages.subscribe("message.received")) {
+for await (const event of im.messages.subscribeEvents()) {
+  if (event.type !== "message.received") continue;
+  if (event.isFromMe) continue;
   const { message, chatGuid } = event;
 
-  if (!message.text || message.isFromMe) continue;
+  if (!message.content.text) continue;
 
-  await im.messages.send(chatGuid, message.text);
+  await im.messages.sendText(chatGuid, message.content.text);
 }
-```
-
-## ChatGuid helpers
-
-All APIs that target a conversation require a `ChatGuid`. Never construct the raw GUID string yourself - use the helpers:
-
-```ts
-import { directChat, groupChat, parseChatGuid } from "@photon-ai/advanced-imessage";
-
-directChat("+1234567890"); // direct message to a phone number
-groupChat("chat123"); // group chat by identifier
-
-parseChatGuid(guid);
-// { type: "direct", address: "+1234567890", raw: ChatGuid }
-// { type: "group",  identifier: "chat123",  raw: ChatGuid }
 ```

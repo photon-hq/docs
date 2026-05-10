@@ -5,7 +5,7 @@ description: "Upload, download, and stream file attachments"
 
 import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 
-`im.attachments` handles file attachments - uploading before sending, streaming downloads, transparent iCloud recovery, and extracting Live Photos.
+`im.attachments` handles file attachments - uploading before sending, streaming downloads, and transparent iCloud recovery.
 
 ## Common file types
 
@@ -32,38 +32,37 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 <Note>
   Apple caps individual attachments at roughly **100 MB** - larger files are rejected, trimmed (video), or offered as an iCloud link instead. This is an Apple-side limit, not an SDK one.
 </Note>
+
 ## Upload an attachment
 
-Upload a file and get back an `AttachmentInfo` object. Use the `guid` property to pass to `im.messages.send()`.
+Upload raw bytes and get back an `UploadAttachmentResult`. Use the `attachment.guid` property to send the attachment with a message.
 
 ```ts
-const info = await im.attachments.upload({
-  path: "/path/to/photo.jpg",
-  fileName: "photo.jpg", // optional display name
-  mimeType: "image/jpeg", // optional override
+const result = await im.attachments.upload({
+  data: imageBytes,
+  fileName: "photo.jpg",
 });
 
-await im.messages.send(chat, "", { attachment: info.guid });
+await im.messages.sendAttachment(chat, result.attachment.guid);
 ```
 
 {% set attInput = symbol("ts:@photon-ai/advanced-imessage#AttachmentInput") %}
-`upload()` takes an <TypeTooltip name="AttachmentInput" type={`{{ attInput.signature }}`} />, which is a union of file path or raw bytes.
+`upload()` takes an <TypeTooltip name="AttachmentInput" type={`{{ attInput.signature }}`} />.
 
 ## Upload a Live Photo
 
-Upload a paired HEIC image + MOV video as a Live Photo:
+Upload a paired HEIC image + MOV video as a Live Photo using the `companion` field:
 
 ```ts
-const info = await im.attachments.uploadLivePhoto({
-  image: {
-    data: imageBytes, // Uint8Array
-    fileName: "photo.heic",
-    mimeType: "image/heic",
-  },
-  video: {
-    data: videoBytes, // Uint8Array
+const result = await im.attachments.upload({
+  data: imageBytes,
+  fileName: "photo.heic",
+  companion: {
+    data: videoBytes,
   },
 });
+
+await im.messages.sendAttachment(chat, result.attachment.guid);
 ```
 
 ## Get attachment metadata
@@ -75,48 +74,20 @@ const info = await im.attachments.get(attachmentGuid);
 {% set attInfo = symbol("ts:@photon-ai/advanced-imessage#AttachmentInfo") %}
 Returns an <TypeTooltip name="AttachmentInfo" type={`{{ attInfo.signature }}`} /> with file metadata, transfer state, and Live Photo / sticker flags.
 
-## Count attachments
+## Download an attachment (streaming)
+
+`downloadStream()` returns a `TypedEventStream<DownloadAttachmentChunk>`. The first frame is metadata, followed by primary payload chunks and, for Live Photos, companion payload chunks.
 
 ```ts
-const total = await im.attachments.count();
-```
-
-## Download an attachment
-
-{% set streamDl = symbol("ts:@photon-ai/advanced-imessage#StreamedDownload") %}
-`download()` returns a <TypeTooltip name="StreamedDownload" type={`{{ streamDl.signature }}`} /> synchronously - both a streaming and a buffered consumption path.
-
-```ts
-const dl = im.attachments.download(attachmentGuid);
-
-dl.totalBytes; // file size, known from the first chunk
-
-// Stream it
-for await (const chunk of dl.stream) {
-  // ReadableStream<Uint8Array>
-  process(chunk);
+for await (const frame of im.attachments.downloadStream(attachmentGuid)) {
+  if (frame.type === "header") {
+    console.log(frame.info.mimeType, frame.info.uti);
+  }
+  if (frame.type === "primaryChunk") {
+    console.log(frame.data.length);
+  }
+  if (frame.type === "companionChunk") {
+    console.log(frame.data.length);
+  }
 }
-
-// Or buffer the whole thing
-const buffer = await dl.arrayBuffer(); // Uint8Array
 ```
-
-### Quick buffer download
-
-A convenience method that combines `download()` and `arrayBuffer()`:
-
-```ts
-const bytes = await im.attachments.downloadBuffer(attachmentGuid);
-// bytes: Uint8Array
-```
-
-## Live Photos
-
-Extract the video component from a Live Photo attachment:
-
-```ts
-const videoDl = im.attachments.getLivePhoto(attachmentGuid);
-const videoBytes = await videoDl.arrayBuffer();
-```
-
-`getLivePhoto()` returns a <TypeTooltip name="StreamedDownload" type={`{{ streamDl.signature }}`} /> synchronously, just like `download()`.
