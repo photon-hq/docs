@@ -12,8 +12,8 @@ importers:
         specifier: ^4.19.0
         version: 4.19.0(@typescript-eslint/rule-tester@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(@typescript-eslint/typescript-estree@8.58.2(typescript@5.9.3))(@typescript-eslint/utils@8.58.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(@vue/compiler-sfc@3.5.32)(eslint-plugin-format@2.0.1(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
       '@photon-ai/advanced-imessage':
-        specifier: ^0.4.2
-        version: 0.4.2
+        specifier: ^0.7.1
+        version: 0.7.1
       '@photon-ai/advanced-imessage-kit':
         specifier: ^1.14.3
         version: 1.14.3(typescript@5.9.3)
@@ -139,6 +139,9 @@ packages:
   '@babel/types@7.29.0':
     resolution: {integrity: sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A==}
     engines: {node: '>=6.9.0'}
+
+  '@bufbuild/protobuf@2.12.0':
+    resolution: {integrity: sha512-B/XlCaFIP8LOwzo+bz5uFzATYokcwCKQcghqnlfwSmM5eX/qTkvDBnDPs+gXtX/RyjxJ4DRikECcPJbyALA8FA==}
 
   '@clack/core@0.5.0':
     resolution: {integrity: sha512-p3y0FIOwaYRUPRcMO7+dlmLh8PSRcrjuTndsiA0WAFbWES0mLZlrjVoBRZ9DzkPFJZG6KGkJmoEAY0ZcVWTkow==}
@@ -839,13 +842,13 @@ packages:
     peerDependencies:
       typescript: ^5.9.3
 
-  '@photon-ai/advanced-imessage@0.4.2':
-    resolution: {integrity: sha512-w66rA8vnAYcZWJHFbahERt0WkwxPnRbg8B1SmKlScNk4jO0jx9nsuaj2wuh8mtoPnT+LFwkB5Zd2avHLC8eIKQ==}
-    engines: {node: '>=18'}
-
   '@photon-ai/advanced-imessage@0.6.0':
     resolution: {integrity: sha512-6pkkS9Pb2T4G1pO7dtUfrV7koklFMq16vSG+RNrXGrKtidTM/2j1HdyGc8BhNZgg5OabDWoq2vA6owp2jFy1Iw==}
     engines: {node: '>=18'}
+
+  '@photon-ai/advanced-imessage@0.7.1':
+    resolution: {integrity: sha512-lVizHwEMFUUQV/doef0hy11U21p43Qc6XdEfq+MPWzKwI1LYQyqsgnxVt1jXyt/IE6kLUbG5iNQq9llapDKbJQ==}
+    engines: {node: '>=18.17'}
 
   '@photon-ai/imessage-kit@2.1.2':
     resolution: {integrity: sha512-xteMkPqqWkPLv40M9gA1HJGS/fHXIWzzXNCwRfnC4+bj120KMXMacT9zOSoEcGk4MA0pGXcUMQPE16MdB+Bf/g==}
@@ -2769,6 +2772,8 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
 
+  '@bufbuild/protobuf@2.12.0': {}
+
   '@clack/core@0.5.0':
     dependencies:
       picocolors: 1.1.1
@@ -3233,14 +3238,6 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@photon-ai/advanced-imessage@0.4.2':
-    dependencies:
-      '@grpc/grpc-js': 1.14.3
-      long: 5.3.2
-      nice-grpc: 2.1.15
-      nice-grpc-common: 2.0.3
-      protobufjs: 7.5.4
-
   '@photon-ai/advanced-imessage@0.6.0':
     dependencies:
       '@grpc/grpc-js': 1.14.3
@@ -3248,6 +3245,13 @@ snapshots:
       nice-grpc: 2.1.15
       nice-grpc-common: 2.0.3
       protobufjs: 7.5.4
+
+  '@photon-ai/advanced-imessage@0.7.1':
+    dependencies:
+      '@bufbuild/protobuf': 2.12.0
+      '@grpc/grpc-js': 1.14.3
+      nice-grpc: 2.1.15
+      nice-grpc-common: 2.0.3
 
   '@photon-ai/imessage-kit@2.1.2':
     dependencies:
