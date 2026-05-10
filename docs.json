@@ -80,6 +80,7 @@
                   "advanced-kits/imessage/polls",
                   "advanced-kits/imessage/addresses",
                   "advanced-kits/imessage/locations",
+                  "advanced-kits/imessage/events",
                   "advanced-kits/imessage/error-handling"
                 ]
               },

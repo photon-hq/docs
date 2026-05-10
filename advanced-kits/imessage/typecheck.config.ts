@@ -71,9 +71,13 @@ declare const imageBytes: Uint8Array;
 declare const videoBytes: Uint8Array;
 declare let token: string;
 declare const err: unknown;
+declare const since: number | undefined;
+declare const lastHandledSequence: number | undefined;
 declare function sleep(ms: number): Promise<void>;
 declare function refreshToken(): Promise<string>;
 declare function updateMapPin(friend: any): void;
+declare function handleEvent(event: unknown): Promise<void>;
+declare function saveSequence(sequence: number): Promise<void>;
 `.trim(),
 }
 

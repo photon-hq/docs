@@ -1,0 +1,103 @@
+---
+title: "Events"
+description: "Replay durable iMessage events after disconnects"
+---
+
+`im.events` exposes the durable event log. Use it to recover message, chat, group, and poll changes that happened while your process was offline or while a live stream was disconnected.
+
+Location updates are not in this log. Use [`im.locations.watch(...)`](/advanced-kits/imessage/locations) for Find My location updates.
+
+## Catch up after a disconnect
+
+Pass the last fully handled `sequence` value. The stream replays events after that sequence and then emits `catchup.complete` with the current head of the log:
+
+```ts
+let since: number | undefined;
+
+for await (const event of im.events.catchUp(since)) {
+  if (event.type === "catchup.complete") {
+    since = event.headSequence;
+    break;
+  }
+
+  await handleEvent(event);
+  since = event.sequence;
+}
+```
+
+Omit `since` to replay from the beginning of the retained log:
+
+```ts
+for await (const event of im.events.catchUp()) {
+  console.log(event.type);
+}
+```
+
+`since` must be a non-negative safe integer when provided. The SDK throws `ValidationError` before making the RPC for invalid cursors.
+
+`catchUp(...)` returns a `TypedEventStream<CatchUpEvent>`.
+
+`CatchUpEvent` is either a durable message, chat, group, or poll event, or the final `catchup.complete` marker.
+
+`catchup.complete` is a terminal marker for the replay pass, not a chat/message event. Its `headSequence` is the durable log head captured when catch-up started. Store it when you reach the marker so the next catch-up can start from that point.
+
+## Event ordering
+
+Every durable event has a monotonically increasing `sequence`. Persist the sequence only after your handler has finished successfully. On restart, pass that stored value back to `catchUp(...)`.
+
+```ts
+for await (const event of im.events.catchUp(lastHandledSequence)) {
+  if (event.type === "catchup.complete") {
+    await saveSequence(event.headSequence);
+    break;
+  }
+
+  await handleEvent(event);
+  await saveSequence(event.sequence);
+}
+```
+
+After catch-up completes, open the live streams you need:
+
+```ts
+for await (const event of im.messages.subscribeEvents({ chat })) {
+  await handleEvent(event);
+  await saveSequence(event.sequence);
+}
+```
+
+Live streams and catch-up streams use the same event shapes for message, chat, group, and poll changes. A write method's direct response is still the authoritative result for that write; event streams are for observation and recovery.
+
+If your handler fails, do not persist that event's sequence. Replaying the event on the next startup is safer than skipping it.
+
+## Stream consumption
+
+All streaming SDK methods return `TypedEventStream<T>`. A stream instance has one consumer. Use either `for await` or `.on(...)`, not both on the same instance.
+
+```ts
+const stream = im.events.catchUp(since);
+
+const stop = stream.on(
+  async (event) => {
+    await handleEvent(event);
+  },
+  (error) => {
+    console.error(error);
+  },
+);
+
+stop();
+await stream.close();
+```
+
+You can derive a stream before consuming it:
+
+```ts
+const received = im.messages.subscribeEvents().filter((event) => event.type === "message.received");
+
+for await (const event of received) {
+  console.log(event.message.guid);
+}
+```
+
+Close long-running streams during shutdown so the underlying gRPC call can be cancelled.
