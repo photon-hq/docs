@@ -1,58 +1,67 @@
 ---
 title: "Locations"
-description: "Retrieve Find My Friends locations and subscribe to live updates"
+description: "List, fetch, and watch Find My shared friend locations"
 ---
 
-import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+`im.locations` reads shared Find My friend locations for the authenticated iMessage account. It can list every friend currently sharing, fetch one friend by address, and watch live updates.
 
-`im.locations` wraps Apple's Find My Friends backend - fetch the cached snapshot of friends who share their location, and subscribe to real-time updates as those locations change.
+Location updates are not part of the durable event log. They use a dedicated live stream and are not replayed by `im.events.catchUp(...)`.
 
-## Get current friend locations
+Location methods use the friend's E.164 phone number or full email address. They do not take chat GUIDs.
+
+## List shared locations
 
 ```ts
-const friends = await im.locations.getFriends();
-for (const friend of friends) {
-  console.log(friend.name, friend.latitude, friend.longitude);
+const locations = await im.locations.list();
+
+for (const location of locations) {
+  console.log(location.address, location.latitude, location.longitude);
 }
 ```
 
-{% set findMyFriend = symbol("ts:@photon-ai/advanced-imessage#FindMyFriend") %}
-Returns an array of <TypeTooltip name="FindMyFriend" type={`{{ findMyFriend.signature }}`} /> with each friend's last known position, accuracy, and address.
+Returns an array of shared-location snapshots. The array is empty when no active shared-location sessions exist.
 
-Pass a list of friend ids to narrow the result:
+## Get one friend
 
 ```ts
-const subset = await im.locations.getFriends(["friend-id-1", "friend-id-2"]);
+const alice = await im.locations.get("alice@example.com");
+
+console.log(alice.name, alice.shortAddress);
 ```
 
-<Note>
-  `getFriends()` returns the **cached** snapshot and triggers a background
-  refresh on the server. For a live feed, subscribe to location events -
-  the subscription delivers updates as they arrive.
-</Note>
+`get(...)` throws `NotFoundError` when that address is not currently sharing a location with the authenticated iMessage account.
 
-## Real-time location updates
+Location fields such as `latitude`, `longitude`, `accuracy`, and timestamps can be absent when the device is still locating or when only partial cached data is available.
+
+## Watch live updates
+
+Watch every shared friend:
 
 ```ts
-for await (const event of im.locations.subscribe()) {
-  // event.type === "location.updated"
-  for (const friend of event.friends) {
-    updateMapPin(friend);
-  }
+for await (const update of im.locations.watch()) {
+  console.log(update.location.address, update.sourceSequence);
 }
 ```
 
-{% set locationEvent = symbol("ts:@photon-ai/advanced-imessage#LocationEvent") %}
-Each update is a <TypeTooltip name="LocationEvent" type={`{{ locationEvent.signature }}`} /> carrying the full friends array - not a diff. Replace your local state rather than merging.
+Watch one address:
 
-## Location types
+```ts
+for await (const update of im.locations.watch("alice@example.com")) {
+  updateMap(update.location);
+}
+```
 
-Each `FindMyFriend` has a `locationType` field describing how fresh the fix is:
+The stream yields shared-location update objects with the latest location snapshot and source sequence.
 
-<Accordion title="Location types" description="The freshness tier of a friend's location fix.">
-  | `locationType` | Meaning |
-  |---|---|
-  | `live` | Real-time position, actively being updated |
-  | `shallow` | Recent cached position, not being refreshed live |
-  | `legacy` | Older cached position from a prior session |
-</Accordion>
+`watch(...)` returns a `TypedEventStream<SharedFriendLocationUpdated>`. Close the stream during shutdown or when you no longer need updates.
+
+## Location freshness
+
+`locationType` describes how fresh the location fix is:
+
+| `locationType` | Meaning |
+|---|---|
+| `"live"` | Actively updating live location. |
+| `"shallow"` | Recent cached location. |
+| `"legacy"` | Older cached location from a prior session. |
+| `"unknown"` | The server could not classify the source. |

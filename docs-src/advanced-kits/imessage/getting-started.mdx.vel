@@ -1,13 +1,13 @@
 ---
 title: "Getting Started"
-description: "Install the iMessage Kit and send your first message in minutes"
+description: "Install the Advanced iMessage SDK, connect to a server, and send your first message"
 ---
 
-`@photon-ai/advanced-imessage` is a TypeScript SDK that connects you to our advanced gRPC-based iMessage server.
+`@photon-ai/advanced-imessage` is an ESM-only TypeScript SDK for the Advanced iMessage v2 gRPC server. It exposes resource-oriented namespaces for messages, chats, groups, attachments, addresses, polls, shared locations, and durable events.
 
-It gives you a strongly-typed, resource-oriented API for everything iMessage - sending texts, reacting, scheduling, streaming events, and more.
+The SDK is intentionally thin: each method maps closely to a server RPC, returns typed public objects, and keeps stream recovery explicit.
 
-## Installation
+## Install
 
 <CodeGroup>
 ```bash npm
@@ -27,127 +27,110 @@ bun add @photon-ai/advanced-imessage
 ```
 </CodeGroup>
 
-Requires Node.js 18+ or Bun.
+Requires Node.js `>=18.17` or Bun.
 
-## Quotas
+## Send your first message
 
-<Warning>
-  Default per-server and per-line quotas apply. Contact [help@photon.codes](mailto:help@photon.codes) for an increase.
-
-  - **5,000 messages per server per day.** Counts every message your instance sends across all chats. Additional sends are rejected until the window resets.
-  - **50 new conversations initiated per line per day.** A "new conversation" is the first message your line sends to a recipient it has never messaged before. Replies within existing conversations don't count.
-</Warning>
-
-## Quick start
-
-```ts
-import { createClient, directChat } from "@photon-ai/advanced-imessage";
-
-const im = createClient({
-  address: "your-instance.imsg.photon.codes:443",
-  token: "your-token",
-});
-
-await im.messages.send(directChat("+1234567890"), "Hello!");
-
-await im.close();
-```
-
-## createClient
-
-{% set clientOpts = symbol("ts:@photon-ai/advanced-imessage#ClientOptions") %}
-```ts
-const im = createClient(options: ClientOptions): AdvancedIMessage;
-```
-
-{% if clientOpts and clientOpts.members %}
-| Option | Type | Description |
-|---|---|---|
-{% for m in clientOpts.members -%}
-| `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
-{% endfor %}
-{% endif %}
-
-The returned `AdvancedIMessage` object exposes one property per resource:
-
-```ts
-im.messages           // send, react, edit, list, subscribe
-im.chats              // create, get, typing indicators, subscribe
-im.groups             // rename, add/remove participants, icons
-im.attachments        // upload, download, Live Photos
-im.addresses          // lookup contact info
-im.polls              // create polls, vote
-im.scheduledMessages  // schedule, update, execute
-im.locations          // FindMy friend locations
-```
-
-## Disposing the client
-
-The client implements `Symbol.asyncDispose`, so you can use `await using` in environments that support it:
-
-```ts
-await using im = createClient({ address: "...", token: "..." });
-// client is closed automatically when this block exits
-```
-
-Or close it explicitly:
-
-```ts
-await im.close();
-```
-
-## Your first echo bot
-
-An echo bot subscribes to incoming messages and replies with the same text. It's the simplest end-to-end example - receiving and sending in one loop.
+Create a client, create or resolve a chat, send a text message, then close the connection:
 
 ```ts
 import { createClient } from "@photon-ai/advanced-imessage";
 
 const im = createClient({
-  address: "your-instance.imsg.photon.codes:443",
-  token: "your-token",
+  address: "server-url:443",
+  token: process.env.IMESSAGE_TOKEN!,
 });
 
-for await (const event of im.messages.subscribe("message.received")) {
-  const { message, chatGuid } = event;
+const { chat } = await im.chats.create(["alice@example.com"]);
+const message = await im.messages.sendText(chat.guid, "Hello from the SDK");
 
-  if (!message.text) continue;
+console.log(message.guid);
 
-  await im.messages.send(chatGuid, message.text);
-}
+await im.close();
 ```
 
-The loop runs forever, echoing every text message back to the sender's chat. A few things to note:
+`tls` defaults to `true`, which is the expected setting for hosted endpoints.
 
-- `subscribe("message.received")` narrows the event type - `message` and `chatGuid` are fully typed with no casts needed.
-- Messages without text (images, reactions, etc.) are skipped with the `continue` guard.
-- `chatGuid` is already a `ChatGuid` - pass it directly to `send()`.
+Use an `any;-;...` or `any;+;...` chat GUID with message APIs. `im.chats.create(...)` returns that GUID for you; pass `chat.guid` rather than a bare phone number or email address.
 
-### Prevent the bot from echoing itself
+## Create a client
 
-Filter out messages sent by the server account to avoid infinite loops:
+`createClient` accepts `ClientOptions` and returns an `AdvancedIMessage` client. See the accordion below for the full option list.
+
+`token` may be a string or an async function. Use a function when credentials rotate:
 
 ```ts
-for await (const event of im.messages.subscribe("message.received")) {
-  const { message, chatGuid } = event;
-
-  if (!message.text || message.isFromMe) continue;
-
-  await im.messages.send(chatGuid, message.text);
-}
+const im = createClient({
+  address: "server-url:443",
+  token: async () => process.env.IMESSAGE_TOKEN!,
+});
 ```
 
-## ChatGuid helpers
+<Accordion title="ClientOptions" description="Options for configuring the Advanced iMessage client.">
+  | Option | Type | Description |
+  |---|---|---|
+  | `address` | `string` | The iMessage server address to connect to, for example `"server-url:443"`. |
+  | `token` | `string \| (() => Promise<string>)` | Bearer token, or an async function that returns a fresh bearer token per RPC. |
+  | `tls` | `boolean` | Use TLS for the gRPC channel. Defaults to `true`. |
+  | `timeout` | `number` | Default unary RPC timeout in milliseconds. Streaming RPCs stay open. |
+  | `retry` | `boolean \| RetryOptions` | Retries retryable unary RPC failures. Streaming RPCs are never retried automatically. |
+</Accordion>
 
-All APIs that target a conversation require a `ChatGuid`. Never construct the raw GUID string yourself - use the helpers:
+## Resource namespaces
+
+The returned client exposes one namespace per server resource:
 
 ```ts
-import { directChat, groupChat, parseChatGuid } from "@photon-ai/advanced-imessage";
-
-directChat("+1234567890"); // direct message to a phone number
-groupChat("chat123"); // group chat by identifier
-
-parseChatGuid(guid);
-// { type: "direct", address: "+1234567890", raw: ChatGuid }
-// { type: "group",  identifier: "chat123",  raw: ChatGuid }
+im.messages     // send, edit, unsend, react, list, subscribe
+im.chats        // create, get, count, backgrounds, typing, read state
+im.groups       // rename, add/remove participants, icons, leave
+im.attachments  // upload, metadata, streamed download
+im.addresses    // address metadata, Focus, iMessage availability
+im.polls        // create, vote, unvote, add option, subscribe
+im.locations    // list/get shared locations, watch live updates
+im.events       // durable catch-up after disconnects
 ```
+
+## Chat GUIDs
+
+Methods that take `chat` expect a server chat GUID, not a raw phone number or email address.
+
+```ts
+const direct = "any;-;alice@example.com";
+const group = "any;+;group-chat-guid";
+```
+
+In normal code, pass `chat.guid` returned by SDK calls:
+
+```ts
+const { chat } = await im.chats.create(["alice@example.com"]);
+await im.messages.sendText(chat.guid, "Using the returned chat GUID");
+```
+
+The SDK does not turn bare phone numbers, emails, or group identifiers into chat GUIDs for message APIs. Use `im.chats.create(...)`, `im.chats.get(...)`, message results, or event payloads to obtain the right `chat.guid`.
+
+`any;-;...` identifies a direct chat. `any;+;...` identifies a group chat. Group-only APIs under `im.groups` require an `any;+;...` GUID.
+
+## Close the client
+
+Call `close()` when your process is done with the gRPC channel:
+
+```ts
+await im.close();
+```
+
+In runtimes that support explicit resource management, the client also implements `Symbol.asyncDispose`:
+
+```ts
+await using im = createClient({
+  address: "server-url:443",
+  token: process.env.IMESSAGE_TOKEN!,
+});
+```
+
+## What to read next
+
+- [Messages](/advanced-kits/imessage/messages) covers text, attachments, multipart sends, reactions, edits, reads, and message events.
+- [Chats & Groups](/advanced-kits/imessage/chats) covers chat creation, typing, backgrounds, group membership, and group icons.
+- [Events](/advanced-kits/imessage/events) explains durable catch-up, event ordering, and stream consumption.
+- [Error Handling](/advanced-kits/imessage/error-handling) explains SDK error classes, retry hints, and structured server context.

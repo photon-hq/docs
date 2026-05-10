@@ -1,71 +1,125 @@
 ---
 title: "Polls"
-description: "Create polls, cast votes, add options, and stream poll events"
+description: "Create polls, vote, add choices, read state, and stream poll events"
 ---
 
-import { TypeTooltip } from "/snippets/type-tooltip.mdx";
-
-`im.polls` manages polls attached to messages in a chat - creation, voting, adding options, and real-time poll event subscription.
+`im.polls` manages iMessage poll messages. Create a poll in a chat, then use the returned `pollMessageGuid` for reads, votes, unvotes, and added options.
 
 ## Create a poll
 
 ```ts
-const receipt = await im.polls.create(chat, "What should we order?", ["Pizza", "Sushi", "Burgers"]);
+const poll = await im.polls.create(chat.guid, "What should we order?", [
+  "Pizza",
+  "Sushi",
+  "Burgers",
+]);
+
+console.log(poll.pollMessageGuid);
 ```
 
-{% set cmdReceipt = symbol("ts:@photon-ai/advanced-imessage#CommandReceipt") %}
-Returns a <TypeTooltip name="CommandReceipt" type={`{{ cmdReceipt.signature }}`} /> whose `guid` is the GUID of the poll message - store it to vote or add options later.
+Returns a `Poll` with the poll message GUID, current options, and current votes.
 
-## Vote on an option
+Create input rules:
 
-Pass the option's server-assigned `optionIdentifier` (from `PollInfo.options[].optionIdentifier`):
+- `chat` is the chat GUID where the poll message should be sent.
+- `title` must not be empty after trimming.
+- `choices` must contain at least two strings.
+- Each choice must not be empty after trimming.
+- Pass `clientMessageId` only when retrying the same logical poll creation from your own job system.
+
+## Vote
+
+Pass the option's `optionIdentifier` from `poll.options`:
 
 ```ts
-await im.polls.vote(chat, pollMessageGuid, optionIdentifier);
+await im.polls.vote(poll.pollMessageGuid, poll.options[0]!.optionIdentifier, {
+  clientMessageId: "lunch-vote",
+});
 ```
+
+`vote(...)` returns the updated `Poll`. Voting again changes the authenticated account's vote.
+
+The `optionIdentifier` must come from the poll's current `options`. Do not pass the visible option text.
+
+`vote(...)` throws `NotFoundError` when the poll does not exist or `ValidationError` when the option identifier is not valid for that poll.
 
 ## Remove your vote
 
 ```ts
-await im.polls.unvote(chat, pollMessageGuid);
+await im.polls.unvote(poll.pollMessageGuid, {
+  clientMessageId: "lunch-unvote",
+});
 ```
+
+`unvote(...)` returns the updated `Poll`.
+
+`unvote(...)` throws `NotFoundError` when the poll does not exist.
+
+Pass `clientMessageId` only when retrying the same logical unvote.
 
 ## Add a new option
 
-Any participant can append an option to an existing poll:
-
 ```ts
-await im.polls.addOption(chat, pollMessageGuid, "Thai");
+const updated = await im.polls.addOption(poll.pollMessageGuid, "Thai", {
+  clientMessageId: "lunch-add-thai",
+});
 ```
 
-## Get poll state
+`addOption(...)` returns the updated `Poll`.
+
+The option text is trimmed by the server and must not be empty after trimming.
+
+Pass `clientMessageId` only when retrying the same logical option addition.
+
+## Get current state
 
 ```ts
-const poll = await im.polls.get(pollMessageGuid);
+const latest = await im.polls.get(poll.pollMessageGuid);
 ```
 
-{% set pollInfo = symbol("ts:@photon-ai/advanced-imessage#PollInfo") %}
-{% set pollOption = symbol("ts:@photon-ai/advanced-imessage#PollOption") %}
-{% set pollVote = symbol("ts:@photon-ai/advanced-imessage#PollVote") %}
-Returns a <TypeTooltip name="PollInfo" type={`{{ pollInfo.signature }}`} /> with the current title, <TypeTooltip name="PollOption" type={`{{ pollOption.signature }}`} />s, and <TypeTooltip name="PollVote" type={`{{ pollVote.signature }}`} />s.
+`get(...)` returns the latest `Poll` state for the poll message GUID. It throws `NotFoundError` when the poll does not exist.
 
-## Real-time poll events
+Poll methods after creation take `pollMessageGuid`, not `chat.guid`.
+
+The returned poll includes option rows with `optionIdentifier` and `text`, plus vote rows with `optionIdentifier` and `participant`.
+
+## Poll events
 
 ```ts
-for await (const event of im.polls.subscribe()) {
-  // event.type === "poll.changed"
-  console.log(event.action, event.pollMessageGuid);
+for await (const event of im.polls.subscribeEvents({
+  pollMessage: poll.pollMessageGuid,
+})) {
+  switch (event.delta.type) {
+    case "created":
+    case "optionAdded":
+      console.log(event.delta.options);
+      break;
+    case "voted":
+      console.log(event.delta.optionIdentifier);
+      break;
+    case "unvoted":
+      console.log("vote removed");
+      break;
+  }
 }
 ```
 
-{% set pollEvent = symbol("ts:@photon-ai/advanced-imessage#PollEvent") %}
-<Accordion title="PollEvent actions" description="{{ pollEvent.doc.summary }}">
-  | `event.action` | When it fires |
+`subscribeEvents(...)` returns a `TypedEventStream<PollEvent>`. Pass `{ pollMessage: poll.pollMessageGuid }` to scope the stream to one poll; omit the filter to receive poll events for all polls.
+
+<Accordion title="PollEvent" description="Poll changes emitted by im.polls.subscribeEvents(...).">
+  | Property | Meaning |
   |---|---|
-  | `created` | A new poll was created in the chat |
-  | `voted` | A participant cast a vote |
-  | `unvoted` | A participant removed their vote |
-  | `optionAdded` | A participant appended a new option |
+  | `type` | Always `poll.changed`. |
+  | `pollMessageGuid` | Poll message GUID for the changed poll. |
+  | `delta` | The concrete poll change. |
+  | `sequence`, `chatGuid`, `isFromMe`, `occurredAt`, `actor?` | Shared event context fields. |
 </Accordion>
 
-Every `PollEvent` also carries `chatGuid`, `pollMessageGuid`, `message` (the message containing the poll), and `timestamp`.
+<Accordion title="PollChangeDelta" description="Concrete poll changes on event.delta.">
+  | `delta.type` | Extra fields |
+  |---|---|
+  | `created` | `title`, `options` |
+  | `optionAdded` | `title`, `options` |
+  | `voted` | `optionIdentifier` |
+  | `unvoted` | - |
+</Accordion>

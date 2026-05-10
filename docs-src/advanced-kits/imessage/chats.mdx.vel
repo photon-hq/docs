@@ -1,191 +1,220 @@
 ---
 title: "Chats & Groups"
-description: "Create and manage conversations, typing indicators, and group membership"
+description: "Create chats, manage read state and backgrounds, and update group metadata"
 ---
 
-import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+`im.chats` manages conversations. `im.groups` handles group-only operations such as display names, participants, group icons, and leaving.
 
-`im.chats` manages direct and group conversations. `im.groups` handles group-specific operations like renaming, adding participants, and changing icons.
+## Create a chat
 
-## Chats
-
-### Create a chat
+One address creates or resolves a direct chat. Two or more addresses create or resolve a group chat.
 
 ```ts
-const { chat, sendReceipt } = await im.chats.create(["+1234567890"], {
-  message: "Hey!",
-  service: "iMessage",
-  subject: "Optional subject",
-  effectId: MessageEffect.confetti,
-  clientMessageId: "my-idempotency-key",
-});
+const { chat } = await im.chats.create(["alice@example.com"]);
+console.log(chat.guid);
 ```
 
-`sendReceipt` is present only when an initial `message` was provided.
+Send an opening message in the same server call:
 
-{% set createChatOpts = symbol("ts:@photon-ai/advanced-imessage#CreateChatOptions") %}
+```ts
+const result = await im.chats.create(["alice@example.com"], {
+  message: "hello from SDK",
+  clientMessageId: "create-chat-alice",
+});
 
-<Accordion title="CreateChatOptions" description="{{ createChatOpts.doc.summary }}">
+console.log(result.chat.guid, result.initialMessage?.guid);
+```
+
+`create(...)` returns `{ chat, initialMessage? }`.
+
+Input rules:
+
+- Pass at least one full email address or phone number in `addresses`.
+- The server normalizes addresses and rejects short codes, service numbers, invalid emails, and duplicate canonical recipients.
+- `options.message` sends an opening text message in the same RPC.
+- When `options.message` is omitted, `initialMessage` is not present in the result.
+- When provided, `options.message` is trimmed by the server and must not be empty after trimming.
+
+<Accordion title="CreateChatOptions" description="Optional opening-message fields for im.chats.create(...).">
   | Option | Type | Description |
   |---|---|---|
-  {% for m in createChatOpts.members -%}
-  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
-  {% endfor %}
+  | `message` | `string` | Optional opening text sent in the same call that creates the chat. |
+  | `subject` | `string` | Optional subject line for the opening message. |
+  | `effect` | `MessageEffect` | Optional full-screen or bubble effect for `message`. |
+  | `clientMessageId` | `string` | Stable key for retrying the same logical chat creation. |
+  | `attributedBody` | `Uint8Array` | Advanced: pre-rendered attributed body for callers that already generate Apple's attributed payload. Most callers should omit it. |
 </Accordion>
 
-### Get a chat
+## Get and count chats
 
 ```ts
-const chat = await im.chats.get(chatGuid);
+const chat = await im.chats.get("any;-;alice@example.com");
+
+const active = await im.chats.count();
+const includingArchived = await im.chats.count({ includeArchived: true });
 ```
 
-{% set chatType = symbol("ts:@photon-ai/advanced-imessage#Chat") %}
-The returned <TypeTooltip name="Chat" type={`{{ chatType.signature }}`} /> object contains the chat's identifiers, participants, latest message, and status flags.
+`get(...)` returns a `Chat` with identifiers, participants, service, unread count, and the latest message when available. `count(...)` returns a number. By default, archived chats are excluded.
 
-### Count chats
+`get(...)` takes a structured chat GUID. It does not accept a bare email address, phone number, display name, or group identifier.
+
+## Typing, read state, and contact cards
 
 ```ts
-const total = await im.chats.count();
-const totalWithArchived = await im.chats.count({ includeArchived: true });
+await im.chats.setTyping(chat.guid, true);
+await im.chats.setTyping(chat.guid, false);
+
+await im.chats.markRead(chat.guid);
+
+await im.chats.shareContactInfo(chat.guid);
 ```
 
-### Typing indicators
+`setTyping(...)`, `markRead(...)`, and `shareContactInfo(...)` return `void` after the server accepts the command.
+
+Typing indicators are transient. They are not durable events and should not be used as state.
+
+Pass `true` to `setTyping(...)` to start the typing indicator and `false` to stop it.
+
+## Chat backgrounds
+
+Chat backgrounds use raw image bytes, not uploaded attachment GUIDs:
 
 ```ts
-// Show typing bubble
-await im.chats.startTyping(chatGuid);
+await im.chats.setBackground(chat.guid, await readFile("background.jpg"));
 
-// Stop typing bubble
-await im.chats.stopTyping(chatGuid);
+const present = await im.chats.hasBackground(chat.guid);
+
+await im.chats.removeBackground(chat.guid);
 ```
 
-### Share contact info
+`setBackground(...)` and `removeBackground(...)` return `void`. `hasBackground(...)` returns a boolean.
+
+Background input rules:
+
+- Pass raw image bytes. Do not pass an uploaded attachment GUID.
+- Data must not be empty.
+- The server detects the image type from the bytes.
+- Supported background inputs are JPEG, PNG, HEIC, and HEIF.
+
+Other image formats can still be uploaded and sent as normal attachments.
+
+Removing a background is safe to repeat: clearing a chat that has no custom background still succeeds.
+
+## Chat events
 
 ```ts
-await im.chats.shareContactInfo(chatGuid);
-```
-
-### Get participants
-
-```ts
-const participants = await im.chats.getParticipants(chatGuid);
-```
-
-{% set addressInfo = symbol("ts:@photon-ai/advanced-imessage#AddressInfo") %}
-Returns an array of <TypeTooltip name="AddressInfo" type={`{{ addressInfo.signature }}`} />.
-
-### Leave a chat
-
-```ts
-await im.chats.leave(chatGuid);
-```
-
-### Mark as read
-
-```ts
-await im.chats.markRead(chatGuid);
-```
-
-### Real-time chat events
-
-```ts
-for await (const event of im.chats.subscribe()) {
-  event.type;
-}
-
-for await (const event of im.chats.subscribe("chat.typingIndicator")) {
-  console.log(event.isTyping, event.displayName);
+for await (const event of im.chats.subscribeEvents({ chat: chat.guid })) {
+  console.log(event.type, event.sequence);
 }
 ```
 
-{% set chatEvent = symbol("ts:@photon-ai/advanced-imessage#ChatEvent") %}
-<Accordion title="Chat event types" description="{{ chatEvent.doc.summary }}">
-  | `event.{{ chatEvent.discriminator }}` | Extra fields |
+`subscribeEvents(...)` returns a `TypedEventStream<ChatEvent>`. Pass `{ chat: chat.guid }` to scope the stream to one chat; omit the filter to receive chat events for all chats.
+
+<Accordion title="ChatEvent" description="Chat-level changes emitted by im.chats.subscribeEvents(...).">
+  | `event.type` | Extra fields |
   |---|---|
-  {% for v in chatEvent.variants -%}
-  | `{{ v.name }}` | {% if v.fields and v.fields|length %}{% for f in v.fields %}`{{ f.name }}{% if f.optional %}?{% endif %}`{% if not loop.last %}, {% endif %}{% endfor %}{% else %}-{% endif %} |
-  {% endfor %}
+  | `chat.backgroundChanged` | Shared event context fields. |
+  | `chat.backgroundRemoved` | Shared event context fields. |
+  | `chat.markedRead` | Shared event context fields. |
+  | `chat.archived` | Shared event context fields. |
+  | `chat.unarchived` | Shared event context fields. |
 </Accordion>
 
-## Groups
+All chat events include `sequence`, `chatGuid`, `isFromMe`, `occurredAt`, and optional `actor`.
 
-### Rename a group
+## Rename a group
+
+Group operations require an `any;+;...` group chat GUID. Direct chats reject group mutations server-side.
 
 ```ts
-const updatedChat = await im.groups.setDisplayName(chatGuid, "New Group Name");
+const updated = await im.groups.setDisplayName(group.guid, "Weekend");
 ```
 
-### Manage participants
+`setDisplayName(...)` returns the updated `Chat`. The SDK trims and validates the display name before sending the RPC.
+
+## Manage group participants
 
 ```ts
-const updatedChat = await im.groups.addParticipant(chatGuid, "newperson@icloud.com");
-const updatedChat2 = await im.groups.removeParticipant(chatGuid, "oldperson@icloud.com");
+const afterAdd = await im.groups.addParticipants(group.guid, ["carol@example.com", "+15551234567"]);
+
+const afterRemove = await im.groups.removeParticipants(group.guid, ["carol@example.com"]);
 ```
 
-### Group icons
+Both methods return the updated `Chat`.
+
+Participant rules:
+
+- `addresses` must be a non-empty string array.
+- Addresses are trimmed before the RPC.
+- The server rejects duplicate canonical addresses in the same request.
+- `addParticipants(...)` invites addresses that are not already in the group.
+- `removeParticipants(...)` requires the addresses to be current participants.
+- The server may reject an address that cannot be resolved.
+- Pass `{ clientMessageId }` only when retrying the same logical participant mutation.
+
+## Group icons
 
 ```ts
-// Get icon
-const iconBytes = await im.groups.getIcon(chatGuid);
-// iconBytes: Uint8Array | null
+await im.groups.setIcon(group.guid, await readFile("icon.png"));
 
-// Change icon (pass raw image bytes)
-await im.groups.setIcon(chatGuid, imageBytes); // imageBytes: Uint8Array
+const icon = await im.groups.getIcon(group.guid);
+console.log(icon.mimeType, icon.data.byteLength);
 
-// Remove icon
-await im.groups.removeIcon(chatGuid);
+await im.groups.removeIcon(group.guid);
 ```
 
-### Group backgrounds
+`setIcon(...)` and `removeIcon(...)` return `void`. `getIcon(...)` returns `{ data, mimeType }`.
+
+If the group has no icon, the SDK throws `NotFoundError` with `code === ErrorCode.groupIconNotFound`.
+
+Icon input rules:
+
+- Pass raw image bytes.
+- Data must not be empty.
+- The server detects the image type from the bytes.
+- Supported group icon inputs are PNG, JPEG, GIF, HEIC, and HEIF.
+- Pass `{ clientMessageId }` to `setIcon(...)` or `removeIcon(...)` only when retrying the same logical icon mutation.
+
+## Leave a group
 
 ```ts
-// Get background
-const bgInfo = await im.groups.getBackground(chatGuid);
-
-// Set background (pass raw image bytes)
-const bgInfo2 = await im.groups.setBackground(chatGuid, imageBytes);
-
-// Remove background
-await im.groups.removeBackground(chatGuid);
+await im.groups.leave(group.guid);
 ```
 
-{% set backgroundInfo = symbol("ts:@photon-ai/advanced-imessage#BackgroundInfo") %}
-`getBackground` returns <TypeTooltip name="BackgroundInfo" type={`{{ backgroundInfo.signature }}`} /> or `null`. 
+`leave(...)` returns `void` after the server accepts the command. Leaving is irreversible from this SDK call. You need another participant to invite the account back.
 
-`setBackground` returns the newly applied <TypeTooltip name="BackgroundInfo" type={`{{ backgroundInfo.signature }}`} />.
+Pass `{ clientMessageId }` only when retrying the same logical leave request.
 
-### Group events
-
-Group changes are emitted as a single `group.changed` event with a discriminated `change` field:
+## Group events
 
 ```ts
-for await (const event of im.groups.subscribe()) {
-  // event.type === "group.changed"
+for await (const event of im.groups.subscribeEvents({ chat: group.guid })) {
   switch (event.change.type) {
-    case "renamed":
-      console.log("New name:", event.change.name);
+    case "displayNameChanged":
+      console.log(event.change.displayName);
       break;
     case "participantAdded":
-      console.log("Added:", event.change.address);
-      break;
     case "participantRemoved":
-      console.log("Removed:", event.change.address);
+    case "participantLeft":
+      console.log(event.change.participant.address);
       break;
     case "iconChanged":
     case "iconRemoved":
-    case "backgroundChanged":
-    case "backgroundRemoved":
-      // handle icon/background changes
+      console.log(event.change.type);
       break;
   }
 }
 ```
 
-{% set groupChange = symbol("ts:@photon-ai/advanced-imessage#GroupChange") %}
-<Accordion title="Group change types" description="{{ groupChange.doc.summary }}">
-  | `change.{{ groupChange.discriminator }}` | Extra fields |
+`subscribeEvents(...)` returns a `TypedEventStream<GroupEvent>`. Pass `{ chat: group.guid }` to scope the stream to one group; omit the filter to receive group events for all groups.
+
+<Accordion title="GroupChange" description="Group changes emitted inside a group.changed event.">
+  | `change.type` | Extra fields |
   |---|---|
-  {% for v in groupChange.variants -%}
-  | `{{ v.name }}` | {% if v.fields and v.fields|length %}{% for f in v.fields %}`{{ f.name }}{% if f.optional %}?{% endif %}`{% if not loop.last %}, {% endif %}{% endfor %}{% else %}-{% endif %} |
-  {% endfor %}
+  | `displayNameChanged` | `displayName` |
+  | `participantAdded` | `participant` |
+  | `participantRemoved` | `participant` |
+  | `participantLeft` | `participant` |
+  | `iconChanged` | - |
+  | `iconRemoved` | - |
 </Accordion>

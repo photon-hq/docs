@@ -1,270 +1,415 @@
 ---
 title: "Messages"
-description: "Send, react to, edit, and list iMessages"
+description: "Send, reply, react, edit, list, and subscribe to iMessage events"
 ---
 
-import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+`im.messages` covers individual message operations: sending text, sending uploaded attachments, multipart messages, replies, edits, unsends, reactions, stickers, reads, embedded media, pagination, and live message events.
 
-`im.messages` covers everything related to individual messages - sending plain text, rich multipart messages, reacting, editing, unsending, paginated listing, and real-time event subscriptions.
+## Send text
 
-## Sending Messages
+```ts
+const sent = await im.messages.sendText(chat.guid, "Hello");
 
-The SDK has four sending APIs. Use the simplest one that covers your use case.
+console.log(sent.guid);
+```
 
-<Tabs>
-  <Tab title="Plain text">
-    ```ts
-    await im.messages.send(chat, "Hello!");
-    ```
-  </Tab>
-  <Tab title="With options">
-    ```ts
-    import { MessageEffect } from "@photon-ai/advanced-imessage";
+All send and mutation methods that produce a visible message return a `Message` snapshot.
 
-    await im.messages.send(chat, "Hello!", {
-      effect: MessageEffect.confetti,
-      replyTo: someMessageGuid,
-      subject: "Hey",
-      attachment: attachmentGuid,
-      audioMessage: false,
-    });
-    ```
+The `chat` argument is always a server chat GUID such as `any;-;alice@example.com` or `any;+;group-id`. In normal code, pass `chat.guid` returned by `im.chats.create(...)`, `im.chats.get(...)`, message results, or event payloads.
 
-    {% set sendOpts = symbol("ts:@photon-ai/advanced-imessage#SendOptions") %}
+`text` is trimmed by the server and must not be empty after trimming.
 
-    <Accordion title="SendOptions" description="{{ sendOpts.doc.summary }}">
-      | Option | Type | Description |
-      |---|---|---|
-      {% for m in sendOpts.members -%}
-      | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
-      {% endfor %}
-    </Accordion>
-  </Tab>
-  <Tab title="Multipart">
-    Use `sendMultipart()` when you want per-part formatting or mentions without the builder's fluent style.
+### Send with options
 
-    ```ts
-    await im.messages.sendMultipart(chat, [
-      { text: "Hey " },
-      { mention: "alice@icloud.com", text: "@Alice" },
-      { text: "!" },
-    ]);
-    ```
+```ts
+import { MessageEffect, TextEffect } from "@photon-ai/advanced-imessage";
 
-    Formatting is specified per-part via `MessagePart.formatting` rather than at the top level; every other `SendOptions` field applies normally.
-  </Tab>
-  <Tab title="MessageBuilder">
-    Use the builder when you want chained, fluent construction - same capability as `sendMultipart()` with a more readable surface.
+await im.messages.sendText(chat.guid, "Happy birthday", {
+  effect: MessageEffect.confetti,
+  enableLinkPreview: true,
+  formatting: [{ type: "effect", start: 0, length: 5, effect: TextEffect.bloom }],
+  clientMessageId: "birthday-2026-alice",
+});
+```
 
-    ```ts
-    import { MessageBuilder, MessageEffect } from "@photon-ai/advanced-imessage";
+<Accordion title="SendOptions" description="Optional fields for im.messages.sendText(...).">
+  | Option | Type | Description |
+  |---|---|---|
+  | `clientMessageId` | `string` | Stable key for retrying the same logical send. Most sends do not need one. |
+  | `effect` | `MessageEffect` | Full-screen or bubble effect to apply to the outgoing message. |
+  | `enableDataDetection` | `boolean` | Enables Apple's data-detector pass for links, dates, addresses, and similar text. |
+  | `enableLinkPreview` | `boolean` | Asks Messages to generate rich URL previews when possible. |
+  | `formatting` | `TextFormatInput[]` | UTF-16 ranges for bold, italic, underline, strikethrough, or text effects. |
+  | `replyTo` | `string \| { guid: string; partIndex?: number }` | Message GUID, or message GUID plus multipart bubble index, to reply to. |
+  | `subject` | `string` | Optional subject line for the outgoing message. |
+</Accordion>
 
-    await im.messages.sendComposed(
-      chat,
-      MessageBuilder.multipart()
-        .addText("Hey ")
-        .addMention("@Alice", "alice@icloud.com")
-        .addText("!")
-        .withEffect(MessageEffect.slam)
-        .asReplyTo(someGuid)
-        .build(),
-    );
-    ```
-  </Tab>
-</Tabs>
+### Reply to a message
 
-{% set sendReceipt = symbol("ts:@photon-ai/advanced-imessage#SendReceipt") %}
-All four APIs return a <TypeTooltip name="SendReceipt" type={`{{ sendReceipt.signature }}`} />.
+Reply to a whole message:
 
-### Available effects
+```ts
+await im.messages.sendText(chat.guid, "reply", {
+  replyTo: sent.guid,
+});
+```
+
+Reply to one bubble in a multipart message:
+
+```ts
+await im.messages.sendText(chat.guid, "reply to part 2", {
+  replyTo: { guid: sent.guid, partIndex: 2 },
+});
+```
+
+`partIndex` is zero-based when provided. The server validates it against the target message's part count.
+
+## Send attachments
+
+Upload bytes with `im.attachments.upload(...)`, then send the returned attachment GUID:
+
+```ts
+const uploaded = await im.attachments.upload({
+  fileName: "photo.jpg",
+  data: await readFile("photo.jpg"),
+});
+
+await im.messages.sendAttachment(chat.guid, uploaded.attachment.guid, {
+  clientMessageId: "photo-send-1",
+});
+```
+
+`sendAttachment(...)` returns the sent `Message`. The second argument is an attachment GUID from `im.attachments.upload(...)` or from a received message, not a filesystem path.
+
+Optional send-attachment fields:
+
+| Option | Type | Meaning |
+|---|---|---|
+| `replyTo` | `string \| { guid: string; partIndex?: number }` | Reply to a whole message or one multipart bubble. |
+| `effect` | `MessageEffect` | Apply a full-screen or bubble effect. |
+| `isAudioMessage` | `boolean` | Send the attachment using Apple's audio-message presentation. |
+| `clientMessageId` | `string` | Stable key for retrying the same logical send. |
+
+Use `isAudioMessage: true` when the uploaded attachment should be sent as an audio message:
+
+```ts
+await im.messages.sendAttachment(chat.guid, audio.attachment.guid, {
+  isAudioMessage: true,
+});
+```
+
+## Send multipart messages
+
+Multipart sends are atomic and can mix text, mentions, and uploaded attachments:
+
+```ts
+await im.messages.sendMultipart(chat.guid, [
+  { text: "look at this " },
+  { text: "@Alice", mentionedAddress: "alice@example.com" },
+  {
+    attachmentGuid: uploaded.attachment.guid,
+    attachmentName: "photo.jpg",
+  },
+]);
+```
+
+`sendMultipart(...)` returns the sent `Message`.
+
+Input rules:
+
+- `parts` must not be empty.
+- Each part must contain exactly one content value: either non-empty `text` or `attachmentGuid`.
+- Use `mentionedAddress` and `formatting` only on text parts.
+- Omit `bubbleIndex` unless you need an advanced server bubble-order override. Most callers should let the server order parts from the array.
+- If you set `bubbleIndex`, set it on every part. Mixing explicit and omitted `bubbleIndex` values is rejected.
+- Explicit `bubbleIndex` values must be non-negative numbers.
+
+Optional send-multipart fields:
+
+| Option | Type | Meaning |
+|---|---|---|
+| `subject` | `string` | Optional subject line for the outgoing multipart message. |
+| `effect` | `MessageEffect` | Apply a full-screen or bubble effect. |
+| `replyTo` | `string \| { guid: string; partIndex?: number }` | Reply to a whole message or one multipart bubble. |
+| `enableDataDetection` | `boolean` | Enables Apple's data-detector pass for text parts. |
+| `clientMessageId` | `string` | Stable key for retrying the same logical send. |
+
+<Accordion title="MessagePart" description="One text, mention, or attachment bubble in a multipart send.">
+  | Option | Type | Description |
+  |---|---|---|
+  | `text` | `string` | Text for a text or mention bubble. Mutually exclusive with `attachmentGuid`. |
+  | `attachmentGuid` | `string` | Uploaded attachment GUID for an attachment bubble. Mutually exclusive with `text`. |
+  | `attachmentName` | `string` | Optional display name for the attachment bubble. |
+  | `mentionedAddress` | `string` | Address represented by this text part when sending an `@` mention. Text parts only. |
+  | `formatting` | `TextFormatInput[]` | UTF-16 formatting ranges that apply to this part's `text`. Text parts only. |
+  | `bubbleIndex` | `number` | Advanced bubble-order override. If any part sets it, every part must set it. |
+</Accordion>
+
+## Effects and formatting
 
 ```ts
 import { MessageEffect, TextEffect } from "@photon-ai/advanced-imessage";
 ```
 
-{% set messageEffect = symbol("ts:@photon-ai/advanced-imessage#MessageEffect") %}
-{% set textEffect = symbol("ts:@photon-ai/advanced-imessage#TextEffect") %}
-
 <AccordionGroup>
-  <Accordion title="MessageEffect" description="{{ messageEffect.doc.summary }}">
-    | Member | Value |
-    |---|---|
-    {% for v in messageEffect.variants -%}
-    | `{{ messageEffect.name }}.{{ v.name }}` | {% if v.value %}`{{ v.value.text }}`{% else %}-{% endif %} |
-    {% endfor %}
+  <Accordion title="MessageEffect" description="Full-screen and bubble effects accepted by message send methods.">
+    | Member |
+    |---|
+    | `MessageEffect.slam` |
+    | `MessageEffect.loud` |
+    | `MessageEffect.gentle` |
+    | `MessageEffect.invisible` |
+    | `MessageEffect.confetti` |
+    | `MessageEffect.fireworks` |
+    | `MessageEffect.balloons` |
+    | `MessageEffect.heart` |
+    | `MessageEffect.lasers` |
+    | `MessageEffect.celebration` |
+    | `MessageEffect.sparkles` |
+    | `MessageEffect.spotlight` |
+    | `MessageEffect.echo` |
   </Accordion>
-  <Accordion title="TextEffect" description="{{ textEffect.doc.summary }}">
-    | Member | Value |
-    |---|---|
-    {% for v in textEffect.variants -%}
-    | `{{ textEffect.name }}.{{ v.name }}` | {% if v.value %}`{{ v.value.text }}`{% else %}-{% endif %} |
-    {% endfor %}
+  <Accordion title="TextEffect" description="Per-character text effects for formatted ranges.">
+    | Member |
+    |---|
+    | `TextEffect.big` |
+    | `TextEffect.small` |
+    | `TextEffect.shake` |
+    | `TextEffect.nod` |
+    | `TextEffect.explode` |
+    | `TextEffect.ripple` |
+    | `TextEffect.bloom` |
+    | `TextEffect.jitter` |
   </Accordion>
 </AccordionGroup>
 
-## Reactions
+Formatting ranges use UTF-16 offsets, matching Apple's attributed string model.
+
+For `TextEffect`, use `{ type: "effect", start, length, effect }`. For bold, italic, underline, and strikethrough, use the corresponding `type` with `start` and `length`.
+
+## Reactions and stickers
+
+Add or remove a tapback:
 
 ```ts
-import { Reaction } from "@photon-ai/advanced-imessage";
-
-// Tapback
-await im.messages.react(chat, messageGuid, Reaction.love);
-await im.messages.react(chat, messageGuid, Reaction.like, { partIndex: 1 });
-
-// Emoji reaction (iOS 17+)
-await im.messages.reactEmoji(chat, messageGuid, "🔥");
-
-// Remove a tapback
-await im.messages.unreact(chat, messageGuid, Reaction.love);
+await im.messages.setReaction(chat.guid, sent.guid, { kind: "love" }, true);
+await im.messages.setReaction(chat.guid, sent.guid, { kind: "love" }, false);
 ```
 
-{% set cmdReceipt = symbol("ts:@photon-ai/advanced-imessage#CommandReceipt") %}
-All reaction methods return <TypeTooltip name="CommandReceipt" type={`{{ cmdReceipt.signature }}`} />.
+`setReaction(...)` returns the updated target `Message`. Pass `true` to add the reaction and `false` to remove it.
 
-## Edit & unsend
+Send an emoji reaction:
 
 ```ts
-// Edit text (iOS 16+)
-await im.messages.edit(chat, messageGuid, "Corrected text", {
-  backwardCompatText: "Edited: Corrected text",
-  partIndex: 0,
+await im.messages.setReaction(chat.guid, sent.guid, { kind: "emoji", emoji: "🔥" }, true);
+```
+
+Place an uploaded sticker attachment on a message:
+
+```ts
+const sticker = await im.attachments.upload({
+  fileName: "sticker.png",
+  data: await readFile("sticker.png"),
 });
 
-// Retract a message (iOS 16+)
-await im.messages.unsend(chat, messageGuid, { partIndex: 0 });
+await im.messages.placeSticker(chat.guid, sent.guid, sticker.attachment.guid, {
+  x: 120,
+  y: 90,
+  scale: 1,
+});
 ```
 
-## Querying messages
+`placeSticker(...)` returns the updated target `Message`. The sticker argument is an uploaded attachment GUID.
 
-### Get a single message
+Reaction and sticker options accept:
+
+| Option | Type | Meaning |
+|---|---|---|
+| `partIndex` | `number` | Zero-based multipart bubble index. It must target an existing bubble. |
+| `clientMessageId` | `string` | Stable key for retrying the same logical mutation. |
+
+For emoji reactions, pass a non-empty `emoji` value. Stickers use `placeSticker(...)`, not `setReaction(...)`.
+
+<AccordionGroup>
+  <Accordion title="SettableMessageReaction" description="Tapback and emoji reactions accepted by setReaction(...).">
+    | Option | Type | Description |
+    |---|---|---|
+    | `kind` | `"love" \| "like" \| "dislike" \| "laugh" \| "emphasize" \| "question" \| "emoji"` | Tapback family to add or remove. Use `placeSticker(...)` for stickers. |
+    | `emoji` | `string` | Emoji character to send when `kind` is `"emoji"`. Required for emoji reactions. |
+  </Accordion>
+  <Accordion title="StickerPlacement" description="Placement fields for an uploaded sticker attachment.">
+    | Option | Type | Description |
+    |---|---|---|
+    | `x` | `number` | Horizontal position in Apple's normalized coordinate space. |
+    | `y` | `number` | Vertical position in Apple's normalized coordinate space. |
+    | `rotation` | `number` | Optional clockwise rotation in Apple's normalized coordinate space. |
+    | `scale` | `number` | Optional scale factor for the sticker. |
+    | `width` | `number` | Optional rendered sticker width. |
+  </Accordion>
+</AccordionGroup>
+
+## Edit, unsend, and notify silenced
 
 ```ts
-const message = await im.messages.get(guid);
+await im.messages.edit(chat.guid, sent.guid, "Corrected text", {
+  backwardCompatText: "Edited: Corrected text",
+  clientMessageId: "edit-1",
+});
+
+await im.messages.unsend(chat.guid, sent.guid, {
+  clientMessageId: "unsend-1",
+});
 ```
 
-### List with auto-pagination
+`edit(...)` returns the edited `Message`. `unsend(...)` returns `void` after the server accepts the retraction.
 
-`list()` returns a `Paginated<Message>` that is both `await`able and `for await`able - no pagination API to learn.
+For multipart messages, pass `partIndex` to target one bubble:
 
 ```ts
-// First page
-const page = await im.messages.list({ chatGuid: chat, limit: 25 });
-page.data; // Message[]
-page.meta; // { total, offset, limit }
-
-// Stream all messages
-for await (const message of im.messages.list({ chatGuid: chat })) {
-  console.log(message.text);
-}
-
-// Buffer all, with a safety cap
-const all = await im.messages.list({ chatGuid: chat }).toArray({ limit: 500 });
+await im.messages.edit(chat.guid, sent.guid, "Only part 1 changed", {
+  partIndex: 1,
+});
 ```
 
-{% set listOpts = symbol("ts:@photon-ai/advanced-imessage#MessageListOptions") %}
+Apple enforces edit and unsend windows:
 
-<Accordion title="MessageListOptions" description="{{ listOpts.doc.summary }}">
+| Action | Typical Apple window |
+|---|---|
+| `edit(...)` | 15 minutes after sending. |
+| `unsend(...)` | 2 minutes after sending. |
+
+When the server rejects a mutation, the SDK surfaces the server error through the error hierarchy.
+
+When omitted, mutation `partIndex` defaults to the first bubble.
+
+Optional edit fields:
+
+| Option | Type | Meaning |
+|---|---|---|
+| `backwardCompatText` | `string` | Plain-text fallback used when rich edit rendering is unavailable. |
+| `partIndex` | `number` | Zero-based multipart bubble index. Defaults to `0`. |
+| `clientMessageId` | `string` | Stable key for retrying the same logical edit. |
+
+Optional unsend fields:
+
+| Option | Type | Meaning |
+|---|---|---|
+| `partIndex` | `number` | Zero-based multipart bubble index. Defaults to `0`. |
+| `clientMessageId` | `string` | Stable key for retrying the same logical unsend. |
+
+Use `notifySilenced(...)` for Apple's Notify Anyway flow:
+
+```ts
+await im.messages.notifySilenced(chat.guid, sent.guid);
+```
+
+`notifySilenced(...)` returns `void`. It targets the message that triggered the Focus-silenced conversation state.
+
+Pass `{ clientMessageId }` as the optional third argument when your own job system may retry the same Notify Anyway action.
+
+## Get and list messages
+
+Fetch one message inside a known chat:
+
+```ts
+const message = await im.messages.get(chat.guid, sent.guid);
+```
+
+`get(...)` returns one `Message` inside the given chat. It throws `NotFoundError` when the chat or message cannot be resolved.
+
+List recent messages across chats:
+
+```ts
+const recent = await im.messages.listRecent({ pageSize: 25 });
+```
+
+`listRecent(...)` returns a page of messages across chats.
+
+List messages in one chat:
+
+```ts
+const page = await im.messages.listInChat(chat.guid, {
+  pageSize: 25,
+  before: new Date(),
+});
+```
+
+`listInChat(...)` returns a page of messages from one chat.
+
+Continue with `nextPageToken`:
+
+```ts
+let pageToken: string | undefined;
+
+do {
+  const page = await im.messages.listInChat(chat.guid, {
+    pageSize: 50,
+    pageToken,
+  });
+
+  for (const message of page.messages) {
+    console.log(message.guid, message.content.text);
+  }
+
+  pageToken = page.nextPageToken;
+} while (pageToken);
+```
+
+`pageSize`, when provided, must be between `1` and `100`.
+
+Both list methods return `{ messages, nextPageToken }`. Pass `nextPageToken` back as `pageToken` to continue from the previous page.
+
+{% set listFilter = symbol("ts:@photon-ai/advanced-imessage#MessageListFilter") %}
+<Accordion title="MessageListFilter" description="{{ listFilter.doc.summary }}">
   | Option | Type | Description |
   |---|---|---|
-  {% for m in listOpts.members -%}
+  {% for m in listFilter.members -%}
   | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
   {% endfor %}
 </Accordion>
 
-### Message statistics
+## Embedded media
+
+Digital Touch and handwritten messages can carry embedded media that is not a normal attachment. Fetch it with:
 
 ```ts
-const stats = await im.messages.stats();
-stats.total; // number
-stats.sent; // number
-stats.received; // number
+const media = await im.messages.getEmbeddedMedia(chat.guid, message.guid);
+console.log(media.mimeType, media.data.byteLength);
 ```
 
-## Catch up after disconnect
+`getEmbeddedMedia(...)` returns raw media bytes plus the detected MIME type. It throws `NotFoundError` when the chat or message cannot be resolved, and `ValidationError` with `code === ErrorCode.operationNotSupported` when the message exists but is not a supported Digital Touch or handwritten message.
 
-`fetchMissed()` returns messages newer than a cursor from a previous `subscribe()` event. Use it on reconnect to replay anything missed before resuming the live stream.
+## Message events
+
+Subscribe to live message changes:
 
 ```ts
-let cursor = loadPersistedCursor();
-
-if (cursor) {
-  for await (const msg of im.messages.fetchMissed(cursor)) {
-    processMissedMessage(msg);
+for await (const event of im.messages.subscribeEvents({ chat: chat.guid })) {
+  switch (event.type) {
+    case "message.received":
+      console.log(event.message.guid, event.message.content.text);
+      break;
+    case "message.edited":
+      console.log(event.messageGuid, event.editedAt);
+      break;
   }
 }
-
-for await (const event of im.messages.subscribe()) {
-  if (event.cursor) cursor = event.cursor;
-  processEvent(event);
-}
 ```
 
-{% set fetchMissedOpts = symbol("ts:@photon-ai/advanced-imessage#FetchMissedOptions") %}
-<Accordion title="FetchMissedOptions" description="{{ fetchMissedOpts.doc.summary }}">
-  | Option | Type | Description |
-  |---|---|---|
-  {% for m in fetchMissedOpts.members -%}
-  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
-  {% endfor %}
-</Accordion>
+`subscribeEvents(...)` returns a `TypedEventStream<MessageEvent>`. Pass `{ chat: chat.guid }` to scope the stream to one chat; omit the filter to receive message events for all chats.
 
-## Real-time events
-
-`subscribe()` returns a `TypedEventStream<MessageEvent>`. Pass an event type string to narrow the type automatically.
-
-```ts
-// All message events
-for await (const event of im.messages.subscribe()) {
-  event.type; // "message.sent" | "message.received" | "message.updated" | "message.sendError"
-}
-
-// Only incoming messages - TS knows the exact shape
-for await (const event of im.messages.subscribe("message.received")) {
-  console.log(event.message.text);
-  console.log(event.chatGuid);
-}
-```
-
-{% set messageEvent = symbol("ts:@photon-ai/advanced-imessage#MessageEvent") %}
-<Accordion title="Message event types" description="{{ messageEvent.doc.summary }}">
-  | `event.{{ messageEvent.discriminator }}` | Extra fields |
+<Accordion title="MessageEvent" description="Message changes emitted by im.messages.subscribeEvents(...).">
+  | `event.type` | Extra fields |
   |---|---|
-  {% for v in messageEvent.variants -%}
-  | `{{ v.name }}` | {% if v.fields and v.fields|length %}{% for f in v.fields %}`{{ f.name }}{% if f.optional %}?{% endif %}`{% if not loop.last %}, {% endif %}{% endfor %}{% else %}-{% endif %} |
-  {% endfor %}
+  | `message.received` | `message` |
+  | `message.edited` | `messageGuid`, `content`, `editedAt` |
+  | `message.read` | `messageGuid`, `readAt` |
+  | `message.unsent` | `messageGuid`, `retractedAt` |
+  | `message.reactionAdded` | `messageGuid`, `reaction`, `targetPartIndex?` |
+  | `message.reactionRemoved` | `messageGuid`, `reaction`, `targetPartIndex?` |
+  | `message.stickerPlaced` | `messageGuid`, `sticker?`, `placement?`, `targetPartIndex?` |
 </Accordion>
 
-### Stream operators
+All message events include `sequence`, `chatGuid`, `isFromMe`, `occurredAt`, and optional `actor`.
 
-`TypedEventStream` supports `.filter()`, `.map()`, and `.take()`:
-
-```ts
-const incoming = im.messages
-  .subscribe("message.received")
-  .filter((e) => e.message.text !== undefined)
-  .map((e) => ({ from: e.message.sender?.address, text: e.message.text! }));
-
-for await (const { from, text } of incoming) {
-  console.log(`[${from}] ${text}`);
-}
-```
-
-Streams implement `Symbol.asyncDispose`:
-
-```ts
-await using stream = im.messages.subscribe("message.received");
-for await (const event of stream) {
-  ...
-}
-```
-
-## Miscellaneous
-
-```ts
-// Acknowledge a silenced message notification
-await im.messages.notifySilenced(chat, messageGuid);
-
-// Extract embedded media from a rich message (link preview images, etc.)
-const items = await im.messages.getEmbeddedMedia(chat, messageGuid);
-// items: Array<{ data: Uint8Array; mimeType: string }>
-```
+Live streams are observation APIs. Use the response from a write method as the authoritative result for that write, and use [Events](/advanced-kits/imessage/events) after disconnects.

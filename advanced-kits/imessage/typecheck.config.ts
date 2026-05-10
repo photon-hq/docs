@@ -6,68 +6,44 @@ const config: TypecheckConfig = {
   importPreamble: `
 import type {
   AdvancedIMessage,
-  ChatGuid,
-  MessageGuid,
-  AttachmentGuid,
-  ScheduledMessageId,
+  AttachmentInfo,
   Chat,
   Message,
-  AttachmentInfo,
-  StreamedDownload,
-  SendReceipt,
-  CommandReceipt,
-  ScheduledMessage,
-  ScheduledMessageStatus,
-  AddressInfo,
-  ChatServiceType,
-  TransferState,
-  StickerPlacement,
-  BackgroundInfo,
-  TextFormatInput,
+  Poll,
+  UploadAttachmentResult,
 } from "@photon-ai/advanced-imessage";
 
 import {
-  createClient,
-  directChat,
-  groupChat,
-  parseChatGuid,
-  MessageBuilder,
-  MessageEffect,
-  TextEffect,
-  Reaction,
-  ErrorCode,
   AuthenticationError,
   ConnectionError,
+  ErrorCode,
+  IMessageError,
+  MessageEffect,
   NotFoundError,
   RateLimitError,
+  TextEffect,
   ValidationError,
-  IMessageError,
+  createClient,
 } from "@photon-ai/advanced-imessage";
 `.trim(),
   declarePreamble: `
 declare const im: AdvancedIMessage;
-declare const chat: ChatGuid;
-declare const chatGuid: ChatGuid;
-declare const messageGuid: MessageGuid;
-declare const someMessageGuid: MessageGuid;
-declare const someGuid: MessageGuid;
-declare const pollMessageGuid: MessageGuid;
-declare const optionIdentifier: string;
-declare const cursor: string | undefined;
-declare const guid: any;
-declare const attachmentGuid: AttachmentGuid;
-declare const scheduledMessageId: ScheduledMessageId;
-declare const imageBytes: Uint8Array;
-declare const videoBytes: Uint8Array;
-declare let token: string;
-declare const err: unknown;
-declare function sleep(ms: number): Promise<void>;
-declare function refreshToken(): Promise<string>;
-declare function process(...args: any[]): void;
-declare function loadPersistedCursor(): string | undefined;
-declare function processMissedMessage(msg: Message): void;
-declare function processEvent(event: any): void;
-declare function updateMapPin(friend: any): void;
+declare const chat: Chat;
+declare const group: Chat;
+declare const sent: Message;
+declare const message: Message;
+declare const uploaded: UploadAttachmentResult;
+declare const audio: UploadAttachmentResult;
+declare const attachment: AttachmentInfo;
+declare const poll: Poll;
+declare const lastHandledSequence: number | undefined;
+declare const pageToken: string | undefined;
+declare const since: number | undefined;
+declare const job: { id: string };
+declare function readFile(path: string): Promise<Uint8Array>;
+declare function updateMap(location: unknown): void;
+declare function handleEvent(event: unknown): Promise<void>;
+declare function saveSequence(sequence: number): Promise<void>;
 `.trim(),
 }
 

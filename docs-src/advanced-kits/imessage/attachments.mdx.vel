@@ -1,122 +1,120 @@
 ---
 title: "Attachments"
-description: "Upload, download, and stream file attachments"
+description: "Upload files, send them in messages, and stream downloads"
 ---
 
-import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+`im.attachments` handles attachment metadata, uploads, and streamed downloads. To send a file, upload bytes first and pass the returned attachment GUID to `im.messages.sendAttachment(...)`.
 
-`im.attachments` handles file attachments - uploading before sending, streaming downloads, transparent iCloud recovery, and extracting Live Photos.
-
-## Common file types
-
-| Category | Formats | Notes |
-|---|---|---|
-| Images | HEIC, HEIF, JPEG, PNG, GIF, TIFF, BMP, WebP | HEIC/HEIF is preserved end-to-end between Apple devices; iOS transcodes to JPEG when bridging to non-Apple recipients |
-| Video | MOV, MP4 | H.264 for maximum compatibility; HEVC preserved between Apple devices, transcoded to H.264 otherwise. MOV is also the companion container for Live Photos |
-| Audio | M4A (AAC), MP3, WAV, AIFF, FLAC | Delivered as generic audio attachments. Native "voice bubbles" require CAF + Opus, the format Messages.app records into |
-| Stickers | PNG, APNG, GIF, JPEG, HEIC | PNG / APNG recommended. Animated stickers **must** use the `.apng` extension (a `.png` extension shows only frame 1). 500 KB per sticker |
-| Documents | Any file type | PDF, DOCX, XLSX, PPTX, TXT, CSV, ZIP, iWork, anything. Quick Look previews PDF, iWork, MS Office, and TXT inline; everything else shows as a file chip |
-
-<Note>
-  iMessage stores and transfers images in HEIC/HEIF. If you're uploading a JPEG
-  or PNG, the server will accept it, but images received from iMessage will
-  arrive as HEIC/HEIF. Convert them before displaying in non-Apple contexts.
-</Note>
-
-<Tip>
-  Building with JavaScript? Unfortunately the industry-standard `sharp` library requires you to manually build libvips to get HEIC support. Yes, we also struggled with this.
-
-  That's why we built [heif2jpeg](/utilities/heif2jpeg) for you. Use it. You won't regret it.
-</Tip>
-
-<Note>
-  Apple caps individual attachments at roughly **100 MB** - larger files are rejected, trimmed (video), or offered as an iCloud link instead. This is an Apple-side limit, not an SDK one.
-</Note>
 ## Upload an attachment
 
-Upload a file and get back an `AttachmentInfo` object. Use the `guid` property to pass to `im.messages.send()`.
-
 ```ts
-const info = await im.attachments.upload({
-  path: "/path/to/photo.jpg",
-  fileName: "photo.jpg", // optional display name
-  mimeType: "image/jpeg", // optional override
+const uploaded = await im.attachments.upload({
+  fileName: "photo.jpg",
+  data: await readFile("photo.jpg"),
 });
 
-await im.messages.send(chat, "", { attachment: info.guid });
+await im.messages.sendAttachment(chat.guid, uploaded.attachment.guid);
 ```
 
-{% set attInput = symbol("ts:@photon-ai/advanced-imessage#AttachmentInput") %}
-`upload()` takes an <TypeTooltip name="AttachmentInput" type={`{{ attInput.signature }}`} />, which is a union of file path or raw bytes.
+`upload(...)` takes raw file bytes and returns `{ attachment, companion? }`.
 
-## Upload a Live Photo
+Upload input rules:
 
-Upload a paired HEIC image + MOV video as a Live Photo:
+- `fileName` should include the extension you want stored with the attachment.
+- `data` is raw file bytes and must not be empty.
+- The SDK sends bytes to the server. It does not expose or require filesystem paths on the server.
+- The server sanitizes the stored filename at the application boundary.
+- Each primary upload and each Live Photo companion must be no larger than `100 MiB` by default.
+
+<Accordion title="AttachmentInput" description="Fields accepted by im.attachments.upload(...).">
+  | Option | Type | Description |
+  |---|---|---|
+  | `fileName` | `string` | Display filename stored with the attachment, including extension. |
+  | `data` | `Uint8Array` | Raw file bytes to upload. |
+  | `companion` | `{ data: Uint8Array }` | Optional Live Photo companion video bytes. |
+</Accordion>
+
+## Get metadata
 
 ```ts
-const info = await im.attachments.uploadLivePhoto({
-  image: {
-    data: imageBytes, // Uint8Array
-    fileName: "photo.heic",
-    mimeType: "image/heic",
-  },
-  video: {
-    data: videoBytes, // Uint8Array
-  },
-});
+const attachment = await im.attachments.get(uploaded.attachment.guid);
+
+console.log(attachment.fileName, attachment.mimeType, attachment.totalBytes);
 ```
 
-## Get attachment metadata
+`get(...)` takes an attachment GUID and returns attachment metadata with filename, MIME type, UTI, size, transfer state, and flags.
+
+It throws `NotFoundError` when the attachment cannot be resolved.
+
+## Download bytes
+
+`downloadStream(...)` returns a `TypedEventStream<DownloadAttachmentChunk>`. The first frame is metadata, followed by primary file chunks and optional Live Photo companion chunks.
 
 ```ts
-const info = await im.attachments.get(attachmentGuid);
-```
-
-{% set attInfo = symbol("ts:@photon-ai/advanced-imessage#AttachmentInfo") %}
-Returns an <TypeTooltip name="AttachmentInfo" type={`{{ attInfo.signature }}`} /> with file metadata, transfer state, and Live Photo / sticker flags.
-
-## Count attachments
-
-```ts
-const total = await im.attachments.count();
-```
-
-## Download an attachment
-
-{% set streamDl = symbol("ts:@photon-ai/advanced-imessage#StreamedDownload") %}
-`download()` returns a <TypeTooltip name="StreamedDownload" type={`{{ streamDl.signature }}`} /> synchronously - both a streaming and a buffered consumption path.
-
-```ts
-const dl = im.attachments.download(attachmentGuid);
-
-dl.totalBytes; // file size, known from the first chunk
-
-// Stream it
-for await (const chunk of dl.stream) {
-  // ReadableStream<Uint8Array>
-  process(chunk);
+for await (const frame of im.attachments.downloadStream(attachment.guid)) {
+  switch (frame.type) {
+    case "header":
+      console.log(frame.info.fileName, frame.info.mimeType);
+      break;
+    case "primaryChunk":
+      // append frame.data to the primary output
+      break;
+    case "companionChunk":
+      // append frame.data to the Live Photo companion output
+      break;
+  }
 }
-
-// Or buffer the whole thing
-const buffer = await dl.arrayBuffer(); // Uint8Array
 ```
 
-### Quick buffer download
+The stream yields `DownloadAttachmentChunk` frames: one `header` frame, then `primaryChunk` frames and optional `companionChunk` frames.
 
-A convenience method that combines `download()` and `arrayBuffer()`:
+`downloadStream(...)` takes an attachment GUID.
 
-```ts
-const bytes = await im.attachments.downloadBuffer(attachmentGuid);
-// bytes: Uint8Array
-```
+Download flow:
+
+- Use the `header` frame to choose output filenames and MIME handling before writing chunk frames.
+- Close the stream if you stop reading before it ends so the underlying gRPC request can be cancelled.
+- The stream throws `NotFoundError` when the attachment cannot be resolved.
+- If the attachment exists but is not available for download yet, the stream throws `ValidationError` with `code === ErrorCode.attachmentNotReady`.
+- For `attachmentNotReady`, poll `im.attachments.get(...)` and retry when `transferState` becomes finished.
 
 ## Live Photos
 
-Extract the video component from a Live Photo attachment:
+Live Photo upload uses the same `attachments.upload(...)` method with a companion:
 
 ```ts
-const videoDl = im.attachments.getLivePhoto(attachmentGuid);
-const videoBytes = await videoDl.arrayBuffer();
+const livePhoto = await im.attachments.upload({
+  fileName: "live-photo.HEIC",
+  data: await readFile("live-photo.HEIC"),
+  companion: {
+    data: await readFile("live-photo.MOV"),
+  },
+});
+
+await im.messages.sendAttachment(chat.guid, livePhoto.attachment.guid);
 ```
 
-`getLivePhoto()` returns a <TypeTooltip name="StreamedDownload" type={`{{ streamDl.signature }}`} /> synchronously, just like `download()`.
+For Live Photos:
+
+- Use a HEIC/HEIF primary image.
+- Use a QuickTime `.MOV` companion video.
+- Do not use a `.mov` primary filename; the server stores the companion as a sidecar with the same stem and a `.mov` extension, so a `.mov` primary would collide with the companion path.
+- The SDK fixes the companion kind to `"live-photo-video"`; callers only pass companion bytes.
+
+The upload result includes `companion` metadata only when a companion was provided and persisted.
+
+## Supported file guidance
+
+The SDK uploads raw bytes and the server persists the attachment. The server, Messages.app, and Apple's delivery path decide whether a recipient sees an inline preview, a file chip, a transcoded image/video, or an iCloud link.
+
+Commonly used attachment formats include:
+
+| Category | Examples | Notes |
+|---|---|---|
+| Images | HEIC, HEIF, JPEG, PNG, GIF, TIFF, BMP, WebP, AVIF, SVG | Received Apple images often arrive as HEIC/HEIF. Convert before displaying in non-Apple contexts. |
+| Video | MOV, MP4, WebM | Apple may transcode depending on recipient and device support. |
+| Audio | M4A, MP3, WAV, AIFF, FLAC, CAF | Set `isAudioMessage: true` on `sendAttachment(...)` when the attachment should be sent as an audio message. |
+| Documents | PDF, DOCX, XLSX, PPTX, TXT, CSV, JSON, HTML, XML, RTF | Preview behavior depends on the recipient device. |
+| Archives | ZIP, TAR, GZ, BZ2, XZ | Delivered as file attachments. |
+
+Apple may reject or convert large or unsupported payloads. That behavior is outside the SDK and depends on the active Messages transport.

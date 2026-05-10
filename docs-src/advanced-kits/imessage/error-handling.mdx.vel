@@ -1,24 +1,72 @@
 ---
 title: "Error Handling"
-description: "Error class hierarchy and patterns for handling iMessage SDK errors"
+description: "Handle SDK error classes, retry hints, and structured server context"
 ---
 
-import { TypeTooltip } from "/snippets/type-tooltip.mdx";
-
-Every SDK method throws a subclass of `IMessageError` on failure. Use `instanceof` to branch on the specific error type - no boolean getters, no magic strings.
+Every SDK method throws an `IMessageError` subclass on SDK, server, or transport failure. Use `instanceof` for broad handling and `error.code` for precise product behavior.
 
 ## Error hierarchy
 
-```
+```text
 IMessageError
-├── AuthenticationError   token rejected or expired
-├── NotFoundError         chat, message, or attachment does not exist
-├── RateLimitError        server is throttling requests
-├── ValidationError       bad input - wrong types, missing fields
-└── ConnectionError       network or gRPC transport failure
+├── AuthenticationError   token rejected, expired, or not authorized
+├── NotFoundError         chat, message, attachment, poll, address, or icon missing
+├── RateLimitError        server quota or rate limit rejected the request
+├── ValidationError       invalid input or failed precondition
+└── ConnectionError       network, timeout, or unavailable server
 ```
 
-**gRPC status code mapping**
+## Basic handling
+
+```ts
+import {
+  AuthenticationError,
+  ConnectionError,
+  IMessageError,
+  NotFoundError,
+  RateLimitError,
+  ValidationError,
+} from "@photon-ai/advanced-imessage";
+
+try {
+  await im.messages.sendText(chat.guid, "Hello");
+} catch (error) {
+  if (error instanceof RateLimitError) {
+    console.log(error.retryable, error.context);
+  } else if (error instanceof NotFoundError) {
+    console.log(error.code);
+  } else if (error instanceof AuthenticationError) {
+    console.log("refresh credentials");
+  } else if (error instanceof ValidationError) {
+    console.log(error.message, error.context);
+  } else if (error instanceof ConnectionError) {
+    console.log("network or timeout failure");
+  } else if (error instanceof IMessageError) {
+    console.log(error.code, error.grpcCode, error.context);
+  } else {
+    throw error;
+  }
+}
+```
+
+## Error properties
+
+All subclasses inherit the same core fields:
+
+<Accordion title="IMessageError" description="Base error for every failure surfaced by the SDK.">
+  | Property | Type | Description |
+  |---|---|---|
+  | `code` | `ErrorCode` | Stable server error code for product logic. |
+  | `retryable` | `boolean` | Whether retrying the same operation may succeed. |
+  | `grpcCode` | `number` | Underlying gRPC status code. |
+  | `context` | `Record<string, string>` | Structured request-specific metadata from the server. |
+</Accordion>
+
+`context` is structured string metadata from the server. Examples include `field`, `message_guid`, `chat_guid`, `attachmentGuid`, and other request-specific values. Do not parse the human-readable `message` when a context field exists.
+
+Use `message` for logs and user-facing summaries. Use `code` and `context` for program flow.
+
+## gRPC status mapping
 
 | gRPC status | SDK error class |
 |---|---|
@@ -27,91 +75,48 @@ IMessageError
 | `RESOURCE_EXHAUSTED` | `RateLimitError` |
 | `INVALID_ARGUMENT`, `FAILED_PRECONDITION` | `ValidationError` |
 | `UNAVAILABLE`, `DEADLINE_EXCEEDED` | `ConnectionError` |
-| All others | `IMessageError` (base class) |
-
-## Basic usage
-
-```ts
-import {
-  AuthenticationError,
-  ConnectionError,
-  NotFoundError,
-  RateLimitError,
-  ValidationError,
-} from "@photon-ai/advanced-imessage";
-
-try {
-  await im.messages.send(chat, "Hello!");
-} catch (err) {
-  if (err instanceof RateLimitError) {
-    // back off and retry
-    await sleep(1000);
-  } else if (err instanceof NotFoundError) {
-    // chat does not exist
-    console.error("Chat not found:", chat);
-  } else if (err instanceof AuthenticationError) {
-    // refresh the token
-    token = await refreshToken();
-  } else if (err instanceof ValidationError) {
-    // bad input, do not retry
-    console.error("Invalid request:", err.message);
-  } else if (err instanceof ConnectionError) {
-    // transient transport failure
-    console.error("Connection lost:", err.message);
-  } else {
-    throw err;
-  }
-}
-```
-
-## IMessageError properties
-
-{% set imsgError = symbol("ts:@photon-ai/advanced-imessage#IMessageError") %}
-All error subclasses inherit from <TypeTooltip name="IMessageError" type={`{{ imsgError.signature }}`} />.
-
-<Accordion title="IMessageError properties" description="{{ imsgError.doc.summary }}">
-  | Property | Type | Description |
-  |---|---|---|
-  {% for m in imsgError.members %}{% if m.kind == "property" -%}
-  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
-  {% endif %}{% endfor %}
-</Accordion>
-
-The `retryable` flag is read from the server's gRPC trailing metadata (`x-retryable` header), so it is determined by the server on a per-response basis. By convention, `RateLimitError` and `ConnectionError` are typically retryable, but the server may override this for any error type.
+| All others | `IMessageError` |
 
 ## Error codes
 
 {% set errorCode = symbol("ts:@photon-ai/advanced-imessage#ErrorCode") %}
-`ErrorCode` has {{ errorCode.variants | length }} values across 6 categories:
+`ErrorCode` is exported as both a runtime object and a TypeScript union for the SDK's documented server codes.
 
 <Accordion title="ErrorCode" description="{{ errorCode.doc.summary }}">
   | Category | Error codes |
   |---|---|
   | Authentication | `unauthenticated`, `tokenExpired`, `tokenBlocked`, `unauthorized` |
-  | Rate limiting | `dailyLimitExceeded`, `recipientLimitExceeded` |
-  | Deduplication | `duplicateMessage` |
-  | Not found | `chatNotFound`, `messageNotFound`, `attachmentNotFound`, `addressNotFound`, `scheduledMessageNotFound`, `pollNotFound` |
-  | Validation | `invalidArgument`, `preconditionFailed`, `operationNotSupported`, `privateApiUnavailable` |
+  | Rate limiting | `dailyLimitExceeded`, `recipientLimitExceeded`, `uploadRateExceeded`, `contentDuplicateExceeded`, `recipientCoolingDown`, `recipientLocked`, `sendReceiveRatioExceeded` |
+  | Duplicate writes | `duplicateMessage` |
+  | Not found | `chatNotFound`, `messageNotFound`, `attachmentNotFound`, `addressNotFound`, `sharedFriendLocationNotFound`, `groupIconNotFound`, `pollNotFound` |
+  | Validation | `invalidArgument`, `preconditionFailed`, `operationNotSupported`, `attachmentNotReady`, `privateApiUnavailable` |
   | Infrastructure | `serviceUnavailable`, `timeout`, `internalError`, `databaseError`, `networkError` |
 </Accordion>
 
-```ts
-import { ErrorCode } from "@photon-ai/advanced-imessage";
+The server may add new error-code strings before a newer SDK exports matching `ErrorCode` constants. In that case, `error.code` still carries the string returned by the server; compare against the exported constants where possible and keep a fallback path for unknown codes.
 
-if (err instanceof IMessageError && err.code === ErrorCode.chatNotFound) {
-  // handle specifically
+For example, current servers may return infrastructure strings such as `fileIOFailed`, `encodingFailed`, or `anchorUnavailable` even if your installed SDK version does not expose matching `ErrorCode` constants yet.
+
+```ts
+import { ErrorCode, IMessageError } from "@photon-ai/advanced-imessage";
+
+try {
+  await im.messages.get(chat.guid, "missing-message-guid");
+} catch (error) {
+  if (error instanceof IMessageError && error.code === ErrorCode.chatNotFound) {
+    // prompt the user to pick another conversation
+  }
 }
 ```
 
-## Retrying with the SDK
+## Retry behavior
 
-{% set retryOpts = symbol("ts:@photon-ai/advanced-imessage#RetryOptions") %}
-Set `retry: true` (or a `RetryOptions` object) in `createClient` to let the SDK handle transient retries automatically:
+Set `retry: true` or pass a retry options object to retry retryable unary RPC failures:
 
 ```ts
 const im = createClient({
-  address: "your-instance.imsg.photon.codes:443",
-  token: "...",
+  address: "server-url:443",
+  token: process.env.IMESSAGE_TOKEN!,
   retry: {
     maxAttempts: 3,
     initialDelay: 200,
@@ -120,18 +125,31 @@ const im = createClient({
 });
 ```
 
-When `retry` is enabled, `ConnectionError` and `RateLimitError` are retried transparently before the error propagates to your code.
+{% set retryOpts = symbol("ts:@photon-ai/advanced-imessage#RetryOptions") %}
+<Accordion title="RetryOptions" description="{{ retryOpts.doc.summary }}">
+  | Option | Type | Description |
+  |---|---|---|
+  {% for m in retryOpts.members -%}
+  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
+  {% endfor %}
+</Accordion>
 
-## Escape hatch: `_raw`
+Streaming RPCs are not retried automatically. Persist the latest handled event sequence and use `im.events.catchUp(since)` before reopening live streams.
 
-Most domain types carry `_raw` containing the raw gRPC response for debugging purposes. The types that include `_raw` are `Chat`, `Message`, `AttachmentInfo`, and `AddressInfo`. Other types such as `ScheduledMessage`, `FindMyFriend`, and `PollInfo` do not include `_raw`.
+The SDK only retries errors marked retryable by the server or transport layer. It does not retry validation failures or failed preconditions.
+
+## Idempotency
+
+Most calls do not need a `clientMessageId`.
+
+Use one when your own worker, queue, or job system may retry the same logical write after a crash, timeout, or process restart. Reuse the same value only for that same logical write:
 
 ```ts
-try {
-  await im.messages.send(chat, "Hello!");
-} catch (err) {
-  if (err instanceof IMessageError) {
-    console.log(err.code, err.grpcCode, err.retryable, err.context);
-  }
-}
+await im.messages.sendText(chat.guid, "Hello", {
+  clientMessageId: `job-${job.id}`,
+});
 ```
+
+Do not generate a fresh `clientMessageId` for every retry of the same job. A fresh value tells the server it is a new write.
+
+Do generate a new `clientMessageId` for a different message, vote, group edit, or other distinct mutation.
