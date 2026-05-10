@@ -5,11 +5,26 @@ description: "React to incoming messages and send threaded replies"
 
 Both `react` and `reply` live directly on an incoming message. They no-op silently on platforms that don't support the feature — no `try/catch` required.
 
+Spectrum also exports first-class `reaction()` and `reply()` content builders that you can pass directly to `space.send(...)` — the sugar methods on `message` delegate through the same `send` pipeline.
+
 ## Reactions
 
-```ts
-await message.react("love");
-```
+<Tabs>
+  <Tab title="Sugar (message.react)">
+    ```ts
+    await message.react("love");
+    ```
+  </Tab>
+  <Tab title="Canonical (space.send)">
+    ```ts
+    import { reaction } from "spectrum-ts";
+
+    await space.send(reaction("love", message));
+    ```
+  </Tab>
+</Tabs>
+
+Both forms are equivalent — `message.react(emoji)` delegates to `space.send(reaction(emoji, message))` internally.
 
 The reaction string is platform-specific. For iMessage, use the built-in tapback constants:
 
@@ -18,6 +33,8 @@ import { imessage } from "spectrum-ts/providers/imessage";
 
 await message.react(imessage.tapbacks.laugh);
 ```
+
+`reaction()` rejects reaction messages as targets — reacting to a reaction throws at build time.
 
 Available tapbacks:
 
@@ -32,25 +49,62 @@ Available tapbacks:
 
 ## Threaded replies
 
-`message.reply(...)` takes the same variadic content input as `space.send(...)`:
+<Tabs>
+  <Tab title="Sugar (message.reply)">
+    ```ts
+    await message.reply("Replying to your message.");
 
-```ts
-await message.reply("Replying to your message.");
+    await message.reply(
+      "Here's the attachment you asked for:",
+      attachment("/path/to/file.pdf"),
+    );
+    ```
+  </Tab>
+  <Tab title="Canonical (space.send)">
+    ```ts
+    import { reply, text } from "spectrum-ts";
 
-await message.reply(
-  "Here's the attachment you asked for:",
-  attachment("/path/to/file.pdf"),
-);
-```
+    await space.send(reply(text("Replying to your message."), message));
+    ```
+  </Tab>
+</Tabs>
+
+Both forms are equivalent — `message.reply(content)` wraps each content item in `reply(content, message)` and delegates to `space.send(...)` internally.
 
 On platforms with thread support (iMessage, WhatsApp Business), this sends a threaded reply. On platforms without, the call resolves as a no-op — **the reply is not downgraded to a regular send**. If you need guaranteed delivery, use `space.send(...)` instead.
+
+`reply()` cannot wrap `reply`, `edit`, `reaction`, `group`, or `typing` content — the builder throws at construction time.
+
+## Editing messages
+
+<Tabs>
+  <Tab title="Sugar (message.edit)">
+    ```ts
+    const sent = await space.send("Draft");
+    await sent.edit("Final version");
+    ```
+  </Tab>
+  <Tab title="Canonical (space.send)">
+    ```ts
+    import { edit, text } from "spectrum-ts";
+
+    const sent = await space.send("Draft");
+    await space.send(edit(text("Final version"), sent));
+    ```
+  </Tab>
+</Tabs>
+
+`edit()` takes new content and the outbound message to rewrite. Edits are fire-and-forget — `space.send(edit(...))` resolves to `undefined`.
+
+`edit()` cannot wrap `edit`, `reply`, `reaction`, `group`, or `typing` content.
 
 ## When to use what
 
 | Want to | Use |
 |---|---|
 | Send fresh content into the conversation | `space.send(...)` |
-| Reply in-thread to a specific message | `message.reply(...)` |
-| React to a specific message | `message.react(reaction)` |
+| Reply in-thread to a specific message | `message.reply(...)` or `space.send(reply(...))` |
+| React to a specific message | `message.react(emoji)` or `space.send(reaction(emoji, message))` |
+| Rewrite a sent message | `message.edit(content)` or `space.send(edit(content, message))` |
 
-`space.send` is the safe default — it works on every platform. Reach for `reply` when the threading behaviour is meaningful (e.g. replying in a busy group chat) and you're willing to accept the no-op on platforms that lack threads.
+`space.send` is the safe default — it works on every platform. The sugar methods (`message.reply`, `message.react`, `message.edit`) and the canonical content builders (`reply()`, `reaction()`, `edit()`) are interchangeable — they both route through the same `send` pipeline.

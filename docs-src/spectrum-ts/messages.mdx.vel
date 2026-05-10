@@ -123,6 +123,9 @@ for await (const [space, message] of app.messages) {
   | `"poll"` | `title: string`, `options: { title: string }[]` |
   | `"poll_option"` | `option: { title }`, `poll: Poll`, `selected: boolean`, `title: string` — sent as a vote |
   | `"group"` | `items: Message[]` — bundled multi-message unit |
+  | `"reply"` | `content: Content`, `target: Message` — threaded reply wrapping inner content |
+  | `"edit"` | `content: Content`, `target: Message` — rewrite of a previously-sent message |
+  | `"typing"` | `state: "start" \| "stop"` — typing indicator signal |
   | `"custom"` | `raw: unknown` — platform-specific structured data |
 </Accordion>
 

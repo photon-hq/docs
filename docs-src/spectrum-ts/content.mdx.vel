@@ -1,6 +1,6 @@
 ---
 title: "Content"
-description: "Build text, attachments, voice, contacts, polls, rich links, groups, and platform-specific content for outgoing messages"
+description: "Build text, attachments, voice, contacts, polls, rich links, groups, replies, edits, typing indicators, and platform-specific content for outgoing messages"
 ---
 
 import { TypeTooltip } from "/snippets/type-tooltip.mdx";
@@ -8,7 +8,7 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 {% set ci = symbol("ts:spectrum-ts#ContentInput") %}
 {% set cb = symbol("ts:spectrum-ts#ContentBuilder") %}
 
-Spectrum exposes a family of content builders — `text`, `attachment`, `voice`, `contact`, `richlink`, `poll`, `group`, and `custom` — plus a string shortcut that's equivalent to `text()`. Any API that takes a <TypeTooltip name="ContentInput" type={`{{ ci.signature }}`} /> accepts a plain string or a <TypeTooltip name="ContentBuilder" type={`{{ cb.signature }}`} />.
+Spectrum exposes a family of content builders — `text`, `attachment`, `voice`, `contact`, `richlink`, `poll`, `group`, `custom`, `reaction`, `reply`, `edit`, and `typing` — plus a string shortcut that's equivalent to `text()`. Any API that takes a <TypeTooltip name="ContentInput" type={`{{ ci.signature }}`} /> accepts a plain string or a <TypeTooltip name="ContentBuilder" type={`{{ cb.signature }}`} />.
 
 ## Text
 
@@ -200,7 +200,45 @@ import { custom } from "spectrum-ts";
 await space.send(custom({ type: "card", title: "Order Confirmed" }));
 ```
 
-The raw payload round-trips through the provider's `actions.send` — it's up to the provider to interpret it.
+The raw payload round-trips through the provider's `send` action — it's up to the provider to interpret it.
+
+## Replies
+
+Send a threaded reply by wrapping content with the message being replied to. See [Reactions and replies](/spectrum-ts/reactions-and-replies) for the full details and sugar methods.
+
+```ts
+import { reply, text } from "spectrum-ts";
+
+await space.send(reply(text("Got it"), message));
+```
+
+`reply()` cannot wrap `reply`, `edit`, `reaction`, `group`, or `typing` content.
+
+## Edits
+
+Rewrite the content of a previously-sent outbound message. Edits are fire-and-forget — `space.send(edit(...))` resolves to `undefined`.
+
+```ts
+import { edit, text } from "spectrum-ts";
+
+const sent = await space.send("Draft");
+await space.send(edit(text("Final version"), sent));
+```
+
+`edit()` cannot wrap `edit`, `reply`, `reaction`, `group`, or `typing` content.
+
+## Typing indicators
+
+Send a typing indicator signal through the content pipeline. Defaults to `"start"`.
+
+```ts
+import { typing } from "spectrum-ts";
+
+await space.send(typing());        // start typing
+await space.send(typing("stop"));  // stop typing
+```
+
+`space.startTyping()`, `space.stopTyping()`, and `space.responding(fn)` are sugar over `space.send(typing(...))`. Platforms without a typing-indicator API silently no-op.
 
 ## Composing multiple items
 
@@ -215,9 +253,9 @@ await space.send(
 
 This runs one `send()` per item on the underlying provider — not a single compound message. Reach for `group(...)` instead when you specifically want them rendered as one bundled unit.
 
-## Replies
+## Replies (sugar)
 
-`message.reply(...)` has the same variadic signature:
+`message.reply(...)` has the same variadic signature and delegates to `space.send(reply(...))` internally:
 
 ```ts
 await message.reply(
@@ -226,4 +264,4 @@ await message.reply(
 );
 ```
 
-On platforms without thread support, `reply()` resolves as a no-op. If you need guaranteed delivery, use `space.send(...)` instead.
+On platforms without thread support, `reply()` resolves as a no-op. If you need guaranteed delivery, use `space.send(...)` instead. See [Reactions and replies](/spectrum-ts/reactions-and-replies) for the canonical form and more details.
