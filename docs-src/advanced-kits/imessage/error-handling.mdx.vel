@@ -103,15 +103,15 @@ import { ErrorCode, IMessageError } from "@photon-ai/advanced-imessage";
 try {
   await im.messages.get(chat.guid, "missing-message-guid");
 } catch (error) {
-  if (error instanceof IMessageError && error.code === ErrorCode.chatNotFound) {
-    // prompt the user to pick another conversation
+  if (error instanceof IMessageError && error.code === ErrorCode.messageNotFound) {
+    // refresh message state or show that the message is no longer available
   }
 }
 ```
 
 ## Retry behavior
 
-Set `retry: true` or pass a retry options object to retry retryable unary RPC failures:
+Set `retry: true` or pass a retry options object to retry unary RPC failures that are marked retryable:
 
 ```ts
 const im = createClient({

@@ -128,6 +128,22 @@ await using im = createClient({
 });
 ```
 
+Node.js 18.17 does not support `await using` natively. Use `try`/`finally` on the documented minimum runtime:
+
+```ts
+const im = createClient({
+  address: "server-url:443",
+  token: process.env.IMESSAGE_TOKEN!,
+});
+
+try {
+  const { chat } = await im.chats.create(["alice@example.com"]);
+  await im.messages.sendText(chat.guid, "Hello");
+} finally {
+  await im.close();
+}
+```
+
 ## What to read next
 
 - [Messages](/advanced-kits/imessage/messages) covers text, attachments, multipart sends, reactions, edits, reads, and message events.

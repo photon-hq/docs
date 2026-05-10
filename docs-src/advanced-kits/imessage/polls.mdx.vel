@@ -3,7 +3,7 @@ title: "Polls"
 description: "Create polls, vote, add choices, read state, and stream poll events"
 ---
 
-`im.polls` manages iMessage poll messages. Create a poll in a chat, then use the returned `pollMessageGuid` for reads, votes, unvotes, and added options.
+`im.polls` manages iMessage poll messages. Create a poll in a chat, then use the returned `pollMessageGuid` for reads, votes, unvotes, and adding options.
 
 ## Create a poll
 
