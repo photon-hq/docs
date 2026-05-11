@@ -1,0 +1,92 @@
+---
+title: Photon CLI
+description: Manage projects, Spectrum, billing, and your profile from the terminal
+---
+
+The Photon CLI replaces the [Dashboard](https://app.photon.codes) web UI for everyday work. Manage projects, Spectrum users and lines, billing, and your developer profile — all from a terminal.
+
+```sh
+npx @photon-ai/cli login
+```
+
+## Quick demo
+
+After [installing](/cli/installation) the CLI:
+
+```sh
+# Log in (opens a browser to approve the device)
+photon login
+
+# List your projects
+photon projects ls
+
+# Set a project for the current shell session
+export PHOTON_PROJECT_ID=<project-id>
+
+# Manage Spectrum resources
+photon spectrum users ls
+photon spectrum lines ls
+
+# Check billing
+photon billing show
+```
+
+## Command tree
+
+```text
+photon
+├── ping                                            hit /api/health
+├── env current                                     print resolved API host
+├── login [--api-host] [--no-browser]               device-auth login
+├── logout [--api-host]                             clear stored credentials
+├── whoami [--api-host]                             current user on this backend
+├── auth status [--json]                            login state across all backends
+├── config show [--json]                            dump active configuration
+├── profile
+│   ├── show                                        account & profile details
+│   ├── init                                        create developer or org profile
+│   └── update [flags]                              update profile fields
+├── projects
+│   ├── ls [--json]                                 list projects
+│   ├── show [id] [--json]                          project detail
+│   ├── create [--name --location --spectrum]        new project
+│   ├── update [id] [flags]                         rename / toggle flags
+│   ├── delete [id] [-y]                            permanent delete
+│   ├── regenerate-secret [id] [-y]                 rotate Spectrum API secret
+│   ├── open [id] [--no-browser]                    open dashboard in browser
+│   └── check-phone <number>                        phone number availability
+├── spectrum
+│   ├── profile show / update                       project Spectrum profile
+│   ├── users ls / add / remove                     manage Spectrum users
+│   ├── lines ls / add / remove                     manage phone lines
+│   ├── platforms ls / enable / disable             toggle messaging platforms
+│   └── avatar upload <file>                        upload Spectrum avatar
+└── billing
+    ├── plans                                       available plans
+    ├── show [--json]                               current subscription
+    ├── checkout --plan <price-id> [--qty]           Stripe Checkout
+    └── manage                                      Stripe Customer Portal
+```
+
+Run `photon <command> --help` for the full flag list of any command.
+
+## The `pho` alias
+
+After installing globally, a `pho` shortcut is created automatically the first time you run `photon`:
+
+```sh
+pho projects ls     # same as: photon projects ls
+pho whoami
+```
+
+The alias is only available for global installs — `npx` / `bunx` users don't get it since they're already typing the full package name.
+
+## Global flags
+
+| Flag | Env var | Effect |
+|------|---------|--------|
+| `--debug` | `PHOTON_DEBUG=1` | Verbose HTTP request/response logs to stderr |
+| `--version`, `-v` | — | Print CLI version |
+| `--no-color` | `NO_COLOR=1` | Disable colored output ([NO_COLOR standard](https://no-color.org/)) |
+
+All other flags (`--api-host`, `--project`, `--token`, `--json`, `--yes`, `--no-browser`) are **per-command** and must appear after the subcommand name.

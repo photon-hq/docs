@@ -1,0 +1,91 @@
+---
+title: Installation
+description: Install the Photon CLI via Homebrew, npm, Bun, or as a standalone binary
+---
+
+## Homebrew (macOS / Linux)
+
+If you're on macOS or Linux, Homebrew is the easiest option. You get a self-contained binary with no runtime dependencies.
+
+```sh
+brew install photon-hq/photon/photon
+photon login
+```
+
+Updates automatically with `brew upgrade photon`.
+
+## One-off with npx / bunx
+
+You can run any CLI command on demand without a global install:
+
+<CodeGroup>
+```sh npx
+npx @photon-ai/cli login
+npx @photon-ai/cli projects ls
+```
+
+```sh bunx
+bunx @photon-ai/cli login
+bunx @photon-ai/cli projects ls
+```
+</CodeGroup>
+
+Each time you run it, it pulls the latest release automatically. This is useful for scripts, throwaway machines, or trying the CLI before committing.
+
+<Note>
+The npm bundle uses a `#!/usr/bin/env bun` shebang, so you need Bun on your `PATH`. Install it with:
+
+```sh
+curl -fsSL https://bun.sh/install | bash
+```
+</Note>
+
+## Global install with Bun
+
+For daily use, you can install globally so `photon` is always on your `PATH`:
+
+```sh
+bun add -g @photon-ai/cli
+photon login
+```
+
+The `pho` shortcut alias is created automatically the first time you run `photon`.
+
+## Standalone binary
+
+If you don't want any runtime dependency (e.g. CI environments), you can download a prebuilt binary directly. Replace `<os>` and `<arch>` with your platform:
+
+```sh
+# <os>: darwin | linux
+# <arch>: arm64 | x64
+curl -L -o /usr/local/bin/photon \
+  https://github.com/photon-hq/cli/releases/latest/download/photon-<os>-<arch>
+chmod +x /usr/local/bin/photon
+photon --version
+```
+
+For example, on an Apple Silicon Mac:
+
+```sh
+curl -L -o /usr/local/bin/photon \
+  https://github.com/photon-hq/cli/releases/latest/download/photon-darwin-arm64
+chmod +x /usr/local/bin/photon
+```
+
+Available platforms:
+
+| Platform | Architectures |
+|----------|--------------|
+| macOS | arm64, x64 |
+| Linux | arm64, x64 |
+
+Each binary ships with a corresponding `.sha256` checksum on the [release page](https://github.com/photon-hq/cli/releases/latest).
+
+## Verify the installation
+
+```sh
+photon --version
+photon ping
+```
+
+`photon ping` hits the Photon API health endpoint — if you see a success response, you're ready to [authenticate](/cli/authentication).

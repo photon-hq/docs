@@ -1,0 +1,98 @@
+---
+title: Profile & utilities
+description: Manage your developer profile and use diagnostic commands
+---
+
+## Profile
+
+The `photon profile` commands manage your Photon developer or organization profile.
+
+### View your profile
+
+```sh
+photon profile show
+```
+
+Displays your account details and profile information.
+
+### Create a profile
+
+```sh
+photon profile init
+```
+
+Walks you through an interactive prompt to create a developer or organization profile. You can also pass flags directly for non-interactive use.
+
+### Update your profile
+
+```sh
+photon profile update --display-name "Jane Doe"
+```
+
+Updates specific fields on your existing profile. The available flags differ based on whether you have a developer or organization profile.
+
+Aliases: `profile edit`.
+
+## Utility commands
+
+### ping
+
+Test connectivity to the Photon API:
+
+```sh
+photon ping
+```
+
+Hits the `/api/health` endpoint and prints the response. Useful for verifying that the backend is reachable and your network configuration is correct.
+
+You can also ping an arbitrary URL directly (bypasses credential resolution):
+
+```sh
+photon ping -u https://your-custom-backend.example.com
+```
+
+### env
+
+Print the currently resolved backend:
+
+```sh
+photon env current
+```
+
+```text
+production (https://app.photon.codes)
+```
+
+Useful for confirming which backend your commands will target, especially when using `PHOTON_API_HOST`.
+
+### whoami
+
+Show the authenticated user for the current backend:
+
+```sh
+photon whoami
+```
+
+Prints your user ID, email, and name. Returns an error with a login hint if your session has expired.
+
+### auth status
+
+Show login state across all backends you've authenticated against:
+
+```sh
+photon auth status
+photon auth status --json
+```
+
+Lists each backend with its credential status. Flags corrupt or invalid credential files.
+
+### config show
+
+Dump the active CLI configuration (no secrets):
+
+```sh
+photon config show
+photon config show --json
+```
+
+Displays the config directory path, current backend, active `PHOTON_PROJECT_ID`, and relevant environment variable values.
