@@ -37,7 +37,7 @@ The iMessage provider supports three connection modes — local, cloud, and dedi
     ```
 
     <Note>
-      Local mode only supports sending text and attachments. Reactions, typing indicators, threaded replies, and group creation are not available.
+      Local mode only supports sending text and attachments. Reactions, typing indicators, threaded replies, group creation, and chat backgrounds are not available.
     </Note>
   </Tab>
   <Tab title="Dedicated">
@@ -169,6 +169,40 @@ The wrapped content can be a string or any `attachment(...)`. Effects only apply
     | `imessage.effect.message.echo` | `"com.apple.messages.effect.CKEchoEffect"` |
   </Accordion>
 </AccordionGroup>
+
+## Chat backgrounds
+
+Set or clear the chat background image. Import `background` from the iMessage provider and use the sugar method on a narrowed space:
+
+```ts
+import { background, imessage } from "spectrum-ts/providers/imessage";
+
+const im = imessage(space);
+
+// Set from a file path — MIME type inferred from the extension
+await im.background("./wallpaper.jpg");
+
+// Set from a buffer — mimeType is required
+await im.background(buffer, { mimeType: "image/jpeg" });
+
+// Clear the current background
+await im.background("clear");
+```
+
+`space.background(...)` is sugar for `space.send(background(...))`. The canonical form works on any space reference:
+
+```ts
+await space.send(background("./wallpaper.jpg"));
+await space.send(background("clear"));
+```
+
+<Note>
+  Chat backgrounds require cloud or dedicated mode. In local mode, `background()` throws an `UnsupportedError`.
+</Note>
+
+<Note>
+  The string `"clear"` is a reserved sentinel. If you have a file literally named `clear` with no extension, pass `"./clear"` or load it as a `Buffer`.
+</Note>
 
 ## Tapback constants
 
