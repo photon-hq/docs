@@ -1,0 +1,81 @@
+---
+title: Installation
+description: Install the Photon CLI via Homebrew, npm, Bun, or as a standalone binary
+---
+
+## Homebrew (macOS / Linux)
+
+The recommended way to install on macOS and Linux. No runtime dependencies — the formula installs a self-contained binary.
+
+```sh
+brew install photon-hq/photon/photon
+photon login
+```
+
+Updates automatically with `brew upgrade photon`.
+
+## One-off with npx / bunx
+
+Run any CLI command without installing:
+
+<CodeGroup>
+```sh npx
+npx @photon-ai/cli login
+npx @photon-ai/cli projects ls
+```
+
+```sh bunx
+bunx @photon-ai/cli login
+bunx @photon-ai/cli projects ls
+```
+</CodeGroup>
+
+Each invocation pulls the latest release on demand. Good for scripts, throwaway machines, or trying the CLI before committing.
+
+<Note>
+The npm bundle uses a `#!/usr/bin/env bun` shebang, so Bun must be on your `PATH`. Install it with:
+
+```sh
+curl -fsSL https://bun.sh/install | bash
+```
+</Note>
+
+## Global install with Bun
+
+For daily use, install globally so `photon` is always on your `PATH`:
+
+```sh
+bun add -g @photon-ai/cli
+photon login
+```
+
+The `pho` shortcut alias is created automatically the first time you run `photon`.
+
+## Standalone binary
+
+For CI environments or systems where you don't want any runtime dependency:
+
+```sh
+curl -L -o /usr/local/bin/photon \
+  https://github.com/photon-hq/cli/releases/latest/download/photon-darwin-arm64
+chmod +x /usr/local/bin/photon
+photon --version
+```
+
+Available platforms:
+
+| Platform | Architectures |
+|----------|--------------|
+| macOS | arm64, x64 |
+| Linux | arm64, x64 |
+
+Each binary ships with a corresponding `.sha256` checksum on the [release page](https://github.com/photon-hq/cli/releases/latest).
+
+## Verify the installation
+
+```sh
+photon --version
+photon ping
+```
+
+`photon ping` hits the Photon API health endpoint — if you see a success response, you're ready to [authenticate](/cli/authentication).

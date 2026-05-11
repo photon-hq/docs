@@ -1,0 +1,108 @@
+---
+title: Projects
+description: Create, manage, and configure Photon projects from the CLI
+---
+
+Projects are the top-level container in Photon. Each project has its own Spectrum configuration, users, lines, and billing subscription.
+
+## List projects
+
+```sh
+photon projects ls
+photon projects ls --json
+```
+
+Aliases: `project ls`, `projects list`.
+
+## Show project details
+
+```sh
+photon projects show
+photon projects show <project-id>
+```
+
+Defaults to `$PHOTON_PROJECT_ID` if no ID is given. Aliases: `projects get`.
+
+## Create a project
+
+```sh
+photon projects create
+```
+
+Without flags, the CLI walks you through an interactive prompt. You can also pass flags directly:
+
+```sh
+photon projects create --name "My Project" --location us-east --spectrum
+```
+
+| Flag | Description |
+|------|-------------|
+| `--name <name>` | Project name |
+| `--location <loc>` | Deployment region |
+| `--spectrum` | Enable Spectrum for the project |
+
+Aliases: `projects new`.
+
+## Update a project
+
+```sh
+photon projects update <project-id> --name "New Name"
+```
+
+Fetches the current project, overlays your changes, and patches. Defaults to `$PHOTON_PROJECT_ID` if no ID is given.
+
+Aliases: `projects edit`, `projects set`.
+
+## Delete a project
+
+```sh
+photon projects delete <project-id>
+photon projects delete <project-id> -y   # skip confirmation
+```
+
+<Warning>
+This is a permanent, irreversible operation. The CLI asks for confirmation unless you pass `-y`.
+</Warning>
+
+Aliases: `projects rm`, `projects remove`.
+
+## Rotate the Spectrum API secret
+
+```sh
+photon projects regenerate-secret <project-id>
+photon projects regenerate-secret -y
+```
+
+Generates a new Spectrum API secret for the project. The old secret stops working immediately.
+
+Aliases: `projects rotate-secret`.
+
+## Open in the dashboard
+
+```sh
+photon projects open
+photon projects open <project-id>
+photon projects open --no-browser   # prints the URL instead
+```
+
+Opens the project's Dashboard page in your default browser.
+
+## Check phone number availability
+
+```sh
+photon projects check-phone +15551234567
+```
+
+Checks whether a phone number is available for Spectrum.
+
+## Common flags
+
+These flags are available on most project commands:
+
+| Flag | Env var | Description |
+|------|---------|-------------|
+| `-p, --project <id>` | `PHOTON_PROJECT_ID` | Target project (defaults to env var) |
+| `--api-host <url>` | `PHOTON_API_HOST` | Override the backend URL |
+| `-t, --token <token>` | `PHOTON_TOKEN` | Use this token instead of stored credentials |
+| `--json` | — | Output as JSON |
+| `-y, --yes` | — | Skip confirmation prompts |

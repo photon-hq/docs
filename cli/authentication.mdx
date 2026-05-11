@@ -1,0 +1,146 @@
+---
+title: Authentication
+description: Log in, manage tokens, work with multiple backends, and authenticate in CI
+---
+
+## Device flow login
+
+The CLI uses a device authorization flow — you approve the login from a browser, no password is typed into the terminal.
+
+```sh
+photon login
+```
+
+This opens your default browser to the Photon approval page. Once you approve, the CLI stores your access token locally and you're ready to go.
+
+If you're on a headless machine (SSH session, container), pass `--no-browser` to get a URL you can open elsewhere:
+
+```sh
+photon login --no-browser
+```
+
+## Verify your session
+
+```sh
+photon whoami
+```
+
+Prints your user ID, email, and name. If the session has expired, you'll see a hint to re-run `photon login`.
+
+## Log out
+
+```sh
+photon logout
+```
+
+Revokes the session on the server and deletes the local credential file.
+
+## Credential storage
+
+Credentials are stored as JSON files with `600` permissions:
+
+```
+$PHOTON_CONFIG_DIR/credentials/<backend-key>.json
+```
+
+The config directory is resolved in this order:
+
+1. `$PHOTON_CONFIG_DIR` — explicit override
+2. `$XDG_CONFIG_HOME/photon` — XDG standard
+3. `~/.config/photon/` — default
+
+<Note>
+If a legacy `~/.config/photon-dashboard/` directory exists from a prior install, it migrates automatically on first run.
+</Note>
+
+### Multi-backend credentials
+
+Credentials are stored **per backend**. You can be logged into production and a staging server simultaneously — each gets its own credential file keyed by a sanitized hostname (e.g. `production`, `staging-app_photon_codes`, `localhost_3000`).
+
+```sh
+# Log in to production (default)
+photon login
+
+# Log in to staging
+photon login --api-host https://staging-app.photon.codes
+
+# Check all backends at once
+photon auth status
+```
+
+`photon auth status` shows the login state for every backend you've authenticated against. Pass `--json` for machine-readable output.
+
+## Backend host
+
+Every command talks to a backend URL. The default is production (`https://app.photon.codes`). To target a different backend, set `PHOTON_API_HOST` or use the `--api-host` flag:
+
+```sh
+# Environment variable — applies to every command in this shell
+export PHOTON_API_HOST=https://staging-app.photon.codes
+photon projects ls
+
+# Per-command flag
+photon projects ls --api-host https://staging-app.photon.codes
+
+# Inline
+PHOTON_API_HOST=http://localhost:3000 photon projects ls
+```
+
+Resolution order: `--api-host` flag > `PHOTON_API_HOST` env var > built-in production URL.
+
+Check the resolved host with:
+
+```sh
+photon env current
+```
+
+## Setting an active project
+
+Most commands operate on a single project. Specify it per-command or per-shell:
+
+```sh
+# Per command
+photon spectrum users ls --project abc123
+
+# Per shell session
+export PHOTON_PROJECT_ID=abc123
+photon spectrum users ls
+```
+
+Resolution order: `--project` flag > `$PHOTON_PROJECT_ID` > error with a hint.
+
+<Note>
+Put `export PHOTON_PROJECT_ID='...'` in your shell rc, or use [direnv](https://direnv.net/) to scope it to a project directory.
+</Note>
+
+## CI and scripting
+
+For non-interactive environments, pass a token directly instead of running the device flow:
+
+```sh
+# Flag
+photon projects ls --token "$PHOTON_TOKEN"
+
+# Environment variable
+PHOTON_TOKEN=ey... photon projects ls
+```
+
+Get the token from your local credentials file (under `$PHOTON_CONFIG_DIR/credentials/<key>.json`) after authenticating once with `photon login`.
+
+Pair with `--json` for machine-readable output:
+
+```sh
+photon projects ls --json | jq '.[] | .id'
+photon billing show --json
+```
+
+| Flag / env var | Effect |
+|----------------|--------|
+| `-t, --token <token>` / `PHOTON_TOKEN` | Use this token instead of stored credentials |
+| `--json` | Structured JSON output |
+| `--yes`, `-y` | Skip destructive-action confirmation prompts |
+| `--no-browser` | Don't auto-open the browser |
+
+<Note>
+`PHOTON_TOKEN` reuses the access token from the device flow (default 7-day expiry). Re-run `photon login` when it expires. A long-lived API key path is on the roadmap.
+</Note>

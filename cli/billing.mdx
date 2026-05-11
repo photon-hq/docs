@@ -1,0 +1,59 @@
+---
+title: Billing
+description: View plans, manage subscriptions, and open Stripe portals from the CLI
+---
+
+The `photon billing` commands let you view available plans, check your current subscription, start a checkout, and manage billing through the Stripe Customer Portal.
+
+All billing commands require an active project. Set `$PHOTON_PROJECT_ID` or pass `--project <id>`.
+
+## List available plans
+
+```sh
+photon billing plans
+```
+
+Shows all plans and their Stripe price IDs. Use the price ID with `checkout` to subscribe.
+
+## View current subscription
+
+```sh
+photon billing show
+photon billing show --json
+```
+
+Displays the active subscription for the current project, including plan details and status.
+
+## Start a checkout
+
+```sh
+photon billing checkout --plan <price-id>
+photon billing checkout --plan <price-id> --qty 5
+```
+
+Creates a Stripe Checkout session and opens it in your browser. Pass `--no-browser` to print the URL instead, or `--json` to get the session URL programmatically.
+
+| Flag | Description |
+|------|-------------|
+| `--plan <price-id>` | Stripe price ID (required — get it from `billing plans`) |
+| `--qty <number>` | Quantity for the line item |
+| `--no-browser` | Print the checkout URL instead of opening it |
+| `--json` | Output the checkout session as JSON |
+
+## Manage subscription (Stripe Portal)
+
+```sh
+photon billing manage
+```
+
+Opens the Stripe Customer Portal where you can update payment methods, change plans, view invoices, or cancel. Pass `--no-browser` to get the portal URL printed to the terminal.
+
+Aliases: `billing portal`.
+
+## Common flags
+
+| Flag | Env var | Description |
+|------|---------|-------------|
+| `-p, --project <id>` | `PHOTON_PROJECT_ID` | Target project |
+| `--api-host <url>` | `PHOTON_API_HOST` | Override the backend URL |
+| `-t, --token <token>` | `PHOTON_TOKEN` | Use this token instead of stored credentials |

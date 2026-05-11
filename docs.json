@@ -121,6 +121,28 @@
         ]
       },
       {
+        "tab": "CLI",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "cli/overview",
+              "cli/installation",
+              "cli/authentication"
+            ]
+          },
+          {
+            "group": "Commands",
+            "pages": [
+              "cli/projects",
+              "cli/spectrum",
+              "cli/billing",
+              "cli/profile-and-utilities"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "API reference",
         "groups": [
           {

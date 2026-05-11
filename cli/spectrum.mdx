@@ -1,0 +1,128 @@
+---
+title: Spectrum
+description: Manage Spectrum profiles, users, lines, platforms, and avatars from the CLI
+---
+
+The `photon spectrum` commands manage your project's messaging configuration — the Spectrum profile, users, phone lines, platform toggles, and avatar.
+
+All Spectrum commands require an active project. Set `$PHOTON_PROJECT_ID` or pass `--project <id>`.
+
+## Spectrum profile
+
+View or update the Spectrum profile attached to your project.
+
+```sh
+# View the current profile
+photon spectrum profile show
+
+# Update profile fields
+photon spectrum profile update --display-name "Support Bot"
+```
+
+Aliases: `spectrum profile edit`.
+
+## Users
+
+Manage users that can interact through your project's Spectrum instance.
+
+### List users
+
+```sh
+photon spectrum users ls
+photon spectrum users ls --json
+```
+
+Aliases: `spectrum users list`.
+
+### Add a user
+
+```sh
+photon spectrum users add
+```
+
+Aliases: `spectrum users create`.
+
+### Remove a user
+
+```sh
+photon spectrum users remove <user-id>
+```
+
+<Warning>
+Removing a user is irreversible. The CLI asks for confirmation unless you pass `-y`.
+</Warning>
+
+Aliases: `spectrum users rm`, `spectrum users delete`.
+
+## Lines
+
+Manage the phone lines assigned to your project.
+
+### List lines
+
+```sh
+photon spectrum lines ls
+```
+
+Aliases: `spectrum lines list`.
+
+### Add a line
+
+```sh
+photon spectrum lines add
+```
+
+Currently supports iMessage lines only.
+
+### Remove a line
+
+```sh
+photon spectrum lines remove <line-id>
+```
+
+## Platforms
+
+View and toggle messaging platforms for your project.
+
+### List platforms
+
+```sh
+photon spectrum platforms ls
+```
+
+Aliases: `spectrum platforms list`.
+
+### Enable a platform
+
+```sh
+photon spectrum platforms enable <platform-name>
+```
+
+### Disable a platform
+
+```sh
+photon spectrum platforms disable <platform-name>
+```
+
+## Avatar
+
+Upload a custom avatar image for your project's Spectrum profile.
+
+```sh
+photon spectrum avatar upload photo.png
+```
+
+The CLI requests a presigned upload URL from the API, uploads the file directly, and patches the Spectrum profile to use it.
+
+| Flag | Description |
+|------|-------------|
+| `--no-update-profile` | Upload the file but don't update the Spectrum profile to use it |
+
+## Common flags
+
+| Flag | Env var | Description |
+|------|---------|-------------|
+| `-p, --project <id>` | `PHOTON_PROJECT_ID` | Target project |
+| `--api-host <url>` | `PHOTON_API_HOST` | Override the backend URL |
+| `-t, --token <token>` | `PHOTON_TOKEN` | Use this token instead of stored credentials |
+| `--json` | — | Output as JSON (where supported) |
