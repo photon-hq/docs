@@ -59,6 +59,8 @@ await space.startTyping();
 await space.stopTyping();
 ```
 
+These are sugar for `space.send(typing("start"))` and `space.send(typing("stop"))` — see [Content](/spectrum-ts/content#typing-indicators) for the canonical form.
+
 ### Automatic with `responding`
 
 `responding` is the recommended pattern. It guarantees the typing indicator is cleared even if the inner function throws:

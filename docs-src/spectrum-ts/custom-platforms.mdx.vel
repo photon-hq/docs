@@ -50,30 +50,33 @@ export const myPlatform = definePlatform("my-platform", {
     destroyClient: async ({ client }) => { await client.disconnect(); },
   },
 
-  // Event streams
-  events: {
-    async *messages({ client }) {
-      for await (const msg of client.onMessage()) {
-        yield {
-          id: msg.id,
-          content: { type: "text", text: msg.body },
-          sender: { id: msg.authorId },
-          space: { id: msg.channelId },
-          timestamp: new Date(msg.ts),
-        };
-      }
-    },
+  // Inbound message stream
+  async *messages({ client }) {
+    for await (const msg of client.onMessage()) {
+      yield {
+        id: msg.id,
+        content: { type: "text", text: msg.body },
+        sender: { id: msg.authorId },
+        space: { id: msg.channelId },
+        timestamp: new Date(msg.ts),
+      };
+    }
   },
 
-  // Actions
-  actions: {
-    send: async ({ space, content, client }) => {
-      if (content.type === "text") {
-        await client.send(space.id, content.text);
-      }
-    },
-    // Optional:
-    // startTyping, stopTyping, reactToMessage, replyToMessage
+  // Outbound dispatcher — all content types flow through here
+  send: async ({ space, content, client }) => {
+    switch (content.type) {
+      case "text":
+        return await client.send(space.id, content.text);
+      case "reaction":
+        await client.react(space.id, content.target.id, content.emoji);
+        return;
+      case "reply":
+        return await client.reply(space.id, content.target.id, content.content);
+      case "typing":
+        await client.setTyping(space.id, content.state === "start");
+        return;
+    }
   },
 
   // Optional static properties
@@ -95,13 +98,10 @@ export const myPlatform = definePlatform("my-platform", {
 | `space.params` | No | Zod schema for additional space creation parameters — surfaces as the second arg to `platform(app).space()`. |
 | `lifecycle.createClient` | Yes | Creates the platform client. Receives `config`, `projectId`, `projectSecret` (both may be `undefined`), and `store`. |
 | `lifecycle.destroyClient` | No | Tears down the client on shutdown. Omit if no cleanup is needed. |
-| `events.messages` | Yes | Async generator that yields incoming messages. |
+| `messages` | Yes | Async generator that yields incoming messages. |
+| `send` | Yes | Dispatches a content item to a space. All content types — text, attachments, reactions, replies, edits, typing indicators — flow through this single action. Return a `ProviderMessageRecord` for content that produces a message, or `undefined` for fire-and-forget signals (reactions, typing, edits). |
+| `actions.getMessage` | No | Fetches a message by ID from a space. Powers `space.getMessage(id)`. |
 | `events.[custom]` | No | Additional async generators for platform-specific events — exposed on `app.[eventName]`. |
-| `actions.send` | Yes | Sends a single content item to a space. Invoked once per item when multiple are passed. |
-| `actions.startTyping` | No | Shows a typing indicator. |
-| `actions.stopTyping` | No | Hides a typing indicator. |
-| `actions.reactToMessage` | No | Reacts to a message. Missing → `message.react(...)` becomes a no-op. |
-| `actions.replyToMessage` | No | Sends a threaded reply. Missing → `message.reply(...)` becomes a no-op. |
 | `message.schema` | No | Zod schema for extra properties on incoming messages. |
 | `static` | No | Constants attached to the platform object (e.g. tapback names). |
 
@@ -109,18 +109,23 @@ export const myPlatform = definePlatform("my-platform", {
 
 Every event generator receives `{ client, config, store }` and returns an `AsyncIterable`. The signature is <TypeTooltip name="EventProducer" type={`{{ ep.signature }}`} />.
 
+The core `messages` stream lives at the top level of the definition. Optional custom event streams (presence, read receipts, etc.) live inside `events`:
+
 ```ts
+// Top-level — required
+async *messages({ client }) { /* ... */ },
+
+// Optional custom events
 events: {
-  async *messages({ client }) { /* ... */ },
-  async *typing({ client }) {
-    for await (const ev of client.typing()) {
-      yield { spaceId: ev.chatId, userId: ev.user };
+  async *presence({ client }) {
+    for await (const ev of client.presence()) {
+      yield { spaceId: ev.chatId, userId: ev.user, online: ev.online };
     }
   },
 },
 ```
 
-Non-`messages` events are auto-wired as flat properties on both the Spectrum instance (`app.typing`) and the narrowed platform instance (`myPlatform(app).typing`).
+Custom events are auto-wired as flat properties on both the Spectrum instance (`app.presence`) and the narrowed platform instance (`myPlatform(app).presence`).
 
 ## Message extras
 
