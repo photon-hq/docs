@@ -1,9 +1,9 @@
 ---
 title: Installation
-description: Install the Photon CLI via Homebrew, npm, Bun, or as a standalone binary
+description: Install the Photon CLI via npm, or as a standalone binary
 ---
 
-## Homebrew (macOS / Linux)
+{/* ## Homebrew (macOS / Linux)
 
 If you're on macOS or Linux, Homebrew is the easiest option. You get a self-contained binary with no runtime dependencies.
 
@@ -12,9 +12,9 @@ brew install photon-hq/photon/photon
 photon login
 ```
 
-Updates automatically with `brew upgrade photon`.
+Updates automatically with `brew upgrade photon`. */}
 
-## One-off with npx / bunx
+## One-off — no install
 
 You can run any CLI command on demand without a global install:
 
@@ -22,6 +22,11 @@ You can run any CLI command on demand without a global install:
 ```sh npx
 npx @photon-ai/cli login
 npx @photon-ai/cli projects ls
+```
+
+```sh pnpx
+pnpx @photon-ai/cli login
+pnpx @photon-ai/cli projects ls
 ```
 
 ```sh bunx
@@ -32,24 +37,37 @@ bunx @photon-ai/cli projects ls
 
 Each time you run it, it pulls the latest release automatically. This is useful for scripts, throwaway machines, or trying the CLI before committing.
 
-<Note>
-The npm bundle uses a `#!/usr/bin/env bun` shebang, so you need Bun on your `PATH`. Install it with:
-
-```sh
-curl -fsSL https://bun.sh/install | bash
-```
-</Note>
-
-## Global install with Bun
+## Global install
 
 For daily use, you can install globally so `photon` is always on your `PATH`:
 
-```sh
+<CodeGroup>
+```sh npm
+npm install -g @photon-ai/cli
+```
+
+```sh pnpm
+pnpm add -g @photon-ai/cli
+```
+
+```sh yarn
+yarn global add @photon-ai/cli
+```
+
+```sh bun
 bun add -g @photon-ai/cli
+```
+</CodeGroup>
+
+```sh
 photon login
 ```
 
 The `pho` shortcut alias is created automatically the first time you run `photon`.
+
+<Note>
+You need Node.js >= 18 to run the CLI. You can also use Bun, but it's not required.
+</Note>
 
 ## Standalone binary
 
