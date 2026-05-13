@@ -1,9 +1,9 @@
 ---
 title: Installation
-description: Install the Photon CLI via Homebrew, npm, or as a standalone binary
+description: Install the Photon CLI via npm, or as a standalone binary
 ---
 
-## Homebrew (macOS / Linux)
+{/* ## Homebrew (macOS / Linux)
 
 If you're on macOS or Linux, Homebrew is the easiest option. You get a self-contained binary with no runtime dependencies.
 
@@ -12,26 +12,46 @@ brew install photon-hq/photon/photon
 photon login
 ```
 
-Updates automatically with `brew upgrade photon`.
+Updates automatically with `brew upgrade photon`. */}
 
-## One-off with npx
+## One-off — no install
 
 You can run any CLI command on demand without a global install:
 
-```sh
+<CodeGroup>
+```sh npx
 npx @photon-ai/cli login
 npx @photon-ai/cli projects ls
 ```
 
+```sh pnpx
+pnpx @photon-ai/cli login
+pnpx @photon-ai/cli projects ls
+```
+
+```sh bunx
+bunx @photon-ai/cli login
+bunx @photon-ai/cli projects ls
+```
+</CodeGroup>
+
 Each time you run it, it pulls the latest release automatically. This is useful for scripts, throwaway machines, or trying the CLI before committing.
 
-## Global install with npm
+## Global install
 
 For daily use, you can install globally so `photon` is always on your `PATH`:
 
 <CodeGroup>
 ```sh npm
 npm install -g @photon-ai/cli
+```
+
+```sh pnpm
+pnpm add -g @photon-ai/cli
+```
+
+```sh yarn
+yarn global add @photon-ai/cli
 ```
 
 ```sh bun
