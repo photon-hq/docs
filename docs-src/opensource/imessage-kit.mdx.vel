@@ -8,10 +8,12 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 `@photon-ai/imessage-kit` is an MIT-licensed, macOS-only SDK that talks directly to the local Messages database and AppleScript bridge. Use it when you want to read, send, and automate iMessage on a Mac you control — automation tools, AI agents, chat-first apps.
 
 <Note>
-  For remote iMessage delivery, threaded replies, tapbacks, edits / unsends, and
-  live typing indicators, use
-  [`@photon-ai/advanced-imessage`](/advanced-kits/imessage/getting-started)
-  instead. That SDK talks to a hosted bridge and doesn't require macOS.
+  This SDK is for talking to iMessage **locally on a Mac you control**. If you
+  want remote/hosted iMessage delivery, threaded replies, tapbacks, edits /
+  unsends, and live typing indicators, use
+  [Spectrum](/spectrum-ts/getting-started) for a unified API across platforms,
+  or [`@photon-ai/advanced-imessage`](/advanced-kits/imessage/getting-started)
+  when you need low-level iMessage control.
 </Note>
 
 ## Requirements

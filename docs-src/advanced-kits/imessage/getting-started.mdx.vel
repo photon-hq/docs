@@ -3,6 +3,13 @@ title: "Getting Started"
 description: "Install the Advanced iMessage SDK, connect to a server, and send your first message"
 ---
 
+<Note>
+  Most apps should use [Spectrum](/spectrum-ts/getting-started) - it gives you
+  a unified, higher-level API across iMessage, WhatsApp Business, and other
+  platforms. Reach for `@photon-ai/advanced-imessage` directly only when you
+  need low-level iMessage control that Spectrum doesn't expose.
+</Note>
+
 `@photon-ai/advanced-imessage` is an ESM-only TypeScript SDK for the Advanced iMessage v2 gRPC server. It exposes resource-oriented namespaces for messages, chats, groups, attachments, addresses, polls, shared locations, and durable events.
 
 The SDK is intentionally thin: each method maps closely to a server RPC, returns typed public objects, and keeps stream recovery explicit.

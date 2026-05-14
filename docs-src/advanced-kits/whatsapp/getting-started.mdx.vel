@@ -5,6 +5,13 @@ description: "Connect the WhatsApp Business SDK and send your first message"
 
 import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 
+<Note>
+  Most apps should use [Spectrum](/spectrum-ts/getting-started) - it gives you
+  a unified, higher-level API across WhatsApp Business, iMessage, and other
+  platforms. Reach for `@photon-ai/whatsapp-business` directly only when you
+  need low-level WhatsApp control that Spectrum doesn't expose.
+</Note>
+
 `@photon-ai/whatsapp-business` is a TypeScript SDK for the WhatsApp Business API. It connects to our managed gRPC gateway, which fronts Meta's Cloud API — you get typed message sending, a resumable event stream, and media handling without wiring webhooks yourself.
 
 ## Installation
