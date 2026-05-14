@@ -1,0 +1,234 @@
+---
+title: Troubleshooting
+description: Common webhook problems, what they mean, and how to fix them
+---
+
+This page is a triage guide for the most common things that go wrong with webhooks. Find the symptom, follow the fix.
+
+## "Every request fails signature verification"
+
+By far the most common issue, and almost always the same root cause: the body you hash isn't the body we hashed.
+
+### Diagnosis
+
+Add a temporary log on your server:
+
+```ts
+console.log({
+  rawBodyLength: rawBody.length,
+  rawBodyFirst80: rawBody.slice(0, 80),
+  timestamp,
+  signatureLen: signature.length,
+});
+```
+
+Then trigger a delivery and inspect.
+
+| Observation | Likely cause |
+| --- | --- |
+| `rawBodyLength === 0` | You called `req.json()` first, which consumed the stream. Read the raw body first. |
+| `rawBodyFirst80` starts with `{ "event":` (with extra spaces) | Your framework parsed and re-serialized. Capture raw bytes, not a parsed object. |
+| `signatureLen !== 67` | Header truncated or a proxy is mangling it. Should be `v0=` + 64 hex chars. |
+| `timestamp === undefined` | Reverse proxy is stripping `X-Spectrum-*` headers. Add them to your allow-list. |
+
+### Fix by framework
+
+| Framework | Trick |
+| --- | --- |
+| Express | Use `express.raw({ type: 'application/json' })` instead of `express.json()` |
+| FastAPI | `await request.body()` and don't type the parameter as a Pydantic model |
+| Hono | `await c.req.text()` *before* `c.req.json()` |
+| Next.js Route Handler | `await req.text()` and parse with `JSON.parse(text)` |
+| Cloudflare Workers | `await request.text()` |
+
+## "Most requests verify but some sporadically fail"
+
+Two likely culprits:
+
+1. **Server clock skew.** If your server's clock drifts more than ~5 minutes from real UTC, every delivery looks "stale" and your timestamp check rejects it. Run `ntpd` / `chronyd` and confirm with `date -u`.
+2. **You're loading the wrong secret in some environments.** Log `SECRET.length === 64` on startup — if it's ever false, you've loaded an env var from the wrong source.
+
+If it's neither, check whether the failing requests are particularly large bodies — some load balancers buffer large requests through a path that subtly transforms bytes (e.g. converting line endings).
+
+## "I never receive anything"
+
+Walk through this checklist in order:
+
+<Steps>
+  <Step title="Confirm the webhook is registered">
+  ```sh
+  curl -u "$PROJECT_ID:$PROJECT_SECRET" https://spectrum.photon.codes/webhooks/
+  ```
+
+  The URL you expect should appear in the list. If not, register it.
+  </Step>
+
+  <Step title="Confirm the URL is reachable from the public internet">
+  ```sh
+  curl -X POST https://your-app.com/spectrum-webhook -d '{}' -i
+  ```
+
+  If this hangs, times out, or returns DNS errors from outside your network, our worker can't reach you either. Check firewalls, security groups, and DNS.
+  </Step>
+
+  <Step title="Confirm the platform is enabled and connected">
+  ```sh
+  photon spectrum platforms ls
+  ```
+
+  An iMessage line that's not paired or a WhatsApp Business token that's expired produces zero inbound events. Webhooks deliver what the SDK receives — if the SDK is silent, webhooks are silent.
+  </Step>
+
+  <Step title="Confirm the message is actually inbound to your project">
+  Send the test message from a phone number that isn't your own to the line attached to the project.
+  </Step>
+
+  <Step title="Look at our delivery attempts">
+  We can confirm whether deliveries left our worker via support — include the webhook id, the approximate timestamp, and the URL. We log every delivery attempt with structured fields.
+  </Step>
+</Steps>
+
+## "I receive duplicates"
+
+This is expected behavior under at-least-once delivery. The two scenarios that cause it:
+
+1. **Your handler succeeded but timed out before responding.** We retried, you processed twice.
+2. **Your handler returned `5xx` after partially processing.** We retried, you re-ran the partial work.
+
+### Fix
+
+Dedupe at the top of your handler using `X-Spectrum-Webhook-Id` plus `payload.message.id` as a composite key:
+
+```ts
+const key = `${webhookId}:${payload.message.id}`;
+if (await store.exists(key)) return c.text('ok', 200);
+await processOnce(payload);
+await store.set(key, true, { ttl: 48 * 60 * 60 });
+```
+
+A 24-48 hour TTL is plenty — we never retry beyond a few seconds.
+
+## "Deliveries time out"
+
+If you're seeing your endpoint logged as "took >10s," it triggers a retry on our side and a likely duplicate processing on yours.
+
+### Diagnosis
+
+Look at what your handler is doing synchronously:
+
+```ts
+app.post('/spectrum-webhook', async (c) => {
+  // BAD — blocks the response
+  await callOpenAI(payload);
+  await sendReplyViaSpectrumApi();
+  return c.text('ok');
+});
+```
+
+Anything network-dependent in the request path can blow past 10s.
+
+### Fix
+
+Acknowledge first, process asynchronously:
+
+```ts
+app.post('/spectrum-webhook', async (c) => {
+  // Verify and queue, then immediately ack
+  if (!verify(c)) return c.text('bad signature', 401);
+  await queue.add('process-webhook', payload);
+  return c.text('ok', 200);
+});
+```
+
+For very small handlers (no LLM, no network), inline processing is fine — just keep the handler under a few hundred ms in P99.
+
+## "ngrok URL keeps changing"
+
+Free ngrok tunnels get a new URL every restart. That URL won't be registered with us, so deliveries 404 immediately.
+
+### Fix
+
+- For local development, kill the old webhook and re-register every time you restart ngrok:
+
+  ```sh
+  ngrok http 3000
+  # Copy the new URL, then:
+  curl -X POST https://spectrum.photon.codes/webhooks/ \
+    -u "$PROJECT_ID:$PROJECT_SECRET" \
+    -H "Content-Type: application/json" \
+    -d '{"webhookUrl":"https://NEW-URL.ngrok-free.app/spectrum-webhook"}'
+  ```
+
+- Better: use a reserved subdomain (paid plan) so the URL is stable across restarts.
+- Best for long-lived dev: deploy a tiny forwarder (Cloudflare Worker, Vercel function) that POSTs to your local machine over a stable tunnel.
+
+## "The signing secret leaked"
+
+Treat it like any other credential leak.
+
+1. Rotate the secret using the delete-and-recreate flow in [Managing webhooks](/webhooks/managing-webhooks#rotating-the-signing-secret).
+2. If you suspect the project credentials also leaked, rotate them too: `photon projects regenerate-secret <id>`.
+3. Audit recent inbound events for anomalies (events for spaces you don't recognize, suspicious sender ids, payloads with unusual content).
+
+A leaked signing secret lets an attacker forge inbound events to *your* webhook URL. It doesn't let them send messages on your behalf — that requires the project secret.
+
+## "I want to test verification without spamming real messages"
+
+Build a test request locally that mimics a real delivery:
+
+```ts test-verify.ts
+import { createHmac } from 'node:crypto';
+
+const secret = 'a3f8e29b...5c7e9b2d';
+const body = JSON.stringify({
+  event: 'messages',
+  space: { id: 'imessage:chat:1', platform: 'imessage' },
+  message: {
+    id: 'imessage:msg:test1',
+    platform: 'imessage',
+    direction: 'inbound',
+    timestamp: new Date().toISOString(),
+    sender: { id: 'imessage:+15551234567', platform: 'imessage' },
+    space: { id: 'imessage:chat:1', platform: 'imessage' },
+    content: { type: 'text', text: 'hi' },
+  },
+});
+const timestamp = String(Math.floor(Date.now() / 1000));
+const signature = 'v0=' + createHmac('sha256', secret).update(`v0:${timestamp}:${body}`).digest('hex');
+
+console.log(
+  `curl -X POST http://localhost:3000/spectrum-webhook \\
+    -H "Content-Type: application/json" \\
+    -H "X-Spectrum-Event: messages" \\
+    -H "X-Spectrum-Webhook-Id: 6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b" \\
+    -H "X-Spectrum-Timestamp: ${timestamp}" \\
+    -H "X-Spectrum-Signature: ${signature}" \\
+    -d '${body}'`
+);
+```
+
+Run it (`bun test-verify.ts`), copy the printed `curl`, and paste it to test your verifier offline.
+
+## "How do I see what we sent you?"
+
+We don't currently expose a delivery log to customers. If you need to debug a specific event, the fastest path is:
+
+1. Reach out to support with the webhook id, the approximate UTC timestamp, and what you observed on your side.
+2. We can confirm whether the delivery left our worker, what status code came back, and how many retries it took.
+
+A self-serve delivery log UI is on the roadmap.
+
+## "Multiple webhook URLs receive the event in different orders"
+
+That's expected. Deliveries to multiple URLs run in parallel — there's no ordering guarantee across URLs. If your downstream consumers need to coordinate, designate one URL as the primary and have it fan out internally rather than registering several with us.
+
+## Still stuck?
+
+Send us:
+
+- Your project id (the one in `photon projects show`).
+- The webhook id or the URL.
+- A timestamp range (UTC).
+- One example body and signature you couldn't verify (with the secret redacted).
+
+We'll trace it on our side. Either [open a ticket](https://photon.codes/contact) or ping us in the Discord linked in the footer.

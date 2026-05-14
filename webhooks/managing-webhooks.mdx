@@ -1,0 +1,210 @@
+---
+title: Managing webhooks
+description: Register, list, delete, and rotate webhook signing secrets via the Spectrum API
+---
+
+You manage webhooks through three HTTP endpoints on the Spectrum API. All require `Basic` auth with your project credentials. The full OpenAPI reference lives under [API reference](/api-reference/introduction); this page focuses on the workflows.
+
+## Authentication
+
+Every request uses HTTP Basic auth where the username is your `projectId` and the password is your `projectSecret`.
+
+```sh
+curl -u "$PROJECT_ID:$PROJECT_SECRET" https://spectrum.photon.codes/webhooks/
+```
+
+Project credentials are scoped to a single project. They never expire — rotate them via `photon projects regenerate-secret <id>` (see the [CLI projects docs](/cli/projects#rotate-the-spectrum-api-secret)) if they leak.
+
+## Register a webhook
+
+```sh
+curl -X POST https://spectrum.photon.codes/webhooks/ \
+  -u "$PROJECT_ID:$PROJECT_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"webhookUrl":"https://your-app.com/spectrum-webhook"}'
+```
+
+Response (`201 Created`):
+
+```json
+{
+  "succeed": true,
+  "data": {
+    "id": "6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b",
+    "webhookUrl": "https://your-app.com/spectrum-webhook",
+    "signingSecret": "a3f8e29b...5c7e9b2d",
+    "createdAt": "2026-05-14T19:00:00Z",
+    "updatedAt": "2026-05-14T19:00:00Z"
+  }
+}
+```
+
+<Warning>
+The `signingSecret` is **only returned in this response**. There is no `GET` endpoint that returns it, by design — once it's gone, it's gone. Save it to your secrets manager before doing anything else.
+</Warning>
+
+### Errors
+
+| Status | When it happens | What to do |
+| --- | --- | --- |
+| `400` | Invalid `webhookUrl` (not HTTPS, malformed) | Use a valid `https://` URL |
+| `409` | The same URL is already registered for this project | List existing webhooks, or delete the old one and re-register |
+| `401` | Bad project credentials | Rotate via the CLI and try again |
+
+### URL requirements
+
+- Must be `https://`.
+- Must be reachable from the public internet — this isn't strict, but if Spectrum can't reach it, every delivery fails.
+- Path component is yours to choose; we POST to it as-is.
+
+## List registered webhooks
+
+```sh
+curl -u "$PROJECT_ID:$PROJECT_SECRET" \
+  https://spectrum.photon.codes/webhooks/
+```
+
+Response:
+
+```json
+{
+  "succeed": true,
+  "data": [
+    {
+      "id": "6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b",
+      "webhookUrl": "https://your-app.com/spectrum-webhook",
+      "createdAt": "2026-05-14T19:00:00Z",
+      "updatedAt": "2026-05-14T19:00:00Z"
+    },
+    {
+      "id": "9f1e3d4b-2c8a-4f5d-b7e6-1a2b3c4d5e6f",
+      "webhookUrl": "https://staging.your-app.com/spectrum-webhook",
+      "createdAt": "2026-05-15T09:30:00Z",
+      "updatedAt": "2026-05-15T09:30:00Z"
+    }
+  ]
+}
+```
+
+Webhooks are returned in creation order, oldest first. Soft-deleted webhooks are not included.
+
+<Note>
+The list response **does not include `signingSecret`**. It's only ever returned at creation time. Treat the secret like a password — if you need it back, rotate by deleting and re-registering.
+</Note>
+
+## Delete a webhook
+
+```sh
+curl -X DELETE \
+  -u "$PROJECT_ID:$PROJECT_SECRET" \
+  https://spectrum.photon.codes/webhooks/6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b
+```
+
+Response:
+
+```json
+{ "succeed": true, "data": { "id": "6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b" } }
+```
+
+After this returns `200`, **no further events are delivered to that URL**. A delivery already in flight at the moment of deletion may still complete (the worker won't abort an in-progress `POST`).
+
+The delete is logical — the row is soft-deleted with a `deletedAt` timestamp on our side. The `id` and `signingSecret` are gone forever; re-registering the same URL produces a brand-new webhook with a new `id` and a new secret.
+
+### Errors
+
+| Status | When it happens |
+| --- | --- |
+| `404` | The id doesn't exist or has already been deleted |
+
+## Rotating the signing secret
+
+There is no dedicated rotation endpoint. To rotate, **delete and re-register**:
+
+```sh
+# 1. Capture the old id
+OLD_ID=6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b
+
+# 2. Register the same URL — get a new secret
+curl -X POST https://spectrum.photon.codes/webhooks/ \
+  -u "$PROJECT_ID:$PROJECT_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"webhookUrl":"https://your-app.com/spectrum-webhook"}'
+# Save the new signingSecret immediately
+
+# 3. Update your server's SPECTRUM_SIGNING_SECRET env var and redeploy
+
+# 4. Delete the old webhook
+curl -X DELETE -u "$PROJECT_ID:$PROJECT_SECRET" \
+  https://spectrum.photon.codes/webhooks/$OLD_ID
+```
+
+<Tip>
+For a graceful zero-downtime rotation, run your verifier against **both** the old and new secret for a brief overlap window between steps 2 and 4. Treat a request as valid if either secret verifies it.
+</Tip>
+
+```ts
+const verifyEither = (rawBody, timestamp, signature) =>
+  verify(rawBody, timestamp, signature, OLD_SECRET) ||
+  verify(rawBody, timestamp, signature, NEW_SECRET);
+```
+
+Step 4 (deleting the old webhook) is what actually cuts off the old secret — until that point we'll keep signing with whichever record still exists.
+
+## Multiple webhooks per project
+
+You can register as many URLs as you need. Each one:
+
+- Has its own `id`.
+- Has its own `signingSecret`.
+- Receives every event for the project (no per-URL filtering yet).
+- Is delivered in parallel with the others — one failing URL doesn't delay the others.
+
+Common patterns:
+
+| Pattern | Setup |
+| --- | --- |
+| **Prod + staging mirror** | Register both URLs. Staging receives a copy of every prod event for testing. |
+| **Multi-service fan-out** | Register one URL per consumer service. Each gets its own copy. |
+| **Backup endpoint** | Register a logging service in addition to your main handler. If your main handler is down, the logger still gets it for replay later. |
+
+There is no built-in fan-out filter. If you only want some events on a particular URL, branch in your handler and `2xx` the rest.
+
+## Working with the CLI
+
+A first-class `photon webhooks` CLI is on the roadmap. Until then, wrap the curl commands above in a shell function or use `photon projects show --json` to find your credentials and pipe them in.
+
+```sh
+# A small helper to list webhooks for the active project
+list_webhooks() {
+  local creds=$(photon projects show --json | jq -r '"\(.id):\(.secret)"')
+  curl -s -u "$creds" https://spectrum.photon.codes/webhooks/
+}
+```
+
+## Working with the dashboard
+
+You can also register, list, and delete webhooks from your project's [dashboard](https://app.photon.codes) under **Settings → Webhooks**. Same operations, no terminal required. The signing secret is shown once at registration time there too — copy it before navigating away.
+
+## Common workflows
+
+### "I lost my secret"
+
+1. List webhooks, find the one you've lost the secret for.
+2. Delete it.
+3. Re-register the same URL — store the new secret immediately.
+4. Update your server.
+
+### "I'm changing my URL"
+
+1. Register the new URL (you'll get a new secret).
+2. Update your DNS / ingress so the new URL points at your server.
+3. Once you've confirmed events are arriving on the new URL, delete the old one.
+
+This avoids any window where events go nowhere because the old URL has been deleted but the new one isn't live yet.
+
+### "I'm rotating credentials after a leak"
+
+1. Rotate the project secret first via `photon projects regenerate-secret <id>`. This invalidates Basic auth on management endpoints, so an attacker can't make further changes.
+2. Rotate every webhook signing secret using the delete-and-recreate flow above.
+
+The signing secret being leaked doesn't grant the attacker the ability to send messages on your behalf — only to forge inbound deliveries to your webhook URL. But in either case, rotating quickly is the right move.
