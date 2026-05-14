@@ -1,0 +1,204 @@
+---
+title: Quickstart
+description: Register a URL, verify the signature, receive your first event in five minutes
+---
+
+This walkthrough goes from "I have a Spectrum project" to "my server processed a real message" in about five minutes. We'll use Bun + Hono on the server side and [ngrok](https://ngrok.com/) to expose your local machine to the internet so you can test before deploying.
+
+If you already have a deployed HTTPS URL, skip the ngrok step.
+
+## Prerequisites
+
+- A Spectrum project with at least one platform enabled (iMessage or WhatsApp Business). If you don't have one yet, see [Getting Started with Spectrum](/spectrum-ts/getting-started).
+- Your project id and project secret, from the [dashboard](https://app.photon.codes) or `photon projects show`.
+- A reachable HTTPS URL — ngrok works for local development.
+
+<Steps>
+  <Step title="Stand up a local endpoint">
+
+  Create `server.ts`. We'll fill in the verification logic in the next step.
+
+  ```ts server.ts
+  import { Hono } from 'hono';
+
+  const app = new Hono();
+
+  app.post('/spectrum-webhook', async (c) => {
+    const body = await c.req.text();
+    console.log('received', body.slice(0, 200));
+    return c.text('ok', 200);
+  });
+
+  export default { port: 3000, fetch: app.fetch };
+  ```
+
+  ```sh
+  bun add hono
+  bun --hot server.ts
+  ```
+
+  In another terminal, expose port 3000:
+
+  ```sh
+  ngrok http 3000
+  ```
+
+  Copy the `https://...ngrok-free.app` URL it prints. That's your webhook destination.
+  </Step>
+
+  <Step title="Register the URL">
+
+  Use `curl` (or any HTTP client) to register the URL with your project credentials:
+
+  ```sh
+  curl -X POST https://spectrum.photon.codes/webhooks/ \
+    -u "$PROJECT_ID:$PROJECT_SECRET" \
+    -H "Content-Type: application/json" \
+    -d '{"webhookUrl":"https://abcd1234.ngrok-free.app/spectrum-webhook"}'
+  ```
+
+  The response contains the `signingSecret` — **save it now**. This is the only time you will ever see it.
+
+  ```json
+  {
+    "succeed": true,
+    "data": {
+      "id": "6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b",
+      "webhookUrl": "https://abcd1234.ngrok-free.app/spectrum-webhook",
+      "signingSecret": "a3f8e29b...5c7e9b2d",
+      "createdAt": "2026-05-14T19:00:00Z",
+      "updatedAt": "2026-05-14T19:00:00Z"
+    }
+  }
+  ```
+
+  Export the secret so the server can use it:
+
+  ```sh
+  export SPECTRUM_SIGNING_SECRET=a3f8e29b...5c7e9b2d
+  ```
+
+  <Tip>
+  Restart `bun --hot server.ts` after exporting so the variable is in scope.
+  </Tip>
+  </Step>
+
+  <Step title="Add signature verification">
+
+  Replace `server.ts` with a version that verifies the signature before processing the body:
+
+  ```ts server.ts
+  import { Hono } from 'hono';
+  import { createHmac, timingSafeEqual } from 'node:crypto';
+
+  const app = new Hono();
+  const SECRET = process.env.SPECTRUM_SIGNING_SECRET!;
+  const TOLERANCE_SEC = 5 * 60;
+
+  app.post('/spectrum-webhook', async (c) => {
+    const rawBody = await c.req.text();
+    const event = c.req.header('X-Spectrum-Event');
+    const timestamp = c.req.header('X-Spectrum-Timestamp');
+    const signature = c.req.header('X-Spectrum-Signature');
+
+    if (!event || !timestamp || !signature) {
+      return c.text('missing headers', 400);
+    }
+
+    const age = Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp));
+    if (!Number.isFinite(age) || age > TOLERANCE_SEC) {
+      return c.text('stale timestamp', 400);
+    }
+
+    const expected =
+      'v0=' +
+      createHmac('sha256', SECRET)
+        .update(`v0:${timestamp}:${rawBody}`)
+        .digest('hex');
+
+    const a = Buffer.from(expected);
+    const b = Buffer.from(signature);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      return c.text('bad signature', 401);
+    }
+
+    const payload = JSON.parse(rawBody);
+    if (event === 'messages') {
+      console.log('message from', payload.message.sender.id, ':', payload.message.content);
+    }
+
+    return c.text('ok', 200);
+  });
+
+  export default { port: 3000, fetch: app.fetch };
+  ```
+
+  Three things to notice:
+
+  - We read the body as **raw text** (`c.req.text()`), not parsed JSON. The signature is computed over the exact bytes that arrived; any reformatting breaks verification.
+  - We reject timestamps older than 5 minutes for replay protection.
+  - We compare with `timingSafeEqual` to avoid leaking information about the secret through response timing.
+
+  See [Verifying signatures](/webhooks/verifying-signatures) for the same logic in Express, FastAPI, and others.
+  </Step>
+
+  <Step title="Send a real message">
+
+  From your phone, send an iMessage (or WhatsApp message) to the number attached to your project. Within a second or two, your terminal should print:
+
+  ```text
+  message from imessage:+15551234567 : { type: 'text', text: 'hi' }
+  ```
+
+  If you see `bad signature`, double-check that you exported `SPECTRUM_SIGNING_SECRET` correctly and re-started the server.
+
+  If you see `missing headers`, the request didn't come from Spectrum — check your ngrok URL and that the registered `webhookUrl` matches.
+  </Step>
+
+  <Step title="Reply from your handler (optional)">
+
+  The webhook delivery only carries the inbound message. To reply, call the [Spectrum API](/api-reference/introduction) (or run a separate `Spectrum()` instance for sending). A typical pattern:
+
+  ```ts
+  if (event === 'messages' && payload.message.content.type === 'text') {
+    await fetch(`https://spectrum.photon.codes/spaces/${payload.space.id}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${btoa(`${process.env.PROJECT_ID}:${process.env.PROJECT_SECRET}`)}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ content: { type: 'text', text: 'hi back' } }),
+    });
+  }
+  ```
+
+  Acknowledge the webhook (`return c.text('ok', 200)`) **before** the reply call if your reply might take >1s — the worker treats a slow response as a timeout and retries.
+  </Step>
+</Steps>
+
+## What you just built
+
+You have an end-to-end pipeline:
+
+```text
+phone → iMessage → Spectrum → POST /spectrum-webhook → your code
+```
+
+You verified each delivery is genuine (not spoofed), recent (not a replay), and unmodified (not tampered with).
+
+## What's next
+
+<Columns cols={2}>
+  <Card title="Events" icon="rss" href="/webhooks/events">
+    Every header and field in the payload, with examples.
+  </Card>
+  <Card title="Delivery and retries" icon="repeat" href="/webhooks/delivery">
+    What happens when your endpoint is slow, down, or returns errors.
+  </Card>
+  <Card title="Managing webhooks" icon="gear" href="/webhooks/managing-webhooks">
+    Listing, deleting, and rotating signing secrets via the API.
+  </Card>
+  <Card title="Troubleshooting" icon="bug" href="/webhooks/troubleshooting">
+    Common signature errors, missed deliveries, and how to debug them.
+  </Card>
+</Columns>

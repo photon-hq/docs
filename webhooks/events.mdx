@@ -1,0 +1,165 @@
+---
+title: Events
+description: The exact wire format Spectrum sends — headers, body, and what each field contains
+---
+
+This page is the spec. Every webhook delivery is an HTTPS `POST` with a JSON body and four custom headers. The shape below is what your handler will see on every request.
+
+## Anatomy of a delivery
+
+```http
+POST /your-webhook-path HTTP/1.1
+Host: your-app.com
+Content-Type: application/json
+User-Agent: spectrum-webhook/0.1.0
+X-Spectrum-Event: messages
+X-Spectrum-Webhook-Id: 6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b
+X-Spectrum-Timestamp: 1747242392
+X-Spectrum-Signature: v0=3a1f7c8b2d9e0a4f6e3c5b8a1d2e4f6a8b0c3d5e7f9a1b2c4d6e8f0a2b4c6d8e
+
+{
+  "event": "messages",
+  "space": {
+    "id": "imessage:chat:42",
+    "platform": "imessage"
+  },
+  "message": {
+    "id": "imessage:msg:abc123",
+    "platform": "imessage",
+    "direction": "inbound",
+    "timestamp": "2026-05-14T19:06:32.000Z",
+    "sender": {
+      "id": "imessage:+15551234567",
+      "platform": "imessage"
+    },
+    "space": {
+      "id": "imessage:chat:42",
+      "platform": "imessage"
+    },
+    "content": {
+      "type": "text",
+      "text": "hey, what time is dinner?"
+    }
+  }
+}
+```
+
+## Headers
+
+| Header | Value | Notes |
+| --- | --- | --- |
+| `Content-Type` | `application/json` | Always. The body is UTF-8 JSON. |
+| `User-Agent` | `spectrum-webhook/<version>` | Identifies the worker. Useful for IP/UA allow-listing. |
+| `X-Spectrum-Event` | Event type, e.g. `messages` | Mirrors the `event` field in the body. Lets you route without parsing the body first. |
+| `X-Spectrum-Webhook-Id` | UUID of the registered webhook | Identifies *which* of your URLs this delivery is for. Useful with multiple registrations and required for idempotency keys. |
+| `X-Spectrum-Timestamp` | UNIX epoch seconds at signing time | Required to verify the signature. Also reject deliveries older than ~5 minutes for replay protection. |
+| `X-Spectrum-Signature` | `v0=<64-char hex>` | HMAC-SHA256 of `v0:{timestamp}:{rawBody}` keyed by the webhook's signing secret. See [Verifying signatures](/webhooks/verifying-signatures). |
+
+<Note>
+HTTP headers are case-insensitive. Most frameworks normalize to lowercase (`x-spectrum-event`); use whichever your framework returns.
+</Note>
+
+## Body shape
+
+The body is a JSON object. The `event` field is a discriminator — every other field's shape depends on which event you're handling.
+
+```ts
+type WebhookEventPayload =
+  | { event: 'messages'; space: SerializedSpace; message: SerializedInboundMessage };
+  // future events extend this union
+```
+
+### `event: "messages"` payload
+
+This is the only event currently emitted. It fires once per inbound message that lands for your project.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `event` | `"messages"` | Discriminator. Always `"messages"` for this payload. |
+| `space` | object | The conversation context. See [Space](#space). |
+| `message` | object | The inbound message. See [Message](#message). |
+
+#### Space
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Stable, platform-prefixed identifier (e.g. `imessage:chat:42`). |
+| `platform` | `string` | The platform that owns this space (`imessage`, `whatsapp_business`). |
+
+The `space.id` matches the `space.id` you'd see from the [`spectrum-ts` SDK](/spectrum-ts/spaces-and-users). You can use it to send a reply back via the [Spectrum API](/api-reference/introduction).
+
+#### Message
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Stable, platform-prefixed message id. Use this for idempotency. |
+| `platform` | `string` | The platform that sourced the message. |
+| `direction` | `"inbound"` | Always `"inbound"` — outbound messages are not delivered as webhooks. |
+| `timestamp` | `string` | ISO 8601 UTC timestamp from the platform (when the user sent it). |
+| `sender` | object | The user who sent the message — `{ id, platform }`. |
+| `space` | object | A copy of the top-level `space` field, denormalized for convenience. |
+| `content` | object | The message content. Shape depends on the message type — see below. |
+
+#### Content shapes
+
+`content` is a discriminated union tagged by `type`. It mirrors the [`message.content` shape](/spectrum-ts/content) from the `spectrum-ts` SDK.
+
+```ts
+type Content =
+  | { type: 'text'; text: string }
+  | { type: 'image'; url: string; mimeType: string }
+  | { type: 'audio'; url: string; mimeType: string; durationSec?: number }
+  // ... more types
+```
+
+The complete reference (with every content type and its fields) lives in [Spectrum content types](/spectrum-ts/content). The same definitions apply on the wire.
+
+<Tip>
+Always handle unknown `content.type` values gracefully — new content types may be added without a breaking version bump. A `default:` arm in your switch that logs and moves on is enough.
+</Tip>
+
+## What you don't get
+
+A few things that may be in the SDK's `Message` type but are intentionally **not** in the webhook payload:
+
+- **Methods like `.reply()` or `.react()`.** They depend on a live SDK connection. To respond, call the [Spectrum API](/api-reference/introduction) using `space.id`.
+- **Internal provider state.** Things like raw protocol headers, retry hints, and message acknowledgements are stripped before serialization.
+- **Outbound messages.** Webhooks deliver inbound only. A message you sent does not echo back as a webhook.
+
+## Forward compatibility
+
+The set of events will grow. To stay forward-compatible:
+
+1. **Branch on `event` defensively.** Use a `switch` with a `default` arm that returns `2xx` and logs the unknown event. Never crash on unknown values.
+
+   ```ts
+   switch (payload.event) {
+     case 'messages':
+       handleMessage(payload);
+       break;
+     default:
+       console.warn('unknown webhook event', payload.event);
+       break;
+   }
+   return new Response('ok', { status: 200 });
+   ```
+
+2. **Treat extra fields as unknown but tolerable.** New optional fields may appear in existing payload shapes. They'll never repurpose existing fields.
+
+3. **Don't subscribe to specific event types.** Today every URL receives every event. If a `subscriptions` field lands in the future, the default will continue to be "all events" so existing webhooks keep working.
+
+## Quick reference card
+
+```text
+Required to verify a delivery
+   X-Spectrum-Timestamp + X-Spectrum-Signature + raw body bytes + your signingSecret
+
+Required to route a delivery
+   X-Spectrum-Event   (or body.event)
+
+Required for idempotency
+   X-Spectrum-Webhook-Id + body.message.id (for messages event)
+
+Always returns 2xx fast
+   Process asynchronously after acknowledging — see /webhooks/delivery
+```

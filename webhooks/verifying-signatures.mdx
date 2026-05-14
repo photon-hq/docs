@@ -1,0 +1,313 @@
+---
+title: Verifying signatures
+description: Confirm each delivery is genuine, unmodified, and recent — copy-paste verifier code for Node, Bun, and Python
+---
+
+Anyone on the internet can `POST` to your webhook URL. The signature is what tells you a request actually came from Spectrum and wasn't tampered with in transit. Skip this page only if you trust your network perimeter to do that for you — most production systems shouldn't.
+
+The recipe is small, but four details have to be exactly right or every legitimate request will be rejected. We cover each below.
+
+## The recipe
+
+For every incoming request:
+
+1. **Capture the raw body bytes** before any JSON parser touches them.
+2. **Reject the timestamp** if it's more than 5 minutes from your current clock.
+3. **Recompute the HMAC** locally: `HMAC-SHA256(signingSecret, "v0:" + timestamp + ":" + rawBody)`.
+4. **Compare in constant time** against the `X-Spectrum-Signature` header.
+
+If any check fails, return `401 Unauthorized` and stop processing.
+
+```text
+sig = 'v0=' + hmacSha256Hex(signingSecret, 'v0:' + timestamp + ':' + rawBody)
+```
+
+## Working examples
+
+Pick the stack that matches your server. Each example is complete and copy-pasteable. Replace `SPECTRUM_SIGNING_SECRET` with the secret you saved when registering the webhook.
+
+<CodeGroup>
+```ts Bun + Hono
+import { Hono } from 'hono';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
+const app = new Hono();
+const SECRET = process.env.SPECTRUM_SIGNING_SECRET!;
+const TOLERANCE_SEC = 5 * 60;
+
+app.post('/spectrum-webhook', async (c) => {
+  const rawBody = await c.req.text();
+  const timestamp = c.req.header('X-Spectrum-Timestamp');
+  const signature = c.req.header('X-Spectrum-Signature');
+
+  if (!timestamp || !signature) return c.text('missing headers', 400);
+
+  const age = Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp));
+  if (!Number.isFinite(age) || age > TOLERANCE_SEC) {
+    return c.text('stale timestamp', 400);
+  }
+
+  const expected =
+    'v0=' +
+    createHmac('sha256', SECRET)
+      .update(`v0:${timestamp}:${rawBody}`)
+      .digest('hex');
+
+  const a = Buffer.from(expected);
+  const b = Buffer.from(signature);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+    return c.text('bad signature', 401);
+  }
+
+  const payload = JSON.parse(rawBody);
+  await handleEvent(c.req.header('X-Spectrum-Event'), payload);
+  return c.text('ok', 200);
+});
+
+export default { port: 3000, fetch: app.fetch };
+```
+
+```js Node + Express
+import express from 'express';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
+const app = express();
+const SECRET = process.env.SPECTRUM_SIGNING_SECRET;
+const TOLERANCE_SEC = 5 * 60;
+
+app.post(
+  '/spectrum-webhook',
+  express.raw({ type: 'application/json' }),
+  (req, res) => {
+    const rawBody = req.body.toString('utf8');
+    const timestamp = req.header('X-Spectrum-Timestamp');
+    const signature = req.header('X-Spectrum-Signature');
+
+    if (!timestamp || !signature) return res.status(400).send('missing headers');
+
+    const age = Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp));
+    if (!Number.isFinite(age) || age > TOLERANCE_SEC) {
+      return res.status(400).send('stale timestamp');
+    }
+
+    const expected =
+      'v0=' +
+      createHmac('sha256', SECRET)
+        .update(`v0:${timestamp}:${rawBody}`)
+        .digest('hex');
+
+    const a = Buffer.from(expected);
+    const b = Buffer.from(signature);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      return res.status(401).send('bad signature');
+    }
+
+    const payload = JSON.parse(rawBody);
+    handleEvent(req.header('X-Spectrum-Event'), payload);
+    return res.status(200).send('ok');
+  },
+);
+
+app.listen(3000);
+```
+
+```py Python + FastAPI
+import hashlib, hmac, json, os, time
+from fastapi import FastAPI, Header, HTTPException, Request
+
+app = FastAPI()
+SECRET = os.environ["SPECTRUM_SIGNING_SECRET"].encode()
+TOLERANCE_SEC = 5 * 60
+
+
+@app.post("/spectrum-webhook")
+async def spectrum_webhook(
+    request: Request,
+    x_spectrum_event: str = Header(None),
+    x_spectrum_timestamp: str = Header(None),
+    x_spectrum_signature: str = Header(None),
+):
+    raw_body = await request.body()
+
+    if not x_spectrum_timestamp or not x_spectrum_signature:
+        raise HTTPException(400, "missing headers")
+
+    try:
+        age = abs(int(time.time()) - int(x_spectrum_timestamp))
+    except ValueError:
+        raise HTTPException(400, "invalid timestamp")
+    if age > TOLERANCE_SEC:
+        raise HTTPException(400, "stale timestamp")
+
+    base = f"v0:{x_spectrum_timestamp}:{raw_body.decode('utf-8')}".encode()
+    expected = "v0=" + hmac.new(SECRET, base, hashlib.sha256).hexdigest()
+
+    if not hmac.compare_digest(expected, x_spectrum_signature):
+        raise HTTPException(401, "bad signature")
+
+    handle_event(x_spectrum_event, json.loads(raw_body))
+    return {"ok": True}
+```
+
+```go Go + net/http
+package main
+
+import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
+	"net/http"
+	"os"
+	"strconv"
+	"time"
+)
+
+var secret = []byte(os.Getenv("SPECTRUM_SIGNING_SECRET"))
+
+const toleranceSec = 5 * 60
+
+func handleWebhook(w http.ResponseWriter, r *http.Request) {
+	rawBody, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "read failed", 400)
+		return
+	}
+
+	timestamp := r.Header.Get("X-Spectrum-Timestamp")
+	signature := r.Header.Get("X-Spectrum-Signature")
+	if timestamp == "" || signature == "" {
+		http.Error(w, "missing headers", 400)
+		return
+	}
+
+	ts, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid timestamp", 400)
+		return
+	}
+	if abs(time.Now().Unix()-ts) > toleranceSec {
+		http.Error(w, "stale timestamp", 400)
+		return
+	}
+
+	mac := hmac.New(sha256.New, secret)
+	mac.Write([]byte("v0:" + timestamp + ":" + string(rawBody)))
+	expected := "v0=" + hex.EncodeToString(mac.Sum(nil))
+
+	if !hmac.Equal([]byte(expected), []byte(signature)) {
+		http.Error(w, "bad signature", 401)
+		return
+	}
+
+	w.WriteHeader(200)
+	w.Write([]byte("ok"))
+}
+
+func abs(x int64) int64 { if x < 0 { return -x }; return x }
+```
+</CodeGroup>
+
+## The four details that have to be exact
+
+### 1. Use the raw body bytes, not the parsed JSON
+
+The signature was computed over the **exact bytes** that travel on the wire. If you let your framework parse the body to JSON and then re-stringify it before hashing, the bytes change — different key order, different whitespace, different unicode escaping — and verification fails.
+
+| Framework | What to call |
+| --- | --- |
+| Express | `express.raw({ type: 'application/json' })` middleware |
+| Hono | `await c.req.text()` (call this *before* `c.req.json()`) |
+| FastAPI | `await request.body()` (don't type the parameter as a Pydantic model) |
+| Bun.serve | `await req.text()` |
+| Cloudflare Workers | `await request.text()` |
+
+<Warning>
+Calling `request.json()` first and `request.text()` second gives you an empty body — most frameworks consume the underlying stream once. Always read raw text first.
+</Warning>
+
+### 2. Compare in constant time
+
+A simple `===` comparison leaks information about how many leading bytes match through response timing. Over many requests, that's enough to recover the secret. Use the constant-time comparison built into your language:
+
+| Language | Function |
+| --- | --- |
+| Node / Bun | `crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b))` |
+| Python | `hmac.compare_digest(a, b)` |
+| Go | `hmac.Equal(a, b)` |
+| Ruby | `Rack::Utils.secure_compare(a, b)` (or `OpenSSL.fixed_length_secure_compare`) |
+| PHP | `hash_equals($a, $b)` |
+
+<Note>
+`timingSafeEqual` requires both buffers to be the same length, otherwise it throws. Compare lengths first and return `false` if they differ — same outcome (reject), no exception.
+</Note>
+
+### 3. Reject stale timestamps
+
+Even with valid signatures, an attacker who captures a delivery from your logs (or a misconfigured proxy) could replay it forever. Bound that window:
+
+```ts
+const age = Math.abs(now - timestamp);
+if (age > 5 * 60) reject();
+```
+
+5 minutes is the recommended tolerance — generous enough to absorb clock drift between our worker and your server, tight enough to make captured-and-replayed attacks impractical. Tighten or loosen it based on your threat model.
+
+### 4. Get the hex casing and prefix right
+
+The signature header is **lowercase hex** prefixed with `v0=`. Three subtle ways to break this:
+
+- Output uppercase hex (`A1B2...`) and compare against the lowercase header → never matches.
+- Forget the `v0=` prefix → length differs by 3, never matches.
+- Sign `${timestamp}:${body}` (without the `v0:` prefix in the input) → completely different HMAC.
+
+The `v0=` versions both the header *prefix* and the *signing input prefix*. They're the same `v0` for a reason — when we ever roll out a new scheme, both will bump together to `v1`, and old verifiers can detect "this signature is in a format I don't understand" by checking the prefix.
+
+## Why this is enough — the security model
+
+The signing secret is the only piece that doesn't travel on each request. It was returned exactly once when you registered the webhook, and it lives in your secrets manager.
+
+When you compute `HMAC(secret, body)` and compare to what arrived, you're proving:
+
+- **Authenticity.** Only someone with the secret can produce a signature that matches. That's Spectrum (and you).
+- **Integrity.** Any byte changed in transit changes the HMAC completely. A modified body never matches the original signature.
+- **Header integrity.** The timestamp is part of the signed input, so it can't be modified either.
+
+Combined with the staleness check, you also get:
+
+- **Freshness.** Captured deliveries can't be replayed beyond the 5-minute window.
+
+This is the same scheme used by Stripe (`v1=`), Slack (`v0=`, identical to ours), GitHub (`sha256=`), and most webhook providers. The construction is well-studied and survives [Kerckhoffs's principle](https://en.wikipedia.org/wiki/Kerckhoffs%27s_principle): even if every detail of the formula is public (it is — you're reading it now), the scheme is secure as long as the secret stays secret.
+
+## Common verification failures
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Every request returns `bad signature` | Body was parsed and re-serialized before hashing | Capture the raw body bytes first |
+| Sporadic `bad signature` | Server clock skew | Confirm NTP is running; loosen the tolerance window if you're on a constrained host |
+| `bad signature` only in production | Secret loaded from the wrong env var | Log `SECRET.length === 64` (it should always be true) |
+| `timingSafeEqual` throws | Buffers have different lengths | Compare `length` first, return `false` if mismatched |
+| `missing headers` from real requests | Reverse proxy stripping `X-Spectrum-*` | Add to your proxy's header allow-list |
+
+## Reusing our verifier
+
+Spectrum's own delivery worker uses an internal `verifyPhotonWebhook` function that mirrors the algorithm above. We round-trip our signer against this verifier in tests on every commit, so any bug in the algorithm would be caught before release. You can copy the same shape into your code:
+
+```ts
+export const verifyPhotonWebhook = (
+  rawBody: string,
+  signingSecret: string,
+  signature: string,
+  timestamp: string
+): boolean => {
+  const expected =
+    'v0=' +
+    createHmac('sha256', signingSecret)
+      .update(`v0:${timestamp}:${rawBody}`)
+      .digest('hex');
+  if (expected.length !== signature.length) return false;
+  return timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+};
+```
+
+Pair it with the staleness check and you have a complete verifier.

@@ -143,6 +143,28 @@
         ]
       },
       {
+        "tab": "Webhooks",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "webhooks/overview",
+              "webhooks/quickstart",
+              "webhooks/events"
+            ]
+          },
+          {
+            "group": "Implementation",
+            "pages": [
+              "webhooks/verifying-signatures",
+              "webhooks/delivery",
+              "webhooks/managing-webhooks",
+              "webhooks/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "API reference",
         "groups": [
           {

@@ -1,0 +1,101 @@
+---
+title: Webhooks
+description: Receive iMessage and WhatsApp events at your own URL — Spectrum signs each delivery so you know it's real
+---
+
+Spectrum webhooks push platform events — incoming messages, and (soon) more — to a URL you control. You register the URL once, and from that moment on every message that lands for your project is delivered to your server as a signed HTTP `POST`.
+
+```ts
+const app = await Spectrum({ projectId, projectSecret, providers: [imessage.config()] });
+// Without webhooks, you'd run this loop yourself, forever.
+for await (const [space, message] of app.messages) { /* ... */ }
+```
+
+```http
+# With webhooks, Spectrum runs the loop and POSTs each message to you.
+POST https://your-app.com/spectrum-webhook
+X-Spectrum-Event: messages
+X-Spectrum-Signature: v0=<hmac>
+X-Spectrum-Timestamp: 1747242392
+
+{"event":"messages","space":{...},"message":{...}}
+```
+
+You write a normal HTTP handler in whatever framework you already use. Spectrum handles staying connected to iMessage and WhatsApp Business, batching, reconnects, and signing.
+
+## When to use webhooks
+
+Reach for webhooks when any of these are true:
+
+- **Your service is HTTP-shaped already.** A Node/Bun/Python/Go backend with an inbound endpoint is a one-line addition for webhooks; running a long-lived `Spectrum()` loop is more friction.
+- **You don't want to host the SDK.** No `Spectrum()` process, no platform credentials in your runtime, no reconnect logic.
+- **You want to fan out one message to multiple services.** Register multiple webhook URLs per project — each one receives every event, independently.
+- **You're integrating from a serverless platform** (Vercel, Cloudflare Workers, Lambda) where a long-lived process isn't an option.
+
+Stick with the [`spectrum-ts` SDK loop](/spectrum-ts/getting-started) when you need outbound message control inside the same process that consumes inbound, or when you're iterating fast in dev without a deployable URL.
+
+## How it works
+
+```mermaid
+flowchart LR
+  In([Inbound message]) --> SDK[spectrum-ts SDK]
+  SDK --> WK[Spectrum webhook worker]
+  WK -->|HTTPS POST| URL1[your-app.com/webhook]
+  WK -->|HTTPS POST| URL2[other-service.com/hook]
+  URL1 -->|2xx| Done([Delivered])
+  URL2 -->|5xx / timeout| Retry[Retry up to 3x]
+  Retry --> URL2
+```
+
+When a message arrives on iMessage or WhatsApp Business for a project that has webhooks registered:
+
+1. Our worker receives the message from the platform.
+2. It serializes the event to JSON.
+3. For every URL registered on that project, it computes an HMAC-SHA256 signature and POSTs the body.
+4. Your server verifies the signature, returns `2xx`, and processes the event.
+
+Failed deliveries are retried for a few seconds with exponential backoff, then dropped. There is no persistent retry queue or dead-letter destination — see [Delivery and retries](/webhooks/delivery) for the precise policy.
+
+## The mental model
+
+Four ideas cover everything else in these docs:
+
+| Concept | What it means |
+| --- | --- |
+| **Per-project, per-URL** | Webhooks are owned by a project. A project can have many URLs; each URL is independent. |
+| **Per-URL signing secret** | Every webhook gets its own 64-character signing secret, returned exactly once at registration time. Different URLs, different secrets. |
+| **Every URL gets every event** | There is no per-webhook event subscription today. You branch on the `event` field (or `X-Spectrum-Event` header) in your handler. |
+| **At-least-once delivery, in-order per project** | A delivery may arrive twice on retry. Dedupe on `webhookId + message.id`. There is no `Exactly-Once` guarantee. |
+
+## Currently emitted events
+
+| Event | Header value | Payload shape |
+| --- | --- | --- |
+| Inbound message | `X-Spectrum-Event: messages` | `{ event, space, message }` — see [Events](/webhooks/events) |
+
+The set will grow (reactions, typing indicators, custom provider events). New event types are additive: existing handlers that ignore unknown values keep working without changes.
+
+## Security in one paragraph
+
+Each delivery includes an `X-Spectrum-Signature` header containing an HMAC-SHA256 of the request body, keyed by your per-webhook signing secret. Anyone can `POST` to your URL — only Spectrum can compute a signature that verifies. Recompute it on your side and reject anything that doesn't match. The full walkthrough, with copy-pasteable code in three languages, is on [Verifying signatures](/webhooks/verifying-signatures).
+
+<Warning>
+Your signing secret is returned exactly once, in the response of `POST /webhooks/`. There is no "show me my secret" endpoint. Store it in your secret manager immediately. If you lose it, delete the webhook and re-register the URL — you'll get a new id and a new secret.
+</Warning>
+
+## Where to next
+
+<Columns cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/webhooks/quickstart">
+    Register a URL, verify a signature, receive your first event in 5 minutes.
+  </Card>
+  <Card title="Events" icon="rss" href="/webhooks/events">
+    The exact wire format — headers, body, and what each field contains.
+  </Card>
+  <Card title="Verifying signatures" icon="shield-halved" href="/webhooks/verifying-signatures">
+    The security model with complete verifier code for Node, Bun, and Python.
+  </Card>
+  <Card title="Delivery and retries" icon="repeat" href="/webhooks/delivery">
+    Retry policy, timeouts, idempotency, and what HTTP status codes mean to us.
+  </Card>
+</Columns>
