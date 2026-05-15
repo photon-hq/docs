@@ -7,10 +7,11 @@ You manage webhooks through three HTTP endpoints on the Spectrum API. All requir
 
 ## Authentication
 
-Every request uses HTTP Basic auth where the username is your `projectId` and the password is your `projectSecret`.
+Every request uses HTTP Basic auth where the username is your `projectId` and the password is your `projectSecret`. The `projectId` also appears in the URL path — both are required.
 
 ```sh
-curl -u "$PROJECT_ID:$PROJECT_SECRET" https://spectrum.photon.codes/webhooks/
+curl -u "$PROJECT_ID:$PROJECT_SECRET" \
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/"
 ```
 
 Project credentials are scoped to a single project. They never expire — rotate them via `photon projects regenerate-secret <id>` (see the [CLI projects docs](/cli/projects#rotate-the-spectrum-api-secret)) if they leak.
@@ -18,13 +19,13 @@ Project credentials are scoped to a single project. They never expire — rotate
 ## Register a webhook
 
 ```sh
-curl -X POST https://spectrum.photon.codes/webhooks/ \
+curl -X POST "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/" \
   -u "$PROJECT_ID:$PROJECT_SECRET" \
   -H "Content-Type: application/json" \
   -d '{"webhookUrl":"https://your-app.com/spectrum-webhook"}'
 ```
 
-Response (`201 Created`):
+Response (`200 OK`):
 
 ```json
 {
@@ -47,21 +48,21 @@ The `signingSecret` is **only returned in this response**. There is no `GET` end
 
 | Status | When it happens | What to do |
 | --- | --- | --- |
-| `400` | Invalid `webhookUrl` (not HTTPS, malformed) | Use a valid `https://` URL |
+| `422` | `webhookUrl` fails schema validation (empty, malformed, etc.) | Send a syntactically valid URL string |
 | `409` | The same URL is already registered for this project | List existing webhooks, or delete the old one and re-register |
 | `401` | Bad project credentials | Rotate via the CLI and try again |
 
 ### URL requirements
 
-- Must be `https://`.
-- Must be reachable from the public internet — this isn't strict, but if Spectrum can't reach it, every delivery fails.
+- Should be `https://`. We accept `http://` URLs today and don't reject them at registration, but delivery is then sent in plaintext — anyone on the network path can read the payload and forge requests. Treat HTTPS as a hard requirement for any non-toy webhook.
+- Must be reachable from the public internet — if Spectrum can't reach it, every delivery fails after the retry budget exhausts.
 - Path component is yours to choose; we POST to it as-is.
 
 ## List registered webhooks
 
 ```sh
 curl -u "$PROJECT_ID:$PROJECT_SECRET" \
-  https://spectrum.photon.codes/webhooks/
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/"
 ```
 
 Response:
@@ -97,7 +98,7 @@ The list response **does not include `signingSecret`**. It's only ever returned 
 ```sh
 curl -X DELETE \
   -u "$PROJECT_ID:$PROJECT_SECRET" \
-  https://spectrum.photon.codes/webhooks/6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b/"
 ```
 
 Response:
@@ -125,7 +126,7 @@ There is no dedicated rotation endpoint. To rotate, **delete and re-register**:
 OLD_ID=6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b
 
 # 2. Register the same URL — get a new secret
-curl -X POST https://spectrum.photon.codes/webhooks/ \
+curl -X POST "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/" \
   -u "$PROJECT_ID:$PROJECT_SECRET" \
   -H "Content-Type: application/json" \
   -d '{"webhookUrl":"https://your-app.com/spectrum-webhook"}'
@@ -135,7 +136,7 @@ curl -X POST https://spectrum.photon.codes/webhooks/ \
 
 # 4. Delete the old webhook
 curl -X DELETE -u "$PROJECT_ID:$PROJECT_SECRET" \
-  https://spectrum.photon.codes/webhooks/$OLD_ID
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/$OLD_ID/"
 ```
 
 <Tip>
@@ -176,8 +177,11 @@ A first-class `photon webhooks` CLI is on the roadmap. Until then, wrap the curl
 ```sh
 # A small helper to list webhooks for the active project
 list_webhooks() {
-  local creds=$(photon projects show --json | jq -r '"\(.id):\(.secret)"')
-  curl -s -u "$creds" https://spectrum.photon.codes/webhooks/
+  local row creds id
+  row=$(photon projects show --json)
+  id=$(echo "$row" | jq -r '.id')
+  creds=$(echo "$row" | jq -r '"\(.id):\(.secret)"')
+  curl -s -u "$creds" "https://spectrum.photon.codes/projects/$id/webhooks/"
 }
 ```
 
