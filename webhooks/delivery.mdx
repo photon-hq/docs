@@ -5,9 +5,15 @@ description: How Spectrum decides when to retry, when to give up, and what your 
 
 You know what arrives ([Events](/webhooks/events)) and how to prove it's real ([Verifying signatures](/webhooks/verifying-signatures)). This page picks up the moment *after* the worker computes a signature and starts the `POST` to your URL — what it does when your server is fast, slow, broken, or unreachable. The contract is simple but worth knowing exactly, because it determines how fault-tolerant you need to be on your end.
 
-## The contract in one paragraph
+## The contract at a glance
 
-Spectrum tries to deliver each event for up to four attempts within a ~6.2 second window. Each attempt has a 10-second per-request timeout. Retries happen on `5xx`, `408`, `429`, network errors, and our own timeouts; other `4xx` codes mean "give up." Successful deliveries acknowledge with any `2xx`. After the budget is exhausted the event is dropped from the worker's memory — there is no durable retry queue. Customers who care about every event must dedupe and tolerate occasional misses.
+- **Strong retry behaviour.** Up to 4 attempts per event, with backoff on `5xx`, `408`, `429`, network errors, and worker-side timeouts. The vast majority of deliveries land on attempt 1; the retries are there for the occasional bad minute on your side.
+- **Fast acknowledgement.** Any `2xx` ends it — the worker stops as soon as your server says ok.
+- **Fast permanent failure.** Other `4xx` codes (`400`/`401`/`404`/etc.) are treated as fatal — we don't waste your retry budget when the request will never succeed.
+- **Bounded budget.** 10-second per-attempt timeout, ~6.2 second total across all retries. If your server is still down after that, the event is logged and the worker moves on.
+- **At-least-once delivery.** A retry after your server timed out can re-deliver an event you already processed — always dedupe in your handler (see [Be idempotent](#be-idempotent) below).
+
+This is a bounded-retry contract, not zero-loss delivery. If your use case requires *every* event regardless of downtime (financial audit, transactional state machines), pair webhooks with periodic reconciliation against the [Spectrum API](/api-reference/introduction) — covered later on this page.
 
 ## What the worker does on each attempt
 

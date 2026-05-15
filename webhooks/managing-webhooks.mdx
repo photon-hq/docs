@@ -28,12 +28,46 @@ Project credentials are scoped to a single project. They never expire — rotate
 
 ## Register a webhook
 
-```sh
+<CodeGroup>
+```sh curl
 curl -X POST "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/" \
   -u "$PROJECT_ID:$PROJECT_SECRET" \
   -H "Content-Type: application/json" \
   -d '{"webhookUrl":"https://your-app.com/spectrum-webhook"}'
 ```
+
+```ts JavaScript
+const auth = Buffer.from(`${PROJECT_ID}:${PROJECT_SECRET}`).toString('base64');
+
+const res = await fetch(
+  `https://spectrum.photon.codes/projects/${PROJECT_ID}/webhooks/`,
+  {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${auth}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ webhookUrl: 'https://your-app.com/spectrum-webhook' }),
+  }
+);
+
+const { data } = await res.json();
+console.log('signingSecret:', data.signingSecret); // save this — only shown once
+```
+
+```py Python
+import httpx, os
+
+res = httpx.post(
+    f"https://spectrum.photon.codes/projects/{os.environ['PROJECT_ID']}/webhooks/",
+    auth=(os.environ['PROJECT_ID'], os.environ['PROJECT_SECRET']),
+    json={"webhookUrl": "https://your-app.com/spectrum-webhook"},
+)
+
+data = res.json()["data"]
+print("signingSecret:", data["signingSecret"])  # save this — only shown once
+```
+</CodeGroup>
 
 Response (`200 OK`):
 
@@ -70,10 +104,35 @@ The `signingSecret` is **only returned in this response**. There is no `GET` end
 
 ## List registered webhooks
 
-```sh
+<CodeGroup>
+```sh curl
 curl -u "$PROJECT_ID:$PROJECT_SECRET" \
   "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/"
 ```
+
+```ts JavaScript
+const auth = Buffer.from(`${PROJECT_ID}:${PROJECT_SECRET}`).toString('base64');
+
+const res = await fetch(
+  `https://spectrum.photon.codes/projects/${PROJECT_ID}/webhooks/`,
+  { headers: { Authorization: `Basic ${auth}` } }
+);
+
+const { data } = await res.json();
+console.log(data); // array of { id, webhookUrl, createdAt, updatedAt }
+```
+
+```py Python
+import httpx, os
+
+res = httpx.get(
+    f"https://spectrum.photon.codes/projects/{os.environ['PROJECT_ID']}/webhooks/",
+    auth=(os.environ['PROJECT_ID'], os.environ['PROJECT_SECRET']),
+)
+
+print(res.json()["data"])  # list of { id, webhookUrl, createdAt, updatedAt }
+```
+</CodeGroup>
 
 Response:
 
@@ -105,11 +164,31 @@ The list response **does not include `signingSecret`**. It's only ever returned 
 
 ## Delete a webhook
 
-```sh
+<CodeGroup>
+```sh curl
 curl -X DELETE \
   -u "$PROJECT_ID:$PROJECT_SECRET" \
   "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b/"
 ```
+
+```ts JavaScript
+const auth = Buffer.from(`${PROJECT_ID}:${PROJECT_SECRET}`).toString('base64');
+
+await fetch(
+  `https://spectrum.photon.codes/projects/${PROJECT_ID}/webhooks/${webhookId}/`,
+  { method: 'DELETE', headers: { Authorization: `Basic ${auth}` } }
+);
+```
+
+```py Python
+import httpx, os
+
+httpx.delete(
+    f"https://spectrum.photon.codes/projects/{os.environ['PROJECT_ID']}/webhooks/{webhook_id}/",
+    auth=(os.environ['PROJECT_ID'], os.environ['PROJECT_SECRET']),
+)
+```
+</CodeGroup>
 
 Response:
 

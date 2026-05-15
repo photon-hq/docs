@@ -3,17 +3,11 @@ title: Events
 description: The exact wire format Spectrum sends — headers, body, and what each field contains
 ---
 
-import { TypeTooltip } from "/snippets/type-tooltip.mdx";
-
-{% set space = symbol("ts:spectrum-ts#Space") %}
-{% set user = symbol("ts:spectrum-ts#User") %}
-
-{# Note: We intentionally do NOT use TypeTooltip for `Content` or
-   `InboundMessage` because:
-   - `Content = z.infer<typeof contentSchema>` resolves to a Zod inference
-     reference that's unhelpful to customers.
-   - `InboundMessage` is generic and the extractor returns an empty signature.
-   The Space and User types are plain interfaces that extract cleanly. #}
+{# We deliberately do NOT use TypeTooltip on the Space/User/Message types here.
+   The SDK interfaces include methods (`.send()`, `.edit()`, `.getMessage()`,
+   etc.) that don't survive `JSON.stringify` — showing them as the type of a
+   webhook payload field is actively misleading. The serialized shapes on the
+   wire are simpler: `{ id, platform }` for Space and User. #}
 
 In the [Quickstart](/webhooks/quickstart), a real delivery flew past in `console.log`. This page is the spec — every header and every field your handler will see on every request, slowed down and labelled.
 
@@ -92,8 +86,8 @@ This is the only event currently emitted. It fires once per inbound message that
 | Field | Type | Description |
 | --- | --- | --- |
 | `event` | `"messages"` | Discriminator. Always `"messages"` for this payload. |
-| `space` | <TypeTooltip name="Space" type={`{{ space.signature }}`} /> | The conversation context. See [Space](#space) below. |
-| `message` | object | The inbound message. See [Message](#message) below. |
+| `space` | `{ id, platform }` | The conversation context. See [Space](#space) below. |
+| `message` | `object` | The inbound message. See [Message](#message) below. |
 
 #### Space
 
@@ -102,7 +96,7 @@ This is the only event currently emitted. It fires once per inbound message that
 | `id` | `string` | Opaque, stable identifier for the conversation. Format varies by platform and space type — treat it as a string you store and pass back unchanged. For iMessage DMs, looks like `any;-;+<E.164>`; for groups, a chat GUID. |
 | `platform` | `string` | The platform that owns this space. See [Providers](/spectrum-ts/providers) for the current set of values; new platforms add new values without breaking existing payloads. |
 
-The `space.id` matches the `space.id` you'd see from the [`spectrum-ts` SDK](/spectrum-ts/spaces-and-users). To send a reply, pass it to <TypeTooltip name="Space" type={`{{ space.signature }}`} />`.send(...)` from a separately-running SDK instance — there is no public HTTP send-message endpoint today.
+The `space.id` matches the `space.id` you'd see from the [`spectrum-ts` SDK](/spectrum-ts/spaces-and-users) — pass it to `Space.send(...)` from a separately-running SDK instance to reply. There is no public HTTP send-message endpoint today.
 
 #### Message
 
@@ -112,8 +106,8 @@ The `space.id` matches the `space.id` you'd see from the [`spectrum-ts` SDK](/sp
 | `platform` | `string` | The platform that sourced the message. Same value as `space.platform`. |
 | `direction` | `"inbound"` | Always `"inbound"` — outbound messages are not delivered as webhooks. |
 | `timestamp` | `string` | ISO 8601 UTC timestamp from the platform (when the user sent it). |
-| `sender` | <TypeTooltip name="User" type={`{{ user.signature }}`} /> | The user who sent the message — `{ id, platform }`. The `id` format is platform-defined (e.g. for iMessage it's the E.164 phone number `+15551234567`; for WhatsApp Business it's the WA contact id). |
-| `space` | <TypeTooltip name="Space" type={`{{ space.signature }}`} /> | A copy of the top-level `space` field, denormalized for convenience. |
+| `sender` | `{ id, platform }` | The user who sent the message. The `id` format is platform-defined (for iMessage it's the E.164 phone number `+15551234567`; for WhatsApp Business it's the WA contact id). |
+| `space` | `{ id, platform }` | A copy of the top-level `space` field, denormalized for convenience. |
 | `content` | object | The message content. Shape depends on the message type — see [Content shapes](#content-shapes) below. |
 
 #### Idempotency: the `message.id` rule
