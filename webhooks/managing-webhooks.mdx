@@ -5,15 +5,7 @@ description: Register, list, delete, and rotate webhook signing secrets via the 
 
 By now you can receive deliveries, verify them, and survive retries. This page is the operational layer — how you actually create the webhook records, list them, take one offline, or rotate a leaked secret.
 
-There are three HTTP endpoints, all under `https://spectrum.photon.codes/projects/{projectId}/webhooks/`. Every example below uses `curl` to keep things explicit, but the same three operations are available three other ways:
-
-- The **Webhook** tab of your workspace in the [Spectrum dashboard](https://app.photon.codes/dashboard) — a UI any teammate can use.
-- The [interactive API reference](/api-reference/introduction) — run any request from your browser with your credentials pre-filled.
-- Any HTTP client you like — Postman, Insomnia, your language's SDK, etc.
-
-<Tip>
-**Read this page for the *what* and *when*, then pick a surface for the *how*.** This page explains what each operation does and when you'd reach for it; the dashboard and API reference are the interactive playgrounds for actually firing the request. The combo is much faster than reading either alone.
-</Tip>
+There are three HTTP endpoints, all under `https://spectrum.photon.codes/projects/{projectId}/webhooks/`. Every example below uses `curl`. The same operations are also available through the **Webhook** tab of the [Spectrum dashboard](https://app.photon.codes/dashboard), the [API reference](/api-reference/introduction), and any HTTP client (Postman, Insomnia, a language SDK, etc.) — see [Three ways to manage webhooks](/webhooks/overview#three-ways-to-manage-webhooks) on the overview for details.
 
 ## Authentication
 
@@ -276,13 +268,13 @@ list_webhooks() {
 
 ## Working with the dashboard
 
-If you'd rather not touch a terminal, every operation on this page is also a button click away in the [Spectrum dashboard](https://app.photon.codes/dashboard).
+The same operations are available as a UI in the [Spectrum dashboard](https://app.photon.codes/dashboard) under the **Webhook** tab of a workspace (alongside *Platforms*, *Users*, *Lines*, and *Settings*).
 
-Open your workspace and switch to the **Webhook** tab (next to *Platforms*, *Users*, *Lines*, and *Settings*). You'll see:
+The tab contains:
 
-- A list of every webhook currently registered — endpoint URL plus the date it was added.
-- An **+ Add webhook** button to register a new URL. After you click it, the signing secret is shown once in a modal — copy it before closing.
-- A **Remove** button next to each row to delete a webhook. Same effect as the `DELETE` endpoint: delivery stops immediately and the signing secret is invalidated.
+- A list of every registered webhook — endpoint URL and registration date.
+- An **+ Add webhook** button. The signing secret is shown once in a modal after registration; it cannot be retrieved later.
+- A **Remove** button on each row. Same effect as the `DELETE` endpoint: delivery stops immediately and the signing secret is invalidated.
 
 ## Common workflows
 
@@ -317,6 +309,6 @@ You can register, list, delete, and rotate. If you're hitting a snag along the w
     Common signature errors, missed deliveries, duplicates, ngrok issues, and how to debug them.
   </Card>
   <Card title="API reference" icon="code" href="/api-reference/introduction">
-    The interactive playground for every endpoint on this page — run requests live from your browser.
+    Schema and live request playground for every endpoint on this page.
   </Card>
 </Columns>

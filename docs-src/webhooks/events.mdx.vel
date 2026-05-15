@@ -140,7 +140,7 @@ type Content =
       type: 'attachment';
       name: string;       // original filename, e.g. "IMG_4127.HEIC"
       mimeType: string;   // e.g. "image/heic", "audio/mp4", "application/pdf"
-      size: number;       // bytes
+      size?: number;      // bytes — present when the provider knows the size (always for iMessage; may be absent for some custom providers)
     };
   // future content types may be added; handle unknown `type` values defensively
 ```
