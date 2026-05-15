@@ -3,7 +3,21 @@ title: Events
 description: The exact wire format Spectrum sends — headers, body, and what each field contains
 ---
 
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+{% set space = symbol("ts:spectrum-ts#Space") %}
+{% set user = symbol("ts:spectrum-ts#User") %}
+
+{# Note: We intentionally do NOT use TypeTooltip for `Content` or
+   `InboundMessage` because:
+   - `Content = z.infer<typeof contentSchema>` resolves to a Zod inference
+     reference that's unhelpful to customers.
+   - `InboundMessage` is generic and the extractor returns an empty signature.
+   The Space and User types are plain interfaces that extract cleanly. #}
+
 This page is the spec. Every webhook delivery is an HTTPS `POST` with a JSON body and four custom headers. The shape below is what your handler will see on every request.
+
+The body's `space`, `message`, `sender`, and `content` fields are the same shapes you'd see from the [`spectrum-ts` SDK](/spectrum-ts/messages) — with one important difference: function-typed properties (`.read()`, `.stream()`, `.reply()`, `.react()`, etc.) are stripped before serialization, since functions can't survive `JSON.stringify`.
 
 ## Anatomy of a delivery
 
@@ -13,9 +27,9 @@ Host: your-app.com
 Content-Type: application/json
 User-Agent: spectrum-webhook/0.1.0
 X-Spectrum-Event: messages
-X-Spectrum-Webhook-Id: 6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b
+X-Spectrum-Webhook-Id: 60d6d04f-f9fa-4a7b-9c97-37c9c90ce91c
 X-Spectrum-Timestamp: 1747242392
-X-Spectrum-Signature: v0=3a1f7c8b2d9e0a4f6e3c5b8a1d2e4f6a8b0c3d5e7f9a1b2c4d6e8f0a2b4c6d8e
+X-Spectrum-Signature: v0=fc9bf49ef3ba4122ba4be6e289f88ac692f5ce8e13f0415cb38d59428eae8a8c
 
 {
   "event": "messages",
@@ -43,6 +57,8 @@ X-Spectrum-Signature: v0=3a1f7c8b2d9e0a4f6e3c5b8a1d2e4f6a8b0c3d5e7f9a1b2c4d6e8f0
   }
 }
 ```
+
+The exact ID formats and the `platform` value are decided by each provider — not by Spectrum. The example above is real prod output for an iMessage delivery; WhatsApp Business and any future platform will use their own conventions. Don't pattern-match on these strings; use them as opaque identifiers.
 
 ## Headers
 
@@ -76,8 +92,8 @@ This is the only event currently emitted. It fires once per inbound message that
 | Field | Type | Description |
 | --- | --- | --- |
 | `event` | `"messages"` | Discriminator. Always `"messages"` for this payload. |
-| `space` | object | The conversation context. See [Space](#space). |
-| `message` | object | The inbound message. See [Message](#message). |
+| `space` | <TypeTooltip name="Space" type={`{{ space.signature }}`} /> | The conversation context. See [Space](#space) below. |
+| `message` | object | The inbound message. See [Message](#message) below. |
 
 #### Space
 
@@ -86,19 +102,19 @@ This is the only event currently emitted. It fires once per inbound message that
 | `id` | `string` | Opaque, stable identifier for the conversation. Format varies by platform and space type — treat it as a string you store and pass back unchanged. For iMessage DMs, looks like `any;-;+<E.164>`; for groups, a chat GUID. |
 | `platform` | `string` | The platform that owns this space. See [Providers](/spectrum-ts/providers) for the current set of values; new platforms add new values without breaking existing payloads. |
 
-The `space.id` matches the `space.id` you'd see from the [`spectrum-ts` SDK](/spectrum-ts/spaces-and-users). To send a reply, pass it to `space.send(...)` from a separately-running SDK instance — there is no public HTTP send-message endpoint today.
+The `space.id` matches the `space.id` you'd see from the [`spectrum-ts` SDK](/spectrum-ts/spaces-and-users). To send a reply, pass it to <TypeTooltip name="Space" type={`{{ space.signature }}`} />`.send(...)` from a separately-running SDK instance — there is no public HTTP send-message endpoint today.
 
 #### Message
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `id` | `string` | Stable, platform-prefixed message id. Use this for idempotency. |
-| `platform` | `string` | The platform that sourced the message. |
+| `id` | `string` | Stable opaque identifier for the message. The current format is `spc-msg-<uuid>` but treat it as opaque — use it for idempotency, don't parse it. |
+| `platform` | `string` | The platform that sourced the message. Same value as `space.platform`. |
 | `direction` | `"inbound"` | Always `"inbound"` — outbound messages are not delivered as webhooks. |
 | `timestamp` | `string` | ISO 8601 UTC timestamp from the platform (when the user sent it). |
-| `sender` | object | The user who sent the message — `{ id, platform }`. |
-| `space` | object | A copy of the top-level `space` field, denormalized for convenience. |
-| `content` | object | The message content. Shape depends on the message type — see below. |
+| `sender` | <TypeTooltip name="User" type={`{{ user.signature }}`} /> | The user who sent the message — `{ id, platform }`. The `id` format is platform-defined (e.g. for iMessage it's the E.164 phone number `+15551234567`; for WhatsApp Business it's the WA contact id). |
+| `space` | <TypeTooltip name="Space" type={`{{ space.signature }}`} /> | A copy of the top-level `space` field, denormalized for convenience. |
+| `content` | object | The message content. Shape depends on the message type — see [Content shapes](#content-shapes) below. |
 
 #### Idempotency: the `message.id` rule
 
@@ -121,20 +137,55 @@ const dedupeKey = `${webhookId}:${payload.message.id}`;
 
 #### Content shapes
 
-`content` is a discriminated union tagged by `type`. It mirrors the [`message.content` shape](/spectrum-ts/content) from the `spectrum-ts` SDK.
+`content` is a discriminated union tagged by `type`. The two shapes verified end-to-end against prod today are:
 
 ```ts
 type Content =
   | { type: 'text'; text: string }
-  | { type: 'image'; url: string; mimeType: string }
-  | { type: 'audio'; url: string; mimeType: string; durationSec?: number }
-  // ... more types
+  | {
+      type: 'attachment';
+      name: string;       // original filename, e.g. "IMG_4127.HEIC"
+      mimeType: string;   // e.g. "image/heic", "audio/mp4", "application/pdf"
+      size: number;       // bytes
+    };
+  // future content types may be added; handle unknown `type` values defensively
 ```
 
-The complete reference (with every content type and its fields) lives in [Spectrum content types](/spectrum-ts/content). The same definitions apply on the wire.
+**Text** is what you'll see for the vast majority of inbound messages.
+
+**Attachment** is what you'll see for any non-text content from iMessage — photos, voice memos, audio files, videos, documents. The `mimeType` field is the discriminator for *what kind* of attachment it is:
+
+| `mimeType` prefix | Kind | Example values |
+| --- | --- | --- |
+| `image/*` | Photo or image attachment | `image/heic`, `image/jpeg`, `image/png` |
+| `audio/*` | Voice memo or audio file | `audio/mp4`, `audio/x-m4a` |
+| `video/*` | Video clip | `video/mp4`, `video/quicktime` |
+| `application/*` | Document or file | `application/pdf`, `application/zip` |
+
+The SDK's `Content` type defines additional arms (`reaction`, `richlink`, `poll`, `contact`, etc.) that may appear in future webhook deliveries. See [Spectrum content types](/spectrum-ts/messages#narrowing-content) for the canonical list. If a new arm ships, your `default:` switch arm is what catches it gracefully — see the snippet below.
+
+<Warning>
+**Attachment payloads are metadata only.** The wire format does not include the file bytes or a download URL — only the filename, MIME type, and size. To process the actual content you'll need an additional retrieval step. A first-class HTTP download endpoint is on the roadmap; until then, contact support if you need attachment retrieval.
+</Warning>
 
 <Tip>
 Always handle unknown `content.type` values gracefully — new content types may be added without a breaking version bump. A `default:` arm in your switch that logs and moves on is enough.
+
+```ts
+switch (content.type) {
+  case 'text':
+    handleText(content.text);
+    break;
+  case 'attachment':
+    if (content.mimeType.startsWith('image/')) handleImage(content);
+    else if (content.mimeType.startsWith('audio/')) handleAudio(content);
+    else handleGenericAttachment(content);
+    break;
+  default:
+    console.warn('unknown content type:', content);
+    break;
+}
+```
 </Tip>
 
 ## What you don't get

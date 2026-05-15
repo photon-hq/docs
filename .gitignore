@@ -9,4 +9,5 @@ advanced-kits/whatsapp/*.mdx
 opensource/*.mdx
 spectrum-ts/*.mdx
 spectrum-ts/**/*.mdx
+webhooks/events.mdx
 
