@@ -3,6 +3,8 @@ title: Verifying signatures
 description: Confirm each delivery is genuine, unmodified, and recent — copy-paste verifier code for Node, Bun, and Python
 ---
 
+You saw the verifier as a copy-paste in the [Quickstart](/webhooks/quickstart), and you saw the `X-Spectrum-Signature` header itself in [Events](/webhooks/events). This page is the *why* — what each line of that verifier is doing and how to port it to a different stack.
+
 Anyone on the internet can `POST` to your webhook URL. The signature is what tells you a request actually came from Spectrum and wasn't tampered with in transit. Skip this page only if you trust your network perimeter to do that for you — most production systems shouldn't.
 
 The recipe is small, but four details have to be exactly right or every legitimate request will be rejected. We cover each below.
@@ -311,3 +313,16 @@ export const verifyPhotonWebhook = (
 ```
 
 Pair it with the staleness check and you have a complete verifier.
+
+## Where to next
+
+A verified delivery is half the job. The other half is what your handler does with it — and what happens when your handler is slow, down, or buggy. That's the next chapter.
+
+<Columns cols={2}>
+  <Card title="Delivery and retries" icon="repeat" href="/webhooks/delivery">
+    Retry policy, timeouts, idempotency, and what every HTTP status code means to the worker.
+  </Card>
+  <Card title="Managing webhooks" icon="gear" href="/webhooks/managing-webhooks">
+    Operate at scale — register, list, delete, and rotate signing secrets (also testable in the [API reference](/api-reference/introduction)).
+  </Card>
+</Columns>

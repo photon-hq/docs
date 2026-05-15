@@ -15,7 +15,7 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
    - `InboundMessage` is generic and the extractor returns an empty signature.
    The Space and User types are plain interfaces that extract cleanly. #}
 
-This page is the spec. Every webhook delivery is an HTTPS `POST` with a JSON body and four custom headers. The shape below is what your handler will see on every request.
+In the [Quickstart](/webhooks/quickstart), a real delivery flew past in `console.log`. This page is the spec — every header and every field your handler will see on every request, slowed down and labelled.
 
 The body's `space`, `message`, `sender`, and `content` fields are the same shapes you'd see from the [`spectrum-ts` SDK](/spectrum-ts/messages) — with one important difference: function-typed properties (`.read()`, `.stream()`, `.reply()`, `.react()`, etc.) are stripped before serialization, since functions can't survive `JSON.stringify`.
 
@@ -233,3 +233,16 @@ Required for idempotency
 Always returns 2xx fast
    Process asynchronously after acknowledging — see /webhooks/delivery
 ```
+
+## Where to next
+
+You now know exactly what arrives at your URL. The next two chapters cover *trusting* it and *handling failures* when something goes wrong.
+
+<Columns cols={2}>
+  <Card title="Verifying signatures" icon="shield-halved" href="/webhooks/verifying-signatures">
+    The four details every verifier has to get exactly right, with copy-paste implementations in four languages.
+  </Card>
+  <Card title="Delivery and retries" icon="repeat" href="/webhooks/delivery">
+    Retry policy, timeouts, idempotency, and what HTTP status codes mean to the worker.
+  </Card>
+</Columns>
