@@ -28,6 +28,7 @@
           {
             "group": "Spectrum",
             "pages": [
+              "spectrum-ts/introduction",
               "spectrum-ts/getting-started",
               "spectrum-ts/messages",
               "spectrum-ts/content",
