@@ -3,7 +3,13 @@ title: Managing webhooks
 description: Register, list, delete, and rotate webhook signing secrets via the Spectrum API
 ---
 
-You manage webhooks through three HTTP endpoints on the Spectrum API. All require `Basic` auth with your project credentials. The full OpenAPI reference lives under [API reference](/api-reference/introduction); this page focuses on the workflows.
+By now you can receive deliveries, verify them, and survive retries. This page is the operational layer — how you actually create the webhook records, list them, take one offline, or rotate a leaked secret.
+
+There are three HTTP endpoints, all under `https://spectrum.photon.codes/projects/{projectId}/webhooks/`. Every example below uses `curl`, but the same three endpoints are also live in the [interactive API reference](/api-reference/introduction) — paste your project credentials once and run any request from your browser.
+
+<Tip>
+**Read this page first, then hit the API reference.** This page explains *what* each endpoint does and *when* you'd reach for it; the API reference is the interactive playground for actually firing the request. The combo is much faster than reading either alone.
+</Tip>
 
 ## Authentication
 
@@ -212,3 +218,16 @@ This avoids any window where events go nowhere because the old URL has been dele
 2. Rotate every webhook signing secret using the delete-and-recreate flow above.
 
 The signing secret being leaked doesn't grant the attacker the ability to send messages on your behalf — only to forge inbound deliveries to your webhook URL. But in either case, rotating quickly is the right move.
+
+## Where to next
+
+You can register, list, delete, and rotate. If you're hitting a snag along the way — a verify that won't pass, a webhook that registers but never delivers, a duplicate that won't go away — the next chapter is the triage guide.
+
+<Columns cols={2}>
+  <Card title="Troubleshooting" icon="bug" href="/webhooks/troubleshooting">
+    Common signature errors, missed deliveries, duplicates, ngrok issues, and how to debug them.
+  </Card>
+  <Card title="API reference" icon="code" href="/api-reference/introduction">
+    The interactive playground for every endpoint on this page — run requests live from your browser.
+  </Card>
+</Columns>

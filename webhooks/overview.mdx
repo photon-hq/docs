@@ -3,7 +3,13 @@ title: Webhooks
 description: Receive messaging events at your own URL — Spectrum signs each delivery so you know it's real
 ---
 
-Spectrum webhooks push platform events — incoming messages, and (soon) more — to a URL you control. You register the URL once, and from that moment on every message that lands for your project is delivered to your server as a signed HTTP `POST`.
+## What is a webhook?
+
+A webhook is the inverse of a normal API call.
+
+In a normal API call, your code reaches out and asks a service for data — you poll, you wait, you parse the response. In a *web*hook, the service reaches out to *you*: a message arrives, an event fires, and the service `POST`s the details to a URL you've published. You're not asking anymore; you're being told.
+
+For Spectrum, that means you write a regular HTTP handler — in whatever framework you already use — register its URL once, and from then on every inbound message across every enabled platform is delivered as a signed JSON `POST`. No long-lived process to babysit, no platform credentials in your runtime, no reconnect logic.
 
 ```ts
 const app = await Spectrum({ projectId, projectSecret, providers: [imessage.config()] });
@@ -21,7 +27,22 @@ X-Spectrum-Timestamp: 1747242392
 {"event":"messages","space":{...},"message":{...}}
 ```
 
-You write a normal HTTP handler in whatever framework you already use. Spectrum handles staying connected to every [supported platform](/spectrum-ts/providers), batching, reconnects, and signing.
+Spectrum handles staying connected to every [supported platform](/spectrum-ts/providers), batching, reconnects, and signing. You handle the HTTP request that lands at your door.
+
+## How this guide flows
+
+The next six pages build on each other. Skim straight to the topic you need, or read top-to-bottom in about fifteen minutes for the complete model.
+
+1. **[Quickstart](/webhooks/quickstart)** — register a URL, verify a signature, and receive your first real delivery in five minutes.
+2. **[Events](/webhooks/events)** — the exact wire format, every header and every field, with real examples.
+3. **[Verifying signatures](/webhooks/verifying-signatures)** — why the verifier looks the way it does, with copy-paste code in four languages.
+4. **[Delivery and retries](/webhooks/delivery)** — what happens when your endpoint is slow, down, or returns an unexpected status code.
+5. **[Managing webhooks](/webhooks/managing-webhooks)** — operate at scale: register, list, delete, and rotate signing secrets via the API or the dashboard.
+6. **[Troubleshooting](/webhooks/troubleshooting)** — common symptoms, root causes, and fixes when something goes wrong.
+
+<Tip>
+**Want to poke at the management endpoints before writing any code?** Every one of them is live in the [interactive API reference](/api-reference/introduction) — fill in your project credentials and run `List webhooks`, `Register webhook`, or `Delete webhook` straight from your browser. It's the fastest way to confirm credentials work and sanity-check a URL before wiring up a verifier.
+</Tip>
 
 ## When to use webhooks
 
@@ -77,7 +98,7 @@ The set will grow (reactions, typing indicators, custom provider events). New ev
 
 ## Security in one paragraph
 
-Each delivery includes an `X-Spectrum-Signature` header containing an HMAC-SHA256 of the request body, keyed by your per-webhook signing secret. Anyone can `POST` to your URL — only Spectrum can compute a signature that verifies. Recompute it on your side and reject anything that doesn't match. The full walkthrough, with copy-pasteable code in three languages, is on [Verifying signatures](/webhooks/verifying-signatures).
+Each delivery includes an `X-Spectrum-Signature` header containing an HMAC-SHA256 of the request body, keyed by your per-webhook signing secret. Anyone can `POST` to your URL — only Spectrum can compute a signature that verifies. Recompute it on your side and reject anything that doesn't match. The full walkthrough, with copy-pasteable code in four languages, is on [Verifying signatures](/webhooks/verifying-signatures).
 
 <Warning>
 Your signing secret is returned exactly once, in the response of `POST /webhooks/`. There is no "show me my secret" endpoint. Store it in your secret manager immediately. If you lose it, delete the webhook and re-register the URL — you'll get a new id and a new secret.

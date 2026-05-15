@@ -3,7 +3,7 @@ title: Delivery and retries
 description: How Spectrum decides when to retry, when to give up, and what your endpoint should return
 ---
 
-This page describes what happens *after* the worker computes a signature and starts the `POST` to your URL. The contract is simple but worth knowing exactly, because it determines how fault-tolerant you need to be on your end.
+You know what arrives ([Events](/webhooks/events)) and how to prove it's real ([Verifying signatures](/webhooks/verifying-signatures)). This page picks up the moment *after* the worker computes a signature and starts the `POST` to your URL — what it does when your server is fast, slow, broken, or unreachable. The contract is simple but worth knowing exactly, because it determines how fault-tolerant you need to be on your end.
 
 ## The contract in one paragraph
 
@@ -151,3 +151,16 @@ If your handler depends on order, sort by `message.timestamp` (which is the plat
 If you find yourself working hard to compensate for delivery loss, consider running [`spectrum-ts`](/spectrum-ts/getting-started) directly instead of (or in addition to) webhooks. The SDK's `instance.messages` async iterable is a long-lived stream — slower events can't be lost to a delivery timeout because there is no delivery, just a `for await` loop running in your process.
 
 A common pattern: webhooks for low-latency push, and a periodic reconciliation worker that uses the SDK or API to backfill anything the webhook layer missed.
+
+## Where to next
+
+With the contract clear, the remaining pages are operational. The next chapter is the day-to-day: managing the webhooks themselves.
+
+<Columns cols={2}>
+  <Card title="Managing webhooks" icon="gear" href="/webhooks/managing-webhooks">
+    Register, list, delete, and rotate signing secrets — each one testable in the [interactive API reference](/api-reference/introduction).
+  </Card>
+  <Card title="Troubleshooting" icon="bug" href="/webhooks/troubleshooting">
+    Common signature errors, missed deliveries, duplicates, and how to debug them.
+  </Card>
+</Columns>
