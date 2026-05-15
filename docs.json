@@ -64,7 +64,51 @@
         ]
       },
       {
-        "tab": "Platform SDKs",
+        "tab": "CLI",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "cli/overview",
+              "cli/installation",
+              "cli/authentication"
+            ]
+          },
+          {
+            "group": "Commands",
+            "pages": [
+              "cli/projects",
+              "cli/spectrum",
+              "cli/billing",
+              "cli/profile-and-utilities"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Webhooks",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "webhooks/overview",
+              "webhooks/quickstart",
+              "webhooks/events"
+            ]
+          },
+          {
+            "group": "Implementation",
+            "pages": [
+              "webhooks/verifying-signatures",
+              "webhooks/delivery",
+              "webhooks/managing-webhooks",
+              "webhooks/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Low-level SDKs",
         "groups": [
           {
             "group": "Advanced Kits",
@@ -116,50 +160,6 @@
             "group": "Utilities",
             "pages": [
               "utilities/heif2jpeg"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "CLI",
-        "groups": [
-          {
-            "group": "Getting Started",
-            "pages": [
-              "cli/overview",
-              "cli/installation",
-              "cli/authentication"
-            ]
-          },
-          {
-            "group": "Commands",
-            "pages": [
-              "cli/projects",
-              "cli/spectrum",
-              "cli/billing",
-              "cli/profile-and-utilities"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Webhooks",
-        "groups": [
-          {
-            "group": "Getting Started",
-            "pages": [
-              "webhooks/overview",
-              "webhooks/quickstart",
-              "webhooks/events"
-            ]
-          },
-          {
-            "group": "Implementation",
-            "pages": [
-              "webhooks/verifying-signatures",
-              "webhooks/delivery",
-              "webhooks/managing-webhooks",
-              "webhooks/troubleshooting"
             ]
           }
         ]
