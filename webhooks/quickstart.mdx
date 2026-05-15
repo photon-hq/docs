@@ -9,7 +9,7 @@ If you already have a deployed HTTPS URL, skip the ngrok step.
 
 ## Prerequisites
 
-- A Spectrum project with at least one platform enabled (iMessage or WhatsApp Business). If you don't have one yet, see [Getting Started with Spectrum](/spectrum-ts/getting-started).
+- A Spectrum project with at least one platform enabled. See [Providers](/spectrum-ts/providers) for the current list, or [Getting Started with Spectrum](/spectrum-ts/getting-started) if you don't have a project yet.
 - Your project id and project secret, from the [dashboard](https://app.photon.codes) or `photon projects show`.
 - A reachable HTTPS URL — ngrok works for local development.
 
@@ -51,7 +51,7 @@ If you already have a deployed HTTPS URL, skip the ngrok step.
   Use `curl` (or any HTTP client) to register the URL with your project credentials:
 
   ```sh
-  curl -X POST https://spectrum.photon.codes/webhooks/ \
+  curl -X POST "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/" \
     -u "$PROJECT_ID:$PROJECT_SECRET" \
     -H "Content-Type: application/json" \
     -d '{"webhookUrl":"https://abcd1234.ngrok-free.app/spectrum-webhook"}'
@@ -144,10 +144,10 @@ If you already have a deployed HTTPS URL, skip the ngrok step.
 
   <Step title="Send a real message">
 
-  From your phone, send an iMessage (or WhatsApp message) to the number attached to your project. Within a second or two, your terminal should print:
+  Send a real message to your project from any of its enabled platforms — an iMessage to the assigned number, a WhatsApp message, whatever you've configured. Within a second or two, your terminal should print:
 
   ```text
-  message from imessage:+15551234567 : { type: 'text', text: 'hi' }
+  message from +15550100 : { type: 'text', text: 'hi' }
   ```
 
   If you see `bad signature`, double-check that you exported `SPECTRUM_SIGNING_SECRET` correctly and re-started the server.
@@ -157,22 +157,42 @@ If you already have a deployed HTTPS URL, skip the ngrok step.
 
   <Step title="Reply from your handler (optional)">
 
-  The webhook delivery only carries the inbound message. To reply, call the [Spectrum API](/api-reference/introduction) (or run a separate `Spectrum()` instance for sending). A typical pattern:
+  The webhook delivery only carries inbound messages — there is no public HTTP "send a message" endpoint today. To reply, run the [`spectrum-ts`](/spectrum-ts/getting-started) SDK in a separate process (or alongside your handler) and call `space.send(...)` there. The webhook tells your service *what* arrived; the SDK is what puts a message back on the wire.
+
+  A common split:
 
   ```ts
-  if (event === 'messages' && payload.message.content.type === 'text') {
-    await fetch(`https://spectrum.photon.codes/spaces/${payload.space.id}/messages`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${btoa(`${process.env.PROJECT_ID}:${process.env.PROJECT_SECRET}`)}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ content: { type: 'text', text: 'hi back' } }),
-    });
-  }
+  // sender.ts — long-lived process holding an outbound SDK instance
+  import { Spectrum, text } from "spectrum-ts";
+  import { imessage } from "spectrum-ts/providers/imessage";
+
+  const app = await Spectrum({
+    projectId: process.env.PROJECT_ID!,
+    projectSecret: process.env.PROJECT_SECRET!,
+    providers: [imessage.config()],
+  });
+
+  // call this from your webhook handler (e.g. via a queue / RPC)
+  export const reply = async (spaceId: string, body: string) => {
+    const space = await app.spaces.get(spaceId);
+    await space.send(text(body));
+  };
   ```
 
-  Acknowledge the webhook (`return c.text('ok', 200)`) **before** the reply call if your reply might take >1s — the worker treats a slow response as a timeout and retries.
+  Inside the webhook handler, acknowledge with `2xx` first (the worker treats a slow response as a timeout and retries) and enqueue the reply job:
+
+  ```ts
+  app.post('/spectrum-webhook', async (c) => {
+    if (!verify(c)) return c.text('bad signature', 401);
+    const payload = JSON.parse(await c.req.text());
+    if (payload.event === 'messages' && payload.message.content.type === 'text') {
+      void enqueueReply(payload.space.id, `echo: ${payload.message.content.text}`);
+    }
+    return c.text('ok', 200);
+  });
+  ```
+
+  An HTTP send-message API is on the roadmap; until then, the SDK is the supported path.
   </Step>
 </Steps>
 
@@ -181,7 +201,7 @@ If you already have a deployed HTTPS URL, skip the ngrok step.
 You have an end-to-end pipeline:
 
 ```text
-phone → iMessage → Spectrum → POST /spectrum-webhook → your code
+user's device → platform → Spectrum → POST /spectrum-webhook → your code
 ```
 
 You verified each delivery is genuine (not spoofed), recent (not a replay), and unmodified (not tampered with).

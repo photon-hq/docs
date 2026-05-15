@@ -57,7 +57,8 @@ Walk through this checklist in order:
 <Steps>
   <Step title="Confirm the webhook is registered">
   ```sh
-  curl -u "$PROJECT_ID:$PROJECT_SECRET" https://spectrum.photon.codes/webhooks/
+  curl -u "$PROJECT_ID:$PROJECT_SECRET" \
+    "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/"
   ```
 
   The URL you expect should appear in the list. If not, register it.
@@ -76,7 +77,7 @@ Walk through this checklist in order:
   photon spectrum platforms ls
   ```
 
-  An iMessage line that's not paired or a WhatsApp Business token that's expired produces zero inbound events. Webhooks deliver what the SDK receives — if the SDK is silent, webhooks are silent.
+  A platform that's enabled in the dashboard but not actually connected — an unpaired iMessage line, an expired WhatsApp token, a custom provider whose lifecycle handler is throwing — produces zero inbound events. Webhooks deliver what the SDK receives, so if the SDK is silent for a platform, that platform's webhooks are silent too. Check the SDK side first.
   </Step>
 
   <Step title="Confirm the message is actually inbound to your project">
@@ -153,7 +154,7 @@ Free ngrok tunnels get a new URL every restart. That URL won't be registered wit
   ```sh
   ngrok http 3000
   # Copy the new URL, then:
-  curl -X POST https://spectrum.photon.codes/webhooks/ \
+  curl -X POST "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/" \
     -u "$PROJECT_ID:$PROJECT_SECRET" \
     -H "Content-Type: application/json" \
     -d '{"webhookUrl":"https://NEW-URL.ngrok-free.app/spectrum-webhook"}'
@@ -182,14 +183,14 @@ import { createHmac } from 'node:crypto';
 const secret = 'a3f8e29b...5c7e9b2d';
 const body = JSON.stringify({
   event: 'messages',
-  space: { id: 'imessage:chat:1', platform: 'imessage' },
+  space: { id: 'any;-;+15550100', platform: 'iMessage' },
   message: {
-    id: 'imessage:msg:test1',
-    platform: 'imessage',
+    id: 'spc-msg-00000000-0000-4000-8000-000000000001',
+    platform: 'iMessage',
     direction: 'inbound',
     timestamp: new Date().toISOString(),
-    sender: { id: 'imessage:+15551234567', platform: 'imessage' },
-    space: { id: 'imessage:chat:1', platform: 'imessage' },
+    sender: { id: '+15550100', platform: 'iMessage' },
+    space: { id: 'any;-;+15550100', platform: 'iMessage' },
     content: { type: 'text', text: 'hi' },
   },
 });

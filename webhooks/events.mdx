@@ -20,21 +20,21 @@ X-Spectrum-Signature: v0=3a1f7c8b2d9e0a4f6e3c5b8a1d2e4f6a8b0c3d5e7f9a1b2c4d6e8f0
 {
   "event": "messages",
   "space": {
-    "id": "imessage:chat:42",
-    "platform": "imessage"
+    "id": "any;-;+15550100",
+    "platform": "iMessage"
   },
   "message": {
-    "id": "imessage:msg:abc123",
-    "platform": "imessage",
+    "id": "spc-msg-00000000-0000-4000-8000-000000000001",
+    "platform": "iMessage",
     "direction": "inbound",
     "timestamp": "2026-05-14T19:06:32.000Z",
     "sender": {
-      "id": "imessage:+15551234567",
-      "platform": "imessage"
+      "id": "+15550100",
+      "platform": "iMessage"
     },
     "space": {
-      "id": "imessage:chat:42",
-      "platform": "imessage"
+      "id": "any;-;+15550100",
+      "platform": "iMessage"
     },
     "content": {
       "type": "text",
@@ -83,10 +83,10 @@ This is the only event currently emitted. It fires once per inbound message that
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `id` | `string` | Stable, platform-prefixed identifier (e.g. `imessage:chat:42`). |
-| `platform` | `string` | The platform that owns this space (`imessage`, `whatsapp_business`). |
+| `id` | `string` | Opaque, stable identifier for the conversation. Format varies by platform and space type — treat it as a string you store and pass back unchanged. For iMessage DMs, looks like `any;-;+<E.164>`; for groups, a chat GUID. |
+| `platform` | `string` | The platform that owns this space. See [Providers](/spectrum-ts/providers) for the current set of values; new platforms add new values without breaking existing payloads. |
 
-The `space.id` matches the `space.id` you'd see from the [`spectrum-ts` SDK](/spectrum-ts/spaces-and-users). You can use it to send a reply back via the [Spectrum API](/api-reference/introduction).
+The `space.id` matches the `space.id` you'd see from the [`spectrum-ts` SDK](/spectrum-ts/spaces-and-users). To send a reply, pass it to `space.send(...)` from a separately-running SDK instance — there is no public HTTP send-message endpoint today.
 
 #### Message
 
@@ -99,6 +99,25 @@ The `space.id` matches the `space.id` you'd see from the [`spectrum-ts` SDK](/sp
 | `sender` | object | The user who sent the message — `{ id, platform }`. |
 | `space` | object | A copy of the top-level `space` field, denormalized for convenience. |
 | `content` | object | The message content. Shape depends on the message type — see below. |
+
+#### Idempotency: the `message.id` rule
+
+A single inbound message **always carries the same `message.id` across every delivery it produces**, no matter how many webhook URLs you have registered. If you have two URLs registered for one project and a message arrives, both URLs receive a `POST` in parallel — and both bodies have the same `message.id`. If a delivery is retried (after a 5xx or timeout on your side), the retry also carries the same `message.id`.
+
+That makes `message.id` the right dedup key when one downstream consumer handles every webhook for the project:
+
+```ts
+const dedupeKey = payload.message.id;
+if (await store.exists(dedupeKey)) return new Response('ok', { status: 200 });
+await processOnce(payload);
+await store.set(dedupeKey, true, { ttl: 48 * 60 * 60 });
+```
+
+If different services consume different webhook URLs and each one needs its own dedup table, scope the key with the webhook id so the same message processed by service A doesn't suppress service B:
+
+```ts
+const dedupeKey = `${webhookId}:${payload.message.id}`;
+```
 
 #### Content shapes
 
@@ -122,7 +141,7 @@ Always handle unknown `content.type` values gracefully — new content types may
 
 A few things that may be in the SDK's `Message` type but are intentionally **not** in the webhook payload:
 
-- **Methods like `.reply()` or `.react()`.** They depend on a live SDK connection. To respond, call the [Spectrum API](/api-reference/introduction) using `space.id`.
+- **Methods like `.reply()` or `.react()`.** They depend on a live SDK connection. To respond, run [`spectrum-ts`](/spectrum-ts/getting-started) in a separate process and call `space.send(...)` against the `space.id` you got from the webhook. There is no HTTP send endpoint yet.
 - **Internal provider state.** Things like raw protocol headers, retry hints, and message acknowledgements are stripped before serialization.
 - **Outbound messages.** Webhooks deliver inbound only. A message you sent does not echo back as a webhook.
 

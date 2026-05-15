@@ -1,6 +1,6 @@
 ---
 title: Webhooks
-description: Receive iMessage and WhatsApp events at your own URL — Spectrum signs each delivery so you know it's real
+description: Receive messaging events at your own URL — Spectrum signs each delivery so you know it's real
 ---
 
 Spectrum webhooks push platform events — incoming messages, and (soon) more — to a URL you control. You register the URL once, and from that moment on every message that lands for your project is delivered to your server as a signed HTTP `POST`.
@@ -21,7 +21,7 @@ X-Spectrum-Timestamp: 1747242392
 {"event":"messages","space":{...},"message":{...}}
 ```
 
-You write a normal HTTP handler in whatever framework you already use. Spectrum handles staying connected to iMessage and WhatsApp Business, batching, reconnects, and signing.
+You write a normal HTTP handler in whatever framework you already use. Spectrum handles staying connected to every [supported platform](/spectrum-ts/providers), batching, reconnects, and signing.
 
 ## When to use webhooks
 
@@ -47,7 +47,7 @@ flowchart LR
   Retry --> URL2
 ```
 
-When a message arrives on iMessage or WhatsApp Business for a project that has webhooks registered:
+When a message arrives on any enabled platform for a project that has webhooks registered:
 
 1. Our worker receives the message from the platform.
 2. It serializes the event to JSON.
