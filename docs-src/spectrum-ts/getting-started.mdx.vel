@@ -139,4 +139,6 @@ When enabled, Spectrum traces initialization, provider setup, message send/recei
 
 Traces are sent to the Photon OTLP endpoint by default. Standard `OTEL_EXPORTER_OTLP_*` environment variables override the default endpoint and headers.
 
+Every trace includes a `deployment.environment` resource attribute so you can filter between local, development, and production runs. Set the `DEPLOYMENT_ENV` environment variable to control its value; when unset it falls back to the SDK build environment (`"development"` locally, `"production"` in published builds).
+
 Calling `app.stop()` flushes any pending telemetry data before shutting down.
