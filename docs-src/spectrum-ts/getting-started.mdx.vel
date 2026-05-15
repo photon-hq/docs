@@ -121,3 +121,22 @@ for await (const [space, message] of app.messages) {
 ```
 
 Messages from every provider merge into the single `app.messages` stream. The `message.platform` field identifies the source.
+
+## Telemetry
+
+Spectrum has built-in [OpenTelemetry](https://opentelemetry.io/) instrumentation. Enable it by passing `telemetry: true`:
+
+```ts
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [imessage.config()],
+  telemetry: true,
+});
+```
+
+When enabled, Spectrum traces initialization, provider setup, message send/receive/get flows, space resolution, and custom events. Each span includes attributes like the provider name, space ID, content type, and sender kind.
+
+Traces are sent to the Photon OTLP endpoint by default. Standard `OTEL_EXPORTER_OTLP_*` environment variables override the default endpoint and headers.
+
+Calling `app.stop()` flushes any pending telemetry data before shutting down.
