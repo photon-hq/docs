@@ -5,10 +5,14 @@ description: Register, list, delete, and rotate webhook signing secrets via the 
 
 By now you can receive deliveries, verify them, and survive retries. This page is the operational layer — how you actually create the webhook records, list them, take one offline, or rotate a leaked secret.
 
-There are three HTTP endpoints, all under `https://spectrum.photon.codes/projects/{projectId}/webhooks/`. Every example below uses `curl`, but the same three endpoints are also live in the [interactive API reference](/api-reference/introduction) — paste your project credentials once and run any request from your browser.
+There are three HTTP endpoints, all under `https://spectrum.photon.codes/projects/{projectId}/webhooks/`. Every example below uses `curl` to keep things explicit, but the same three operations are available three other ways:
+
+- The **Webhook** tab of your workspace in the [Spectrum dashboard](https://app.photon.codes/dashboard) — a UI any teammate can use.
+- The [interactive API reference](/api-reference/introduction) — run any request from your browser with your credentials pre-filled.
+- Any HTTP client you like — Postman, Insomnia, your language's SDK, etc.
 
 <Tip>
-**Read this page first, then hit the API reference.** This page explains *what* each endpoint does and *when* you'd reach for it; the API reference is the interactive playground for actually firing the request. The combo is much faster than reading either alone.
+**Read this page for the *what* and *when*, then pick a surface for the *how*.** This page explains what each operation does and when you'd reach for it; the dashboard and API reference are the interactive playgrounds for actually firing the request. The combo is much faster than reading either alone.
 </Tip>
 
 ## Authentication
@@ -193,7 +197,13 @@ list_webhooks() {
 
 ## Working with the dashboard
 
-You can also register, list, and delete webhooks from your project's [dashboard](https://app.photon.codes) under **Settings → Webhooks**. Same operations, no terminal required. The signing secret is shown once at registration time there too — copy it before navigating away.
+If you'd rather not touch a terminal, every operation on this page is also a button click away in the [Spectrum dashboard](https://app.photon.codes/dashboard).
+
+Open your workspace and switch to the **Webhook** tab (next to *Platforms*, *Users*, *Lines*, and *Settings*). You'll see:
+
+- A list of every webhook currently registered — endpoint URL plus the date it was added.
+- An **+ Add webhook** button to register a new URL. After you click it, the signing secret is shown once in a modal — copy it before closing.
+- A **Remove** button next to each row to delete a webhook. Same effect as the `DELETE` endpoint: delivery stops immediately and the signing secret is invalidated.
 
 ## Common workflows
 
