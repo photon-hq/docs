@@ -40,15 +40,13 @@ The next six pages build on each other. Skim straight to the topic you need, or 
 5. **[Managing webhooks](/webhooks/managing-webhooks)** — operate at scale: register, list, delete, and rotate signing secrets via the API or the dashboard.
 6. **[Troubleshooting](/webhooks/troubleshooting)** — common symptoms, root causes, and fixes when something goes wrong.
 
-<Tip>
-**Three ways to register and manage webhooks** — pick whichever fits how you work:
+## Three ways to manage webhooks
 
-- **Dashboard.** Open your workspace at [app.photon.codes/dashboard](https://app.photon.codes/dashboard) and use the **Webhook** tab to add, list, and remove endpoints with point-and-click. No terminal, no auth headers — friendly enough to hand to a non-engineer.
-- **Interactive API reference.** Every endpoint is live in the [API reference](/api-reference/introduction) — paste your project credentials once and fire `List webhooks`, `Register webhook`, or `Delete webhook` straight from your browser. Fastest way to confirm credentials work and sanity-check a URL.
-- **`curl` or any HTTP client.** The terminal flow used throughout this guide and the [Quickstart](/webhooks/quickstart). Scriptable, automatable, CI-friendly.
+You can register, list, and delete webhooks through any of three surfaces — same three operations under the hood, different ergonomics:
 
-Same three operations under the hood — just three different surfaces over them.
-</Tip>
+- **[Dashboard](https://app.photon.codes/dashboard).** Open your workspace and use the **Webhook** tab to add and remove endpoints with point-and-click. No terminal, no auth headers — the friendliest entry point, and fine to hand to a non-engineer.
+- **[Interactive API reference](/api-reference/introduction).** Every endpoint runs straight from your browser. Paste your project credentials once and fire `List webhooks`, `Register webhook`, or `Delete webhook`. Fastest way to confirm credentials work or sanity-check a URL.
+- **`curl` or any HTTP client.** The terminal flow used in the [Quickstart](/webhooks/quickstart) and the rest of this guide. Scriptable, automatable, CI-friendly.
 
 ## When to use webhooks
 
@@ -96,9 +94,7 @@ Four ideas cover everything else in these docs:
 
 ## Currently emitted events
 
-| Event | Header value | Payload shape |
-| --- | --- | --- |
-| Inbound message | `X-Spectrum-Event: messages` | `{ event, space, message }` — see [Events](/webhooks/events) |
+Today there is one event: **`messages`**. Each delivery carries `X-Spectrum-Event: messages` and a body of shape `{ event, space, message }` — see [Events](/webhooks/events) for every field.
 
 The set will grow (reactions, typing indicators, custom provider events). New event types are additive: existing handlers that ignore unknown values keep working without changes.
 
@@ -113,16 +109,10 @@ Your signing secret is returned exactly once, in the response of `POST /webhooks
 ## Where to next
 
 <Columns cols={2}>
-  <Card title="Quickstart" icon="rocket" href="/webhooks/quickstart">
-    Register a URL, verify a signature, receive your first event in 5 minutes.
+  <Card title="Start: Quickstart" icon="rocket" href="/webhooks/quickstart">
+    Wire up a URL, verify a signature, receive a real message — five minutes, end-to-end.
   </Card>
-  <Card title="Events" icon="rss" href="/webhooks/events">
-    The exact wire format — headers, body, and what each field contains.
-  </Card>
-  <Card title="Verifying signatures" icon="shield-halved" href="/webhooks/verifying-signatures">
-    The security model with complete verifier code for Node, Bun, and Python.
-  </Card>
-  <Card title="Delivery and retries" icon="repeat" href="/webhooks/delivery">
-    Retry policy, timeouts, idempotency, and what HTTP status codes mean to us.
+  <Card title="Skim: How it works" icon="diagram-project" href="#how-it-works">
+    The mechanics first, in case you'd rather build a mental model before touching code.
   </Card>
 </Columns>
