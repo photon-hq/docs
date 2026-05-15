@@ -9,7 +9,7 @@ A webhook is the inverse of a normal API call.
 
 In a normal API call, your code reaches out and asks a service for data — you poll, you wait, you parse the response. In a *web*hook, the service reaches out to *you*: a message arrives, an event fires, and the service `POST`s the details to a URL you've published. You're not asking anymore; you're being told.
 
-For Spectrum, that means you write a regular HTTP handler — in whatever framework you already use — register its URL once, and from then on every inbound message across every enabled platform is delivered as a signed JSON `POST`. No long-lived process to babysit, no platform credentials in your runtime, no reconnect logic.
+For Spectrum, that means you write a regular HTTP *handler* — a function in your server that runs whenever a request comes in — and register its URL with us once. From then on, every inbound message across every enabled platform is delivered to that URL as a signed JSON `POST`. No long-lived process to babysit, no platform credentials in your runtime, no reconnect logic.
 
 ```ts
 const app = await Spectrum({ projectId, projectSecret, providers: [imessage.config()] });
@@ -41,7 +41,13 @@ The next six pages build on each other. Skim straight to the topic you need, or 
 6. **[Troubleshooting](/webhooks/troubleshooting)** — common symptoms, root causes, and fixes when something goes wrong.
 
 <Tip>
-**Want to poke at the management endpoints before writing any code?** Every one of them is live in the [interactive API reference](/api-reference/introduction) — fill in your project credentials and run `List webhooks`, `Register webhook`, or `Delete webhook` straight from your browser. It's the fastest way to confirm credentials work and sanity-check a URL before wiring up a verifier.
+**Three ways to register and manage webhooks** — pick whichever fits how you work:
+
+- **Dashboard.** Open your workspace at [app.photon.codes/dashboard](https://app.photon.codes/dashboard) and use the **Webhook** tab to add, list, and remove endpoints with point-and-click. No terminal, no auth headers — friendly enough to hand to a non-engineer.
+- **Interactive API reference.** Every endpoint is live in the [API reference](/api-reference/introduction) — paste your project credentials once and fire `List webhooks`, `Register webhook`, or `Delete webhook` straight from your browser. Fastest way to confirm credentials work and sanity-check a URL.
+- **`curl` or any HTTP client.** The terminal flow used throughout this guide and the [Quickstart](/webhooks/quickstart). Scriptable, automatable, CI-friendly.
+
+Same three operations under the hood — just three different surfaces over them.
 </Tip>
 
 ## When to use webhooks
