@@ -42,11 +42,11 @@ The next six pages build on each other. Skim straight to the topic you need, or 
 
 ## Three ways to manage webhooks
 
-You can register, list, and delete webhooks through any of three surfaces — same three operations under the hood, different ergonomics:
-
-- **[Dashboard](https://app.photon.codes/dashboard).** Open your workspace and use the **Webhook** tab to add and remove endpoints with point-and-click. No terminal, no auth headers — the friendliest entry point, and fine to hand to a non-engineer.
-- **[Interactive API reference](/api-reference/introduction).** Every endpoint runs straight from your browser. Paste your project credentials once and fire `List webhooks`, `Register webhook`, or `Delete webhook`. Fastest way to confirm credentials work or sanity-check a URL.
-- **`curl` or any HTTP client.** The terminal flow used in the [Quickstart](/webhooks/quickstart) and the rest of this guide. Scriptable, automatable, CI-friendly.
+Three surfaces expose the same three operations (register, list, delete):
+ 
+- **[Dashboard](https://app.photon.codes/dashboard).** UI under the **Webhook** tab of your workspace. No terminal or auth headers required — appropriate for non-technical teammates.
+- **[API reference](/api-reference/introduction).** OpenAPI schemas for `List webhooks`, `Register webhook`, and `Delete webhook`. Mintlify also renders the page as a runnable browser playground for live testing.
+- **`curl` or any HTTP client.** The terminal flow used in the [Quickstart](/webhooks/quickstart) and the rest of this guide. Scriptable and CI-friendly — the right surface for code generation and automation.
 
 ## When to use webhooks
 
@@ -109,10 +109,10 @@ Your signing secret is returned exactly once, in the response of `POST /webhooks
 ## Where to next
 
 <Columns cols={2}>
-  <Card title="Start: Quickstart" icon="rocket" href="/webhooks/quickstart">
-    Wire up a URL, verify a signature, receive a real message — five minutes, end-to-end.
+  <Card title="Quickstart" icon="rocket" href="/webhooks/quickstart">
+    Wire up a URL, verify a signature, and receive a real message end-to-end in roughly five minutes.
   </Card>
-  <Card title="Skim: How it works" icon="diagram-project" href="#how-it-works">
-    The mechanics first, in case you'd rather build a mental model before touching code.
+  <Card title="How it works" icon="diagram-project" href="#how-it-works">
+    The mechanics of delivery — useful as a mental model before reading the implementation pages.
   </Card>
 </Columns>
