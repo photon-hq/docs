@@ -81,7 +81,7 @@ type WebhookEventEnvelope = {
 };
 ```
 
-Today only the `messages` arm is emitted, and its shape (below) has been frozen since v1. New event types are added automatically as Spectrum providers declare them — see [Forward compatibility](#forward-compatibility) for the contract.
+The `messages` arm (below) has been frozen since v1 — fields are never repurposed, only added. Other event types are added automatically as Spectrum providers declare them; see [Forward compatibility](#forward-compatibility) for the contract and [iMessage events](#imessage-events) for the events the iMessage provider ships today.
 
 ### `event: "messages"` payload
 
@@ -185,6 +185,80 @@ switch (content.type) {
 }
 ```
 </Tip>
+
+## iMessage events
+
+These six events ship with the iMessage provider as of `spectrum-ts` 1.10. Every one is delivered as `{ event: "<name>", platform: "iMessage", ...payload }` — branch on `event` exactly like the `messages` arm above. None of these arms include the full message body; they are lightweight signals you correlate against your local store using `messageId` or `spaceId`.
+
+### `event: "readReceipt"`
+
+A message you sent has been read by the recipient.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `messageId` | `string` | The id of the message that was read. Matches `message.id` from the prior `messages` delivery. |
+| `spaceId` | `string` | The conversation the message lives in. |
+| `readBy` | `{ id }` | The user who read the message. |
+| `readAt` | `string` | ISO 8601 timestamp from the platform. |
+
+### `event: "chatRead"`
+
+The recipient opened the conversation. Use this as a presence-style "user is actively in this conversation right now" signal — strictly more informative than `readReceipt` for typing-indicator-style UIs since it fires even when no specific message has yet been sent.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `spaceId` | `string` | The conversation that was opened. |
+| `readBy` | `{ id }` | The user who opened it. |
+| `readAt` | `string` | ISO 8601 timestamp. |
+
+### `event: "messageEdit"`
+
+A message was edited. Apple's iMessage only allows text edits, so `newContent` is the new text content shape (`{ type: "text", text: string }`).
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `messageId` | `string` | The id of the edited message. |
+| `spaceId` | `string` | The conversation it lives in. |
+| `newContent` | `Content` | The new content (always `{ type: "text", text }` on iMessage). |
+| `editedAt` | `string` | ISO 8601 timestamp. |
+
+### `event: "messageUnsend"`
+
+A message was retracted ("Undo Send"). Use `messageId` to remove the message from your local store.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `messageId` | `string` | The id of the unsent message. |
+| `spaceId` | `string` | The conversation it lived in. |
+| `unsentAt` | `string` | ISO 8601 timestamp. |
+
+### `event: "reactionRemoved"`
+
+A tapback or emoji reaction was removed from a message. (Reactions being **added** ride the `messages` stream as a `reaction`-content message — see [Content shapes](#content-shapes); that asymmetry is upstream-driven and may be tightened in a future release.)
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `messageId` | `string` | The id of the message the reaction targeted. |
+| `spaceId` | `string` | The conversation. |
+| `reactor` | `{ id }` | The user who removed the reaction. |
+| `emoji` | `string` | The reaction that was removed. Tapbacks are mapped to their canonical emoji (`love` → `❤️`, `like` → `👍`, etc.). |
+| `targetPartIndex` | `number` (optional) | Index of the bubble within a multi-part message. Omitted for single-bubble messages. |
+| `removedAt` | `string` | ISO 8601 timestamp. |
+
+### `event: "groupChange"`
+
+A group chat's membership, name, or icon changed. The payload is a discriminated union tagged by `kind`.
+
+| `kind` | Additional fields |
+| --- | --- |
+| `"displayNameChanged"` | `newDisplayName: string`, `actor: { id }` |
+| `"participantAdded"` | `participant: { id }`, `actor: { id }` |
+| `"participantRemoved"` | `participant: { id }`, `actor: { id }` |
+| `"participantLeft"` | `participant: { id }` (no `actor` — the leaver acted on themselves) |
+| `"iconChanged"` | `actor: { id }` |
+| `"iconRemoved"` | `actor: { id }` |
+
+Every variant also includes `spaceId: string` and `at: string` (ISO 8601).
 
 ## What you don't get
 
