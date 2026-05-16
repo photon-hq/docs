@@ -98,7 +98,7 @@ for await (const event of im.polls.subscribeEvents({
       console.log(event.delta.optionIdentifier);
       break;
     case "unvoted":
-      console.log("vote removed");
+      console.log("vote removed for", event.delta.optionIdentifier);
       break;
   }
 }
@@ -121,5 +121,5 @@ for await (const event of im.polls.subscribeEvents({
   | `created` | `title`, `options` |
   | `optionAdded` | `title`, `options` |
   | `voted` | `optionIdentifier` |
-  | `unvoted` | - |
+  | `unvoted` | `optionIdentifier` |
 </Accordion>
