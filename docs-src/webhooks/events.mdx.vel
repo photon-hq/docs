@@ -74,14 +74,18 @@ HTTP headers are case-insensitive. Most frameworks normalize to lowercase (`x-sp
 The body is a JSON object. The `event` field is a discriminator — every other field's shape depends on which event you're handling.
 
 ```ts
-type WebhookEventPayload =
-  | { event: 'messages'; space: SerializedSpace; message: SerializedInboundMessage };
-  // future events extend this union
+type WebhookEventEnvelope = {
+  event: string;       // discriminator — branch on this
+  platform?: string;   // provider that emitted the event (always set for non-messages arms)
+  [key: string]: unknown;
+};
 ```
+
+Today only the `messages` arm is emitted, and its shape (below) has been frozen since v1. New event types are added automatically as Spectrum providers declare them — see [Forward compatibility](#forward-compatibility) for the contract.
 
 ### `event: "messages"` payload
 
-This is the only event currently emitted. It fires once per inbound message that lands for your project.
+This is the canonical inbound-message arm. It fires once per inbound message that lands for your project. Its on-wire shape is frozen — fields are never repurposed, only added.
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -192,7 +196,9 @@ A few things that may be in the SDK's `Message` type but are intentionally **not
 
 ## Forward compatibility
 
-The set of events will grow. To stay forward-compatible:
+The set of events grows automatically. Each Spectrum provider declares its own custom event streams (`readReceipt`, `chatRead`, `messageEdit`, …), and the webhook worker discovers and forwards every one of them — no per-event deploy on our side is required to ship a new event. The first time a provider declares a new event, you'll start receiving deliveries for it as soon as the SDK version that includes it is rolled out.
+
+To stay forward-compatible:
 
 1. **Branch on `event` defensively.** Use a `switch` with a `default` arm that returns `2xx` and logs the unknown event. Never crash on unknown values.
 
