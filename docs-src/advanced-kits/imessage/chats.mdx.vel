@@ -1,220 +1,289 @@
 ---
-title: "Chats & Groups"
-description: "Create chats, manage read state and backgrounds, and update group metadata"
+title: "Chats"
+description: "Create chats, read chat state, mark read, set typing, share contact cards, and manage chat backgrounds"
 ---
 
-`im.chats` manages conversations. `im.groups` handles group-only operations such as display names, participants, group icons, and leaving.
+`im.chats` creates and manages iMessage conversations. A chat can be a direct conversation or a group conversation.
 
-## Create a chat
+Most chat methods identify the conversation by `chat.guid`. The exceptions are `create(...)`, which takes email addresses or phone numbers and returns `chat.guid`, and `count(...)`, which does not take a chat argument.
 
-One address creates or resolves a direct chat. Two or more addresses create or resolve a group chat.
+For group names, participants, group icons, and leaving a group, use [groups](/advanced-kits/imessage/groups).
+
+## What You Can Do
+
+| Need | Use this when |
+|---|---|
+| Create a chat | You have one or more email addresses or phone numbers |
+| Get a chat | You have `chat.guid` and need chat details |
+| Count chats | You need the number of currently visible chats |
+| Mark read | A user opened the conversation and you want to clear unread state |
+| Set typing | You want to show or hide the typing indicator |
+| Share a contact card | You want to send the current account's contact card |
+| Set a background | You want to apply an image as the chat background |
+| Subscribe to events | You need live changes for read state, archive state, or backgrounds |
+
+## Chat GUIDs
+
+A chat GUID is the server identifier for a conversation:
+
+| Chat type | GUID shape | Example |
+|---|---|---|
+| Direct chat | `any;-;{recipient}` | `any;-;alice@example.com` |
+| Group chat | `any;+;{group-id}` | `any;+;group-id` |
+
+In normal code, do not hand-write GUIDs. Use the `chat.guid` returned by `im.chats.create(...)`, `im.chats.get(...)`, message results, or event payloads.
+
+## Create a Chat
+
+One address creates a direct chat. Two or more addresses create a group chat:
 
 ```ts
 const { chat } = await im.chats.create(["alice@example.com"]);
+
 console.log(chat.guid);
 ```
 
-Send an opening message in the same server call:
-
 ```ts
-const result = await im.chats.create(["alice@example.com"], {
-  message: "hello from SDK",
-  clientMessageId: "create-chat-alice",
-});
+const { chat: group } = await im.chats.create(["alice@example.com", "bob@example.com"]);
 
-console.log(result.chat.guid, result.initialMessage?.guid);
+console.log(group.guid);
 ```
 
-`create(...)` returns `{ chat, initialMessage? }`.
+Returns `CreateChatResult`:
 
-Input rules:
+```jsonc
+{
+  "chat": {                         // Created or resolved Chat
+    "guid": "any;-;alice@example.com",
+    "displayName": "Alice",
+    "isGroup": false
+  },
+  "initialMessage": {                // Present only when options.message is sent
+    "guid": "message-guid"
+  }
+}
+```
 
-- Pass at least one full email address or phone number in `addresses`.
-- The server normalizes addresses and rejects short codes, service numbers, invalid emails, and duplicate canonical recipients.
-- `options.message` sends an opening text message in the same RPC.
-- When `options.message` is omitted, `initialMessage` is not present in the result.
-- When provided, `options.message` is trimmed by the server and must not be empty after trimming.
+| Input | Rule |
+|---|---|
+| `addresses` | At least one full email address or E.164 phone number |
+| `options.message` | Optional opening text; sent as part of the same call |
+| `options.effect` | Optional effect for the opening message; values are listed under [message effects](/advanced-kits/imessage/messages#message-effects) |
+| `options.clientMessageId` | Optional idempotency key for retrying the same logical create operation |
 
-<Accordion title="CreateChatOptions" description="Optional opening-message fields for im.chats.create(...).">
-  | Option | Type | Description |
-  |---|---|---|
-  | `message` | `string` | Optional opening text sent in the same call that creates the chat. |
-  | `subject` | `string` | Optional subject line for the opening message. |
-  | `effect` | `MessageEffect` | Optional full-screen or bubble effect for `message`. |
-  | `clientMessageId` | `string` | Stable key for retrying the same logical chat creation. |
-  | `attributedBody` | `Uint8Array` | Advanced: pre-rendered attributed body for callers that already generate Apple's attributed payload. Most callers should omit it. |
-</Accordion>
+The server normalizes addresses and rejects short codes, service numbers, invalid email addresses, and duplicate recipients.
 
-## Get and count chats
+`effect` only applies when `options.message` is present. It is not a chat property. For more complex sends, such as formatting or replies, create the chat first and then use the [messages API](/advanced-kits/imessage/messages).
+
+<Note>
+  `clientMessageId` is only needed when your job system might retry the same write after a crash or timeout. Most direct calls can omit it. See [error handling](/advanced-kits/imessage/error-handling) for details.
+</Note>
+
+## Get a Chat
 
 ```ts
 const chat = await im.chats.get("any;-;alice@example.com");
 
-const active = await im.chats.count();
-const includingArchived = await im.chats.count({ includeArchived: true });
+console.log(chat.displayName, chat.unreadCount, chat.isGroup);
 ```
 
-`get(...)` returns a `Chat` with identifiers, participants, service, unread count, and the latest message when available. `count(...)` returns a number. By default, archived chats are excluded.
+Returns `Chat`:
 
-`get(...)` takes a structured chat GUID. It does not accept a bare email address, phone number, display name, or group identifier.
-
-## Typing, read state, and contact cards
-
-```ts
-await im.chats.setTyping(chat.guid, true);
-await im.chats.setTyping(chat.guid, false);
-
-await im.chats.markRead(chat.guid);
-
-await im.chats.shareContactInfo(chat.guid);
-```
-
-`setTyping(...)`, `markRead(...)`, and `shareContactInfo(...)` return `void` after the server accepts the command.
-
-Typing indicators are transient. They are not durable events and should not be used as state.
-
-Pass `true` to `setTyping(...)` to start the typing indicator and `false` to stop it.
-
-## Chat backgrounds
-
-Chat backgrounds use raw image bytes, not uploaded attachment GUIDs:
-
-```ts
-await im.chats.setBackground(chat.guid, await readFile("background.jpg"));
-
-const present = await im.chats.hasBackground(chat.guid);
-
-await im.chats.removeBackground(chat.guid);
-```
-
-`setBackground(...)` and `removeBackground(...)` return `void`. `hasBackground(...)` returns a boolean.
-
-Background input rules:
-
-- Pass raw image bytes. Do not pass an uploaded attachment GUID.
-- Data must not be empty.
-- The server detects the image type from the bytes.
-- Supported background inputs are JPEG, PNG, HEIC, and HEIF.
-
-Other image formats can still be uploaded and sent as normal attachments.
-
-Removing a background is safe to repeat: clearing a chat that has no custom background still succeeds.
-
-## Chat events
-
-```ts
-for await (const event of im.chats.subscribeEvents({ chat: chat.guid })) {
-  console.log(event.type, event.sequence);
+```jsonc
+{
+  "guid": "any;-;alice@example.com",  // Chat GUID used by chat and message APIs
+  "displayName": "Alice",            // Display name
+  "isGroup": false,                  // Whether this is a group chat
+  "participants": [                  // Chat participants
+    {
+      "address": "alice@example.com",
+      "service": "iMessage"
+    }
+  ],
+  "service": "iMessage",             // Chat service
+  "isArchived": false,               // Whether the chat is archived
+  "isFiltered": false,               // Whether the system filtered this chat
+  "unreadCount": 0,                  // Unread count; may be absent
+  "lastMessage": {}                  // Latest message when available
 }
 ```
 
-`subscribeEvents(...)` returns a `TypedEventStream<ChatEvent>`. Pass `{ chat: chat.guid }` to scope the stream to one chat; omit the filter to receive chat events for all chats.
+`get(...)` throws `NotFoundError` when the chat does not exist or cannot be resolved.
 
-<Accordion title="ChatEvent" description="Chat-level changes emitted by im.chats.subscribeEvents(...).">
-  | `event.type` | Extra fields |
-  |---|---|
-  | `chat.backgroundChanged` | Shared event context fields. |
-  | `chat.backgroundRemoved` | Shared event context fields. |
-  | `chat.markedRead` | Shared event context fields. |
-  | `chat.archived` | Shared event context fields. |
-  | `chat.unarchived` | Shared event context fields. |
-</Accordion>
+## Count Chats
 
-All chat events include `sequence`, `chatGuid`, `isFromMe`, `occurredAt`, and optional `actor`.
-
-## Rename a group
-
-Group operations require an `any;+;...` group chat GUID. Direct chats reject group mutations server-side.
+By default, archived chats are excluded:
 
 ```ts
-const updated = await im.groups.setDisplayName(group.guid, "Weekend");
+const active = await im.chats.count();
 ```
 
-`setDisplayName(...)` returns the updated `Chat`. The SDK trims and validates the display name before sending the RPC.
-
-## Manage group participants
+Include archived chats with `includeArchived: true`:
 
 ```ts
-const afterAdd = await im.groups.addParticipants(group.guid, ["carol@example.com", "+15551234567"]);
-
-const afterRemove = await im.groups.removeParticipants(group.guid, ["carol@example.com"]);
+const total = await im.chats.count({ includeArchived: true });
 ```
 
-Both methods return the updated `Chat`.
+Returns `number`.
 
-Participant rules:
+## Read and Typing State
 
-- `addresses` must be a non-empty string array.
-- Addresses are trimmed before the RPC.
-- The server rejects duplicate canonical addresses in the same request.
-- `addParticipants(...)` invites addresses that are not already in the group.
-- `removeParticipants(...)` requires the addresses to be current participants.
-- The server may reject an address that cannot be resolved.
-- Pass `{ clientMessageId }` only when retrying the same logical participant mutation.
-
-## Group icons
+### Mark Read
 
 ```ts
-await im.groups.setIcon(group.guid, await readFile("icon.png"));
-
-const icon = await im.groups.getIcon(group.guid);
-console.log(icon.mimeType, icon.data.byteLength);
-
-await im.groups.removeIcon(group.guid);
+await im.chats.markRead(chat.guid);
 ```
 
-`setIcon(...)` and `removeIcon(...)` return `void`. `getIcon(...)` returns `{ data, mimeType }`.
+Returns `void`. Calling it again when the chat has no unread messages is safe.
 
-If the group has no icon, the SDK throws `NotFoundError` with `code === ErrorCode.groupIconNotFound`.
+### Typing Indicator
 
-Icon input rules:
-
-- Pass raw image bytes.
-- Data must not be empty.
-- The server detects the image type from the bytes.
-- Supported group icon inputs are PNG, JPEG, GIF, HEIC, and HEIF.
-- Pass `{ clientMessageId }` to `setIcon(...)` or `removeIcon(...)` only when retrying the same logical icon mutation.
-
-## Leave a group
+Show typing:
 
 ```ts
-await im.groups.leave(group.guid);
+await im.chats.setTyping(chat.guid, true);
 ```
 
-`leave(...)` returns `void` after the server accepts the command. Leaving is irreversible from this SDK call. You need another participant to invite the account back.
-
-Pass `{ clientMessageId }` only when retrying the same logical leave request.
-
-## Group events
+Stop typing:
 
 ```ts
-for await (const event of im.groups.subscribeEvents({ chat: group.guid })) {
-  switch (event.change.type) {
-    case "displayNameChanged":
-      console.log(event.change.displayName);
-      break;
-    case "participantAdded":
-    case "participantRemoved":
-    case "participantLeft":
-      console.log(event.change.participant.address);
-      break;
-    case "iconChanged":
-    case "iconRemoved":
-      console.log(event.change.type);
+await im.chats.setTyping(chat.guid, false);
+```
+
+Returns `void`. Typing is temporary UI state. It is not written to the durable event log and cannot be caught up after a disconnect.
+
+## Contact Card
+
+```ts
+await im.chats.shareContactInfo(chat.guid);
+```
+
+Returns `void`. The contact card comes from the Mac running the service. The SDK cannot choose which fields are included.
+
+## Chat Backgrounds
+
+Chat backgrounds use raw image bytes. They are not attachment GUIDs, and you do not upload them through `im.attachments` first.
+
+### Set a Background
+
+```ts
+await im.chats.setBackground(chat.guid, await readFile("background.jpg"));
+```
+
+Returns `void`. `data` must not be empty. The server detects the image type from the bytes. JPEG, PNG, HEIC, and HEIF are supported.
+
+After `setBackground(...)` succeeds, the background usually syncs to other participants' devices within `30s`. The image is uploaded to iCloud and then distributed to the conversation. This is not a hard SLA: network state, iCloud state, and the Messages client state all affect when the background appears.
+
+| Stage | What happens |
+|---|---|
+| Before `setBackground(...)` returns | The server waits until the background asset is uploaded and ready for distribution |
+| After `setBackground(...)` returns | The chat background change has been submitted, and iCloud distributes the asset |
+| On other devices | The background appears after Messages receives the iCloud-distributed asset |
+
+Common reasons the background UI may not appear:
+
+| Situation | Result |
+|---|---|
+| The recipient's network, iCloud, or Messages state is unhealthy | The background may appear late, often after reopening Messages |
+| A group member has never spoken, interacted, or is treated by Apple as unknown / untrusted | Apple may not show the background UI to that member |
+
+<Note>
+  The last case is a Messages display rule, not an SDK option. If one group member never sees the background, it is usually more effective for that member to send a message, mark the sender as known, or reopen Messages than to call `setBackground(...)` repeatedly.
+</Note>
+
+### Check Background State
+
+```ts
+const hasCustom = await im.chats.hasBackground(chat.guid);
+```
+
+Returns `boolean`.
+
+### Remove a Background
+
+```ts
+await im.chats.removeBackground(chat.guid);
+```
+
+Returns `void`. Removing a background is safe to repeat, even when no custom background is set.
+
+## Chat Events
+
+`subscribeEvents(...)` returns `TypedEventStream<ChatEvent>`. Use the stream to observe changes made by other people, other devices, or another part of your system. Immediately after your code calls a write method, use that method's return value or completion status.
+
+### Scope
+
+Only one chat:
+
+```ts
+const stream = im.chats.subscribeEvents({
+  chat: chat.guid,
+});
+```
+
+All visible chat events:
+
+```ts
+const stream = im.chats.subscribeEvents();
+```
+
+### Event Shape
+
+Every chat event has the same outer fields:
+
+```jsonc
+{
+  "type":       "chat.markedRead",       // Event type
+  "chatGuid":   "any;-;alice@example.com",
+  "sequence":   123,                     // Event sequence for ordering and catch-up
+  "isFromMe":   true,                    // Triggered by the current account
+  "occurredAt": "2026-01-01T12:00:00Z",  // Event time
+  "actor": {                             // Participant that triggered the event; may be absent
+    "address": "alice@example.com",
+    "service": "iMessage"
+  }
+}
+```
+
+### Event Types
+
+| `event.type` | Meaning |
+|---|---|
+| `chat.backgroundChanged` | A custom background was set or replaced |
+| `chat.backgroundRemoved` | The custom background was removed |
+| `chat.markedRead` | The chat was marked read |
+| `chat.archived` | The chat was archived |
+| `chat.unarchived` | The chat was unarchived |
+
+### Handle Events
+
+```ts
+for await (const event of im.chats.subscribeEvents({ chat: chat.guid })) {
+  switch (event.type) {
+    case "chat.backgroundChanged":
+    case "chat.backgroundRemoved":
+    case "chat.markedRead":
+    case "chat.archived":
+    case "chat.unarchived":
+      console.log(event.type, event.sequence);
       break;
   }
 }
 ```
 
-`subscribeEvents(...)` returns a `TypedEventStream<GroupEvent>`. Pass `{ chat: group.guid }` to scope the stream to one group; omit the filter to receive group events for all groups.
+When you subscribe to all visible chats, use `event.chatGuid` to identify the chat:
 
-<Accordion title="GroupChange" description="Group changes emitted inside a group.changed event.">
-  | `change.type` | Extra fields |
-  |---|---|
-  | `displayNameChanged` | `displayName` |
-  | `participantAdded` | `participant` |
-  | `participantRemoved` | `participant` |
-  | `participantLeft` | `participant` |
-  | `iconChanged` | - |
-  | `iconRemoved` | - |
-</Accordion>
+```ts
+for await (const event of im.chats.subscribeEvents()) {
+  console.log(event.chatGuid, event.type);
+}
+```
+
+If the stream disconnects, use [events](/advanced-kits/imessage/events) to catch up on missed durable events, then continue consuming the live stream.
+
+## Next Steps
+
+1. [Messages](/advanced-kits/imessage/messages) — send, read, edit, and unsend messages with `chat.guid`
+2. [Groups](/advanced-kits/imessage/groups) — manage group names, participants, group icons, and leaving
+3. [Events](/advanced-kits/imessage/events) — catch up on durable events after a disconnect
+4. [Error Handling](/advanced-kits/imessage/error-handling) — handle `NotFoundError`, `ValidationError`, and idempotent retries

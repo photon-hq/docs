@@ -1,22 +1,25 @@
 ---
 title: "Error Handling"
-description: "Handle SDK error classes, retry hints, and structured server context"
+description: "Handle SDK error classes, error codes, retries, and idempotent writes"
 ---
 
-Every SDK method throws an `IMessageError` subclass on SDK, server, or transport failure. Use `instanceof` for broad handling and `error.code` for precise product behavior.
+When an SDK method fails, it throws `IMessageError` or one of its subclasses. First branch by error class with `instanceof`, then use `error.code` for the exact reason.
 
-## Error hierarchy
+Do not parse `error.message` for program logic. `message` is useful for logs and user-facing text. Use `error.code`, `error.retryable`, and `error.context` for decisions.
 
-```text
-IMessageError
-├── AuthenticationError   token rejected, expired, or not authorized
-├── NotFoundError         chat, message, attachment, poll, address, or icon missing
-├── RateLimitError        server quota or rate limit rejected the request
-├── ValidationError       invalid input or failed precondition
-└── ConnectionError       network, timeout, or unavailable server
-```
+## What You Can Do
 
-## Basic handling
+| Need | Use |
+|---|---|
+| Distinguish auth, not-found, rate-limit, validation, and connection errors | `error instanceof ...` |
+| Check the exact reason | `error.code` |
+| Decide whether the same request is worth retrying | `error.retryable` |
+| Read structured server context | `error.context` |
+| Prevent duplicate writes from retried jobs | `clientMessageId` |
+
+## Handle Errors
+
+Check the most specific subclasses first, and handle `IMessageError` last. If the error is not from the SDK, rethrow it.
 
 ```ts
 import {
@@ -49,24 +52,79 @@ try {
 }
 ```
 
-## Error properties
+| Error class | Usually means | Common handling |
+|---|---|---|
+| `AuthenticationError` | Token rejected, expired, or unauthorized | Refresh credentials or stop sending |
+| `NotFoundError` | Chat, message, attachment, poll, address, or icon does not exist | Refresh local state and stop using the stale GUID |
+| `RateLimitError` | Server quota or rate limit rejected the request | Retry later if `retryable` and your business queue allows it |
+| `ValidationError` | Invalid input or failed precondition | Fix the input; do not retry unchanged |
+| `ConnectionError` | Network failure, timeout, or server unavailable | Retry according to your retry policy |
+| `IMessageError` | Other SDK error | Log `code`, `grpcCode`, and `context`; use your fallback path |
 
-All subclasses inherit the same core fields:
+## Error Object
 
-<Accordion title="IMessageError" description="Base error for every failure surfaced by the SDK.">
-  | Property | Type | Description |
-  |---|---|---|
-  | `code` | `ErrorCode` | Stable server error code for product logic. |
-  | `retryable` | `boolean` | Whether retrying the same operation may succeed. |
-  | `grpcCode` | `number` | Underlying gRPC status code. |
-  | `context` | `Record<string, string>` | Structured request-specific metadata from the server. |
-</Accordion>
+All SDK errors include these fields:
 
-`context` is structured string metadata from the server. Examples include `field`, `message_guid`, `chat_guid`, `attachmentGuid`, and other request-specific values. Do not parse the human-readable `message` when a context field exists.
+```jsonc
+{
+  "name":      "NotFoundError",   // Error class name
+  "message":   "message not found",
+  "code":      "messageNotFound", // Stable code for program logic
+  "retryable": false,             // Whether the same request may succeed later
+  "grpcCode":  5,                 // Numeric gRPC status, mainly for debugging
+  "context": {                    // Structured server context; may be empty
+    "message": "missing-message-guid"
+  }
+}
+```
 
-Use `message` for logs and user-facing summaries. Use `code` and `context` for program flow.
+| Field | How to use it |
+|---|---|
+| `code` | Program branches and exact error handling |
+| `retryable` | Decide whether the same request can be retried |
+| `grpcCode` | Debug low-level transport state |
+| `context` | See which field, GUID, or resource caused the failure |
+| `message` | Logs or user-facing copy |
+| `cause` | Original lower-level error when the SDK wraps one; may be absent |
 
-## gRPC status mapping
+<Warning>
+  Do not parse `message`. Server wording can change. Use `error.code` for stable decisions.
+</Warning>
+
+## Common Error Codes
+
+`ErrorCode` is both a runtime object and a TypeScript type. In most code, check the specific error class first, then compare `error.code`:
+
+```ts
+import { ErrorCode, NotFoundError } from "@photon-ai/advanced-imessage";
+
+try {
+  await im.messages.get(chat.guid, "missing-message-guid");
+} catch (error) {
+  if (error instanceof NotFoundError && error.code === ErrorCode.messageNotFound) {
+    console.log("message no longer exists");
+  }
+}
+```
+
+Common codes by category:
+
+| Category | Error codes |
+|---|---|
+| Authentication | `unauthenticated`, `tokenExpired`, `tokenBlocked`, `unauthorized` |
+| Rate limits | `dailyLimitExceeded`, `recipientLimitExceeded`, `uploadRateExceeded`, `contentDuplicateExceeded`, `recipientCoolingDown`, `recipientLocked`, `sendReceiveRatioExceeded` |
+| Duplicate writes | `duplicateMessage` |
+| Not found | `chatNotFound`, `messageNotFound`, `attachmentNotFound`, `addressNotFound`, `sharedFriendLocationNotFound`, `groupIconNotFound`, `pollNotFound` |
+| Validation | `invalidArgument`, `preconditionFailed`, `operationNotSupported`, `attachmentNotReady`, `privateApiUnavailable` |
+| Infrastructure | `serviceUnavailable`, `timeout`, `internalError`, `databaseError`, `networkError` |
+
+<Tip>
+  The server may return new error codes before your SDK version exports matching constants. Compare with `ErrorCode` constants when possible, and keep a fallback path for unknown `error.code` values.
+</Tip>
+
+## gRPC Status Mapping
+
+Most application code should not branch on `grpcCode`. Prefer error classes and `error.code`. Use this table when debugging transport-level behavior.
 
 | gRPC status | SDK error class |
 |---|---|
@@ -75,47 +133,15 @@ Use `message` for logs and user-facing summaries. Use `code` and `context` for p
 | `RESOURCE_EXHAUSTED` | `RateLimitError` |
 | `INVALID_ARGUMENT`, `FAILED_PRECONDITION` | `ValidationError` |
 | `UNAVAILABLE`, `DEADLINE_EXCEEDED` | `ConnectionError` |
-| All others | `IMessageError` |
+| Everything else | `IMessageError` |
 
-## Error codes
+## Retries
 
-{% set errorCode = symbol("ts:@photon-ai/advanced-imessage#ErrorCode") %}
-`ErrorCode` is exported as both a runtime object and a TypeScript union for the SDK's documented server codes.
-
-<Accordion title="ErrorCode" description="{{ errorCode.doc.summary }}">
-  | Category | Error codes |
-  |---|---|
-  | Authentication | `unauthenticated`, `tokenExpired`, `tokenBlocked`, `unauthorized` |
-  | Rate limiting | `dailyLimitExceeded`, `recipientLimitExceeded`, `uploadRateExceeded`, `contentDuplicateExceeded`, `recipientCoolingDown`, `recipientLocked`, `sendReceiveRatioExceeded` |
-  | Duplicate writes | `duplicateMessage` |
-  | Not found | `chatNotFound`, `messageNotFound`, `attachmentNotFound`, `addressNotFound`, `sharedFriendLocationNotFound`, `groupIconNotFound`, `pollNotFound` |
-  | Validation | `invalidArgument`, `preconditionFailed`, `operationNotSupported`, `attachmentNotReady`, `privateApiUnavailable` |
-  | Infrastructure | `serviceUnavailable`, `timeout`, `internalError`, `databaseError`, `networkError` |
-</Accordion>
-
-The server may add new error-code strings before a newer SDK exports matching `ErrorCode` constants. In that case, `error.code` still carries the string returned by the server; compare against the exported constants where possible and keep a fallback path for unknown codes.
-
-For example, current servers may return infrastructure strings such as `fileIOFailed`, `encodingFailed`, or `anchorUnavailable` even if your installed SDK version does not expose matching `ErrorCode` constants yet.
-
-```ts
-import { ErrorCode, IMessageError } from "@photon-ai/advanced-imessage";
-
-try {
-  await im.messages.get(chat.guid, "missing-message-guid");
-} catch (error) {
-  if (error instanceof IMessageError && error.code === ErrorCode.messageNotFound) {
-    // refresh message state or show that the message is no longer available
-  }
-}
-```
-
-## Retry behavior
-
-Set `retry: true` or pass a retry options object to retry unary RPC failures that are marked retryable:
+Set `retry` when creating the client. The SDK retries retryable unary requests automatically. Invalid input, missing resources, and permission failures do not become valid by retrying the same request.
 
 ```ts
 const im = createClient({
-  address: "server-url:443",
+  address: "imessage.example.com:443",
   token: process.env.IMESSAGE_TOKEN!,
   retry: {
     maxAttempts: 3,
@@ -125,24 +151,30 @@ const im = createClient({
 });
 ```
 
-{% set retryOpts = symbol("ts:@photon-ai/advanced-imessage#RetryOptions") %}
-<Accordion title="RetryOptions" description="{{ retryOpts.doc.summary }}">
-  | Option | Type | Description |
-  |---|---|---|
-  {% for m in retryOpts.members -%}
-  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
-  {% endfor %}
-</Accordion>
+`RetryOptions`:
 
-Streaming RPCs are not retried automatically. Persist the latest handled event sequence and use `im.events.catchUp(since)` before reopening live streams.
+| Option | Meaning |
+|---|---|
+| `retry: true` | Use the SDK default retry policy |
+| `maxAttempts` | Maximum attempts, including the first request |
+| `initialDelay` | Delay before the first retry, in milliseconds |
+| `maxDelay` | Maximum delay between retries, in milliseconds |
 
-The SDK only retries errors marked retryable by the server or transport layer. It does not retry validation failures or failed preconditions.
+| Case | Automatically retried |
+|---|---|
+| Unary request with `error.retryable === true` | Yes |
+| `ValidationError` or invalid input | No |
+| Live streams, download streams, location streams | No |
+
+<Warning>
+  Streaming requests are not retried automatically. When message, chat, group, or poll live streams disconnect, follow the concurrent recovery flow in [events](/advanced-kits/imessage/events): consume live streams and `im.events.catchUp(...)` together. Location streams are different; location updates cannot be caught up.
+</Warning>
 
 ## Idempotency
 
-Most calls do not need a `clientMessageId`.
+Most calls do not need `clientMessageId`. Use it only when your queue or worker may rerun the same logical write after a crash or timeout. Automatic `retry` handles the same SDK call. `clientMessageId` handles your business job starting the same write again.
 
-Use one when your own worker, queue, or job system may retry the same logical write after a crash, timeout, or process restart. Reuse the same value only for that same logical write:
+Use the same `clientMessageId` every time you retry the same logical write:
 
 ```ts
 await im.messages.sendText(chat.guid, "Hello", {
@@ -150,6 +182,17 @@ await im.messages.sendText(chat.guid, "Hello", {
 });
 ```
 
-Do not generate a fresh `clientMessageId` for every retry of the same job. A fresh value tells the server it is a new write.
+| Case | Result |
+|---|---|
+| Same `clientMessageId` + same write | Server treats it as a duplicate and returns the original result |
+| New `clientMessageId` | Server treats it as a new independent write |
 
-Do generate a new `clientMessageId` for a different message, vote, group edit, or other distinct mutation.
+<Warning>
+  Do not reuse one `clientMessageId` for different business operations. It represents one logical write, not a user ID, chat ID, or long-lived session ID.
+</Warning>
+
+## Next Steps
+
+1. [Events](/advanced-kits/imessage/events) — recover after stream disconnects
+2. [Messages](/advanced-kits/imessage/messages) — understand write methods, idempotency keys, and message errors
+3. [Attachments](/advanced-kits/imessage/attachments) — handle `attachmentNotReady`

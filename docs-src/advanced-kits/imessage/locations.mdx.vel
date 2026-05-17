@@ -1,41 +1,112 @@
 ---
 title: "Locations"
-description: "List, fetch, and watch Find My shared friend locations"
+description: "List, fetch, and watch shared Find My friend locations"
 ---
 
-`im.locations` reads shared Find My friend locations for the authenticated iMessage account. It can list every friend currently sharing, fetch one friend by address, and watch live updates.
+`im.locations` reads Find My friend locations that are already visible to the current iMessage account. The `address` argument is a full email address or E.164 phone number. It is not a chat GUID.
 
-Location updates are not part of the durable event log. They use a dedicated live stream and are not replayed by `im.events.catchUp(...)`.
+<Warning>
+  Location updates are not part of the durable event log. `im.locations.watch(...)` is a dedicated live stream. Updates missed while disconnected cannot be replayed with [`im.events.catchUp(...)`](/advanced-kits/imessage/events).
+</Warning>
 
-Location methods use the friend's E.164 phone number or full email address. They do not take chat GUIDs.
+## What You Can Do
 
-## List shared locations
+| Need | Use this when |
+|---|---|
+| List shared locations | You want every currently visible friend location |
+| Fetch one location | You want the latest snapshot for one friend |
+| Watch live updates | You are updating a map or background job as locations change |
+
+## Before You Use It
+
+| Rule | Meaning |
+|---|---|
+| This does not start sharing | The API only reads location shares already visible to the current account |
+| Address means contact address | Pass an email address or E.164 phone number, not `chat.guid` |
+| Coordinates can be absent | Check both `latitude` and `longitude` before plotting a point |
+| Missed updates are gone | `watch(...)` updates missed during a disconnect are not replayed by `catchUp(...)` |
+
+## Input Format
+
+`get(address)` and `watch(address)` accept the same `address` argument:
+
+| Input | Accepted | Example |
+|---|---|---|
+| Full email address | Yes | `alice@example.com` |
+| E.164 phone number | Yes | `+15551234567` |
+| Chat GUID | No | `any;-;alice@example.com` |
+| Display name | No | `Alice` |
+
+Phone numbers must be E.164: include the country code, start with `+`, and omit spaces, parentheses, and dashes.
+
+## List Shared Locations
 
 ```ts
 const locations = await im.locations.list();
 
 for (const location of locations) {
+  if (location.latitude === undefined || location.longitude === undefined) {
+    continue;
+  }
+
   console.log(location.address, location.latitude, location.longitude);
 }
 ```
 
-Returns an array of shared-location snapshots. The array is empty when no active shared-location sessions exist.
+Returns `SharedFriendLocation[]`. If no friends are sharing location, the array is empty. Each item is a location snapshot, and a snapshot is not guaranteed to include coordinates.
 
-## Get one friend
+`latitude` and `longitude` are optional. They may be absent while a device is still locating, when location is unavailable, or when only address metadata is available.
+
+<Warning>
+  Check both `latitude` and `longitude` before showing a map marker. Do not rely only on `locationType`, and do not assume every listed location has coordinates.
+</Warning>
+
+## Get One Friend Location
 
 ```ts
-const alice = await im.locations.get("alice@example.com");
+const location = await im.locations.get("alice@example.com");
 
-console.log(alice.name, alice.shortAddress);
+console.log(location.name ?? location.address, location.locationType);
 ```
 
-`get(...)` throws `NotFoundError` when that address is not currently sharing a location with the authenticated iMessage account.
+Returns `SharedFriendLocation`. If the address is not sharing location or is not visible to the current account, `get(...)` throws `NotFoundError`.
 
-Location fields such as `latitude`, `longitude`, `accuracy`, and timestamps can be absent when the device is still locating or when only partial cached data is available.
+The returned object looks like this:
 
-## Watch live updates
+```jsonc
+{
+  "address":              "alice@example.com",       // Normalized email address or E.164 phone number
+  "isLocatingInProgress": false,                     // Whether the device is still locating
+  "locationType":         "live",                    // Freshness of the location source
+  "latitude":             37.7749,                   // Latitude; may be absent
+  "longitude":            -122.4194,                 // Longitude; may be absent
+  "accuracy":             12,                        // Horizontal accuracy in meters; may be absent
+  "locationTimestamp":    "2026-01-01T12:00:00Z",    // Time the location was captured; may be absent
+  "expiresAt":            "2026-01-01T13:00:00Z",    // Share expiration time; may be absent
+  "name":                 "Alice",                   // Friend display name; may be absent
+  "shortAddress":         "Mission, SF",             // Short human-readable address; may be absent
+  "longAddress":          "Mission District, SF"     // Full human-readable address; may be absent
+}
+```
 
-Watch every shared friend:
+## Location Types
+
+`location.locationType` describes how fresh the snapshot is:
+
+| Value | Meaning |
+|---|---|
+| `"live"` | Actively updating live location |
+| `"shallow"` | Recent cached location |
+| `"legacy"` | Older cached location from a previous session |
+| `"unknown"` | The server could not classify the source |
+
+`locationType` only describes freshness. It does not guarantee that coordinates are present.
+
+## Watch Live Updates
+
+### Scope
+
+Watch every visible friend's location updates:
 
 ```ts
 for await (const update of im.locations.watch()) {
@@ -47,21 +118,40 @@ Watch one address:
 
 ```ts
 for await (const update of im.locations.watch("alice@example.com")) {
-  updateMap(update.location);
+  const { latitude, longitude } = update.location;
+
+  if (latitude === undefined || longitude === undefined) {
+    continue;
+  }
+
+  console.log(latitude, longitude);
 }
 ```
 
-The stream yields shared-location update objects with the latest location snapshot and source sequence.
+### Update Shape
 
-`watch(...)` returns a `TypedEventStream<SharedFriendLocationUpdated>`. Close the stream during shutdown or when you no longer need updates.
+Each update is `SharedFriendLocationUpdated`:
 
-## Location freshness
+```jsonc
+{
+  "location": {                         // Latest SharedFriendLocation snapshot
+    "address": "alice@example.com",
+    "locationType": "live",
+    "latitude": 37.7749,
+    "longitude": -122.4194
+  },
+  "sourceSequence": 123                 // Live-location stream sequence; useful for duplicate detection
+}
+```
 
-`locationType` describes how fresh the location fix is:
+Breaking out of the `for await` loop closes the live stream.
 
-| `locationType` | Meaning |
-|---|---|
-| `"live"` | Actively updating live location. |
-| `"shallow"` | Recent cached location. |
-| `"legacy"` | Older cached location from a prior session. |
-| `"unknown"` | The server could not classify the source. |
+<Warning>
+  `sourceSequence` belongs only to the location live stream. It is not the same as durable event `sequence`. You can use it to detect duplicate live updates after reconnecting, but you cannot use `im.events.catchUp(...)` to recover location updates missed while disconnected.
+</Warning>
+
+## Next Steps
+
+1. [Addresses](/advanced-kits/imessage/addresses) — check whether an email address or phone number is reachable over iMessage
+2. [Events](/advanced-kits/imessage/events) — understand durable events and catch-up
+3. [Chats](/advanced-kits/imessage/chats) — manage chats, read state, and typing state

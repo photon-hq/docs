@@ -3,9 +3,36 @@ title: "Messages"
 description: "Send, reply, react, edit, list, and subscribe to iMessage events"
 ---
 
-`im.messages` covers individual message operations: sending text, sending uploaded attachments, multipart messages, replies, edits, unsends, reactions, stickers, reads, embedded media, pagination, and live message events.
+`im.messages` sends, reads, mutates, and subscribes to messages.
 
-## Send text
+Get a `chat.guid` before calling message APIs. `chat.guid` is the server's chat identifier. It is not an email address or phone number. If you only have a recipient address, create or resolve the chat first with [`im.chats.create(...)`](/advanced-kits/imessage/chats).
+
+| Scenario | Argument shape |
+|---|---|
+| Send, read, edit, or unsend in one chat | First argument is `chat.guid` |
+| List messages in one chat | `listInChat(chat.guid, options)` |
+| Subscribe to one chat's message events | `subscribeEvents({ chat: chat.guid })` |
+| List recent messages across chats | `listRecent(options)`, no `chat.guid` |
+
+## What You Can Do
+
+| Need | Use |
+|---|---|
+| Send plain text | `im.messages.sendText(chat.guid, text)` |
+| Add a message effect | `effect: MessageEffect.*` |
+| Format text | `formatting: [...]` |
+| Send an attachment | Upload with `im.attachments.upload(...)`, then call `im.messages.sendAttachment(...)` |
+| Reply to a message | `replyTo` on `sendText(...)`, `sendAttachment(...)`, or `sendMultipart(...)` |
+| Send multipart content | `im.messages.sendMultipart(...)` |
+| Add or remove a reaction | `im.messages.setReaction(...)` |
+| Place a sticker | `im.messages.placeSticker(...)` |
+| Edit a message | `im.messages.edit(...)` |
+| Unsend a message | `im.messages.unsend(...)` |
+| Notify anyway | `im.messages.notifySilenced(...)` |
+| Get or list messages | `get(...)`, `listRecent(...)`, `listInChat(...)` |
+| Subscribe to message events | `im.messages.subscribeEvents(...)` |
+
+## Send Text
 
 ```ts
 const sent = await im.messages.sendText(chat.guid, "Hello");
@@ -13,60 +40,107 @@ const sent = await im.messages.sendText(chat.guid, "Hello");
 console.log(sent.guid);
 ```
 
-All send and mutation methods that produce a visible message return a `Message` snapshot.
+`sendText(...)` returns `Message`. `text` is trimmed by the server and must not be empty after trimming.
 
-The `chat` argument is always a server chat GUID such as `any;-;alice@example.com` or `any;+;group-id`. In normal code, pass `chat.guid` returned by `im.chats.create(...)`, `im.chats.get(...)`, message results, or event payloads.
-
-`text` is trimmed by the server and must not be empty after trimming.
-
-### Send with options
+Common `Message` fields:
 
 ```ts
-import { MessageEffect, TextEffect } from "@photon-ai/advanced-imessage";
+const message = {
+  // Message GUID. Use it for edits, unsends, reactions, replies, and lookups.
+  guid: "message-guid",
+  // Chats that contain this message.
+  chatGuids: ["any;-;alice@example.com"],
+  content: {
+    text: "Hello",
+    attachments: [],
+    formatting: [],
+    mentions: [],
+  },
+  isFromMe: true,
+  dateCreated: new Date("2026-01-01T12:00:00Z"),
+};
+```
+
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/text-message.avif" alt="iMessage text bubble showing a sent Hello message" />
+</Frame>
+
+## Message Effects
+
+Message effects apply to the whole outgoing message: confetti, fireworks, slam, invisible ink, and similar iMessage effects.
+
+```ts
+import { MessageEffect } from "@photon-ai/advanced-imessage";
 
 await im.messages.sendText(chat.guid, "Happy birthday", {
   effect: MessageEffect.confetti,
-  enableLinkPreview: true,
-  formatting: [{ type: "effect", start: 0, length: 5, effect: TextEffect.bloom }],
-  clientMessageId: "birthday-2026-alice",
 });
 ```
 
-<Accordion title="SendOptions" description="Optional fields for im.messages.sendText(...).">
-  | Option | Type | Description |
-  |---|---|---|
-  | `clientMessageId` | `string` | Stable key for retrying the same logical send. Most sends do not need one. |
-  | `effect` | `MessageEffect` | Full-screen or bubble effect to apply to the outgoing message. |
-  | `enableDataDetection` | `boolean` | Enables Apple's data-detector pass for links, dates, addresses, and similar text. |
-  | `enableLinkPreview` | `boolean` | Asks Messages to generate rich URL previews when possible. |
-  | `formatting` | `TextFormatInput[]` | UTF-16 ranges for bold, italic, underline, strikethrough, or text effects. |
-  | `replyTo` | `string \| { guid: string; partIndex?: number }` | Message GUID, or message GUID plus multipart bubble index, to reply to. |
-  | `subject` | `string` | Optional subject line for the outgoing message. |
-</Accordion>
+| Constant | Effect |
+|---|---|
+| `MessageEffect.confetti` | Confetti |
+| `MessageEffect.fireworks` | Fireworks |
+| `MessageEffect.balloons` | Balloons |
+| `MessageEffect.heart` | Heart |
+| `MessageEffect.lasers` | Lasers |
+| `MessageEffect.celebration` | Celebration |
+| `MessageEffect.sparkles` | Sparkles |
+| `MessageEffect.spotlight` | Spotlight |
+| `MessageEffect.echo` | Echo |
+| `MessageEffect.slam` | Slam |
+| `MessageEffect.loud` | Loud |
+| `MessageEffect.gentle` | Gentle |
+| `MessageEffect.invisible` | Invisible ink |
 
-### Reply to a message
+Clients that do not support a given effect show the message normally.
 
-Reply to a whole message:
+## Text Formatting
+
+`formatting` applies bold, italic, underline, strikethrough, or animated text effects to a range of text.
 
 ```ts
-await im.messages.sendText(chat.guid, "reply", {
-  replyTo: sent.guid,
+import { TextEffect } from "@photon-ai/advanced-imessage";
+
+await im.messages.sendText(chat.guid, "Bold then bloom", {
+  formatting: [
+    { type: "bold", start: 0, length: 4 },
+    { type: "effect", start: 10, length: 5, effect: TextEffect.bloom },
+  ],
 });
 ```
 
-Reply to one bubble in a multipart message:
+| `type` | Effect | Shape |
+|---|---|---|
+| `"bold"` | Bold | `{ type: "bold", start, length }` |
+| `"italic"` | Italic | `{ type: "italic", start, length }` |
+| `"underline"` | Underline | `{ type: "underline", start, length }` |
+| `"strikethrough"` | Strikethrough | `{ type: "strikethrough", start, length }` |
+| `"effect"` | Animated text effect | `{ type: "effect", start, length, effect }` |
 
-```ts
-await im.messages.sendText(chat.guid, "reply to part 2", {
-  replyTo: { guid: sent.guid, partIndex: 2 },
-});
-```
+`start` and `length` use UTF-16 code units. In plain ASCII text, offsets match what you see on screen. With emoji or other non-BMP characters, one visible character may use two code units.
 
-`partIndex` is zero-based when provided. The server validates it against the target message's part count.
+| Constant | Effect |
+|---|---|
+| `TextEffect.big` | Big |
+| `TextEffect.small` | Small |
+| `TextEffect.shake` | Shake |
+| `TextEffect.nod` | Nod |
+| `TextEffect.explode` | Explode |
+| `TextEffect.ripple` | Ripple |
+| `TextEffect.bloom` | Bloom |
+| `TextEffect.jitter` | Jitter |
 
-## Send attachments
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/text-formatting.avif" alt="iMessage messages showing bold italic underline strikethrough and text effects" />
+</Frame>
 
-Upload bytes with `im.attachments.upload(...)`, then send the returned attachment GUID:
+## Send Attachments
+
+Sending an attachment has two steps:
+
+1. Upload file bytes with [`im.attachments.upload(...)`](/advanced-kits/imessage/attachments) to get an attachment GUID.
+2. Pass `uploaded.attachment.guid` to `sendAttachment(...)`.
 
 ```ts
 const uploaded = await im.attachments.upload({
@@ -74,37 +148,81 @@ const uploaded = await im.attachments.upload({
   data: await readFile("photo.jpg"),
 });
 
-await im.messages.sendAttachment(chat.guid, uploaded.attachment.guid, {
-  clientMessageId: "photo-send-1",
-});
+const sent = await im.messages.sendAttachment(chat.guid, uploaded.attachment.guid);
+
+console.log(sent.guid);
 ```
 
-`sendAttachment(...)` returns the sent `Message`. The second argument is an attachment GUID from `im.attachments.upload(...)` or from a received message, not a filesystem path.
+The second argument to `sendAttachment(...)` is a server attachment GUID, not a local file path. Upload behavior, file extensions, Live Photos, and downloads are covered in [attachments](/advanced-kits/imessage/attachments).
 
-Optional send-attachment fields:
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/image-attachment-message.avif" alt="iMessage image attachment message" />
+</Frame>
 
-| Option | Type | Meaning |
-|---|---|---|
-| `replyTo` | `string \| { guid: string; partIndex?: number }` | Reply to a whole message or one multipart bubble. |
-| `effect` | `MessageEffect` | Apply a full-screen or bubble effect. |
-| `isAudioMessage` | `boolean` | Send the attachment using Apple's audio-message presentation. |
-| `clientMessageId` | `string` | Stable key for retrying the same logical send. |
+### Audio Messages
 
-Use `isAudioMessage: true` when the uploaded attachment should be sent as an audio message:
+To use Apple's audio-message bubble UI, set `isAudioMessage: true`:
 
 ```ts
+const audio = await im.attachments.upload({
+  fileName: "voice.m4a",
+  data: await readFile("voice.m4a"),
+});
+
 await im.messages.sendAttachment(chat.guid, audio.attachment.guid, {
   isAudioMessage: true,
 });
 ```
 
-## Send multipart messages
+| Option | Meaning |
+|---|---|
+| `isAudioMessage: true` | Shows the audio-message UI, such as a play button and waveform |
+| Omitted | Sends as a regular attachment |
 
-Multipart sends are atomic and can mix text, mentions, and uploaded attachments:
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/audio-message.avif" alt="iMessage audio message bubble with play button and waveform" />
+</Frame>
+
+## Reply to a Message
+
+To reply to a message, pass the target message GUID as `replyTo`:
+
+```ts
+await im.messages.sendText(chat.guid, "Replying to this", {
+  replyTo: sent.guid,
+});
+```
+
+`replyTo` works with text, attachment, and multipart sends:
+
+| Method | Reply field |
+|---|---|
+| `sendText(...)` | `options.replyTo` |
+| `sendAttachment(...)` | `options.replyTo` |
+| `sendMultipart(...)` | `options.replyTo` |
+
+For a multipart target, pass both the message GUID and the zero-based bubble index:
+
+```ts
+await im.messages.sendText(chat.guid, "Replying to the second bubble", {
+  replyTo: {
+    guid: sent.guid,
+    partIndex: 1,
+  },
+});
+```
+
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/reply-message.avif" alt="iMessage reply showing a quoted original message and reply content" />
+</Frame>
+
+## Send Multipart Messages
+
+`sendMultipart(...)` sends text, mentions, and attachments as one logical message. Recipients see related bubbles instead of separate sends.
 
 ```ts
 await im.messages.sendMultipart(chat.guid, [
-  { text: "look at this " },
+  { text: "Look at this " },
   { text: "@Alice", mentionedAddress: "alice@example.com" },
   {
     attachmentGuid: uploaded.attachment.guid,
@@ -113,98 +231,108 @@ await im.messages.sendMultipart(chat.guid, [
 ]);
 ```
 
-`sendMultipart(...)` returns the sent `Message`.
+Each part is one text, mention, or attachment bubble. Do not mix text and attachment fields in the same part object.
 
-Input rules:
+Text part:
 
-- `parts` must not be empty.
-- Each part must contain exactly one content value: either non-empty `text` or `attachmentGuid`.
-- Use `mentionedAddress` and `formatting` only on text parts.
-- Omit `bubbleIndex` unless you need an advanced server bubble-order override. Most callers should let the server order parts from the array.
-- If you set `bubbleIndex`, set it on every part. Mixing explicit and omitted `bubbleIndex` values is rejected.
-- Explicit `bubbleIndex` values must be non-negative numbers.
-
-Optional send-multipart fields:
-
-| Option | Type | Meaning |
-|---|---|---|
-| `subject` | `string` | Optional subject line for the outgoing multipart message. |
-| `effect` | `MessageEffect` | Apply a full-screen or bubble effect. |
-| `replyTo` | `string \| { guid: string; partIndex?: number }` | Reply to a whole message or one multipart bubble. |
-| `enableDataDetection` | `boolean` | Enables Apple's data-detector pass for text parts. |
-| `clientMessageId` | `string` | Stable key for retrying the same logical send. |
-
-<Accordion title="MessagePart" description="One text, mention, or attachment bubble in a multipart send.">
-  | Option | Type | Description |
-  |---|---|---|
-  | `text` | `string` | Text for a text or mention bubble. Mutually exclusive with `attachmentGuid`. |
-  | `attachmentGuid` | `string` | Uploaded attachment GUID for an attachment bubble. Mutually exclusive with `text`. |
-  | `attachmentName` | `string` | Optional display name for the attachment bubble. |
-  | `mentionedAddress` | `string` | Address represented by this text part when sending an `@` mention. Text parts only. |
-  | `formatting` | `TextFormatInput[]` | UTF-16 formatting ranges that apply to this part's `text`. Text parts only. |
-  | `bubbleIndex` | `number` | Advanced bubble-order override. If any part sets it, every part must set it. |
-</Accordion>
-
-## Effects and formatting
-
-```ts
-import { MessageEffect, TextEffect } from "@photon-ai/advanced-imessage";
+```jsonc
+{
+  "text":             "Look at this",       // Text content
+  "mentionedAddress": "alice@example.com",  // Optional; marks this text part as a mention
+  "formatting":       []                    // Optional; applies only to this text part
+}
 ```
 
-<AccordionGroup>
-  <Accordion title="MessageEffect" description="Full-screen and bubble effects accepted by message send methods.">
-    | Member |
-    |---|
-    | `MessageEffect.slam` |
-    | `MessageEffect.loud` |
-    | `MessageEffect.gentle` |
-    | `MessageEffect.invisible` |
-    | `MessageEffect.confetti` |
-    | `MessageEffect.fireworks` |
-    | `MessageEffect.balloons` |
-    | `MessageEffect.heart` |
-    | `MessageEffect.lasers` |
-    | `MessageEffect.celebration` |
-    | `MessageEffect.sparkles` |
-    | `MessageEffect.spotlight` |
-    | `MessageEffect.echo` |
-  </Accordion>
-  <Accordion title="TextEffect" description="Per-character text effects for formatted ranges.">
-    | Member |
-    |---|
-    | `TextEffect.big` |
-    | `TextEffect.small` |
-    | `TextEffect.shake` |
-    | `TextEffect.nod` |
-    | `TextEffect.explode` |
-    | `TextEffect.ripple` |
-    | `TextEffect.bloom` |
-    | `TextEffect.jitter` |
-  </Accordion>
-</AccordionGroup>
+Attachment part:
 
-Formatting ranges use UTF-16 offsets, matching Apple's attributed string model.
+```jsonc
+{
+  "attachmentGuid":   "attachment-guid",    // Attachment GUID
+  "attachmentName":   "photo.jpg"           // Optional display name
+}
+```
 
-For `TextEffect`, use `{ type: "effect", start, length, effect }`. For bold, italic, underline, and strikethrough, use the corresponding `type` with `start` and `length`.
+| Input | Rule |
+|---|---|
+| `parts` | Must not be empty |
+| Text part | Pass `text`; it is trimmed and must not be empty after trimming |
+| Attachment part | Pass `attachmentGuid`; do not pass a local file path |
+| `mentionedAddress` | Text parts only |
+| `formatting` | Applies only to the current text part |
 
-## Reactions and stickers
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/multipart-message.avif" alt="iMessage multipart message with text mention and image attachment" />
+</Frame>
 
-Add or remove a tapback:
+Multiple images are also multipart messages: upload each image, then put each attachment GUID in the same `sendMultipart(...)` call.
+
+```ts
+const photos = await Promise.all(
+  ["photo-1.jpg", "photo-2.jpg", "photo-3.jpg"].map(async (fileName) => {
+    return im.attachments.upload({
+      fileName,
+      data: await readFile(fileName),
+    });
+  }),
+);
+
+await im.messages.sendMultipart(chat.guid, [
+  {
+    attachmentGuid: photos[0]!.attachment.guid,
+    attachmentName: "photo-1.jpg",
+  },
+  {
+    attachmentGuid: photos[1]!.attachment.guid,
+    attachmentName: "photo-2.jpg",
+  },
+  {
+    attachmentGuid: photos[2]!.attachment.guid,
+    attachmentName: "photo-3.jpg",
+  },
+]);
+```
+
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/multiple-attachments.avif" alt="iMessage message containing multiple image attachments" />
+</Frame>
+
+## Reactions and Stickers
+
+### Reactions
+
+`setReaction(...)` adds or removes a tapback / emoji reaction. The fourth argument is `true` to add and `false` to remove.
 
 ```ts
 await im.messages.setReaction(chat.guid, sent.guid, { kind: "love" }, true);
+```
+
+```ts
 await im.messages.setReaction(chat.guid, sent.guid, { kind: "love" }, false);
 ```
 
-`setReaction(...)` returns the updated target `Message`. Pass `true` to add the reaction and `false` to remove it.
-
-Send an emoji reaction:
+| `kind` | Meaning |
+|---|---|
+| `"love"` | Heart |
+| `"like"` | Thumbs up |
+| `"dislike"` | Thumbs down |
+| `"laugh"` | Laugh |
+| `"emphasize"` | Emphasis |
+| `"question"` | Question mark |
+| `"emoji"` | Custom emoji; also pass `emoji` |
 
 ```ts
-await im.messages.setReaction(chat.guid, sent.guid, { kind: "emoji", emoji: "🔥" }, true);
+await im.messages.setReaction(chat.guid, sent.guid, { kind: "emoji", emoji: "👍" }, true);
 ```
 
-Place an uploaded sticker attachment on a message:
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/reactions.avif" alt="iMessage messages with tapback and emoji reactions" />
+</Frame>
+
+### Stickers
+
+A sticker is an image placed on top of a message. Upload the sticker image first, then call `placeSticker(...)`.
+
+Sticker placement is not screen pixels. Think of the target message bubble as a small coordinate space: `x: 0.5, y: 0.5` is roughly the center. Larger `x` moves right; smaller `x` moves left. Larger `y` moves down; smaller `y` moves up. Start near `0.5, 0.5` and make small adjustments. Do not pass pixel-like values such as `120` or `90`.
 
 ```ts
 const sticker = await im.attachments.upload({
@@ -213,133 +341,122 @@ const sticker = await im.attachments.upload({
 });
 
 await im.messages.placeSticker(chat.guid, sent.guid, sticker.attachment.guid, {
-  x: 120,
-  y: 90,
-  scale: 1,
+  x: 0.54,
+  y: 0.48,
+  scale: 0.45,
+  rotation: -0.08,
+  width: 96,
 });
 ```
 
-`placeSticker(...)` returns the updated target `Message`. The sticker argument is an uploaded attachment GUID.
+| Field | Meaning |
+|---|---|
+| `x` | Horizontal position. `0.5` is roughly centered; larger moves right, smaller moves left |
+| `y` | Vertical position. `0.5` is roughly centered; larger moves down, smaller moves up |
+| `scale` | Optional scale factor |
+| `rotation` | Optional rotation. Use small values such as `-0.08` or `0.08` for a slight tilt; do not pass `8` |
+| `width` | Display width. Pass it explicitly to keep large source images from covering the message |
 
-Reaction and sticker options accept:
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/sticker-placement.avif" alt="Custom sticker placed on an iMessage bubble" />
+</Frame>
 
-| Option | Type | Meaning |
-|---|---|---|
-| `partIndex` | `number` | Zero-based multipart bubble index. It must target an existing bubble. |
-| `clientMessageId` | `string` | Stable key for retrying the same logical mutation. |
-
-For emoji reactions, pass a non-empty `emoji` value. Stickers use `placeSticker(...)`, not `setReaction(...)`.
-
-<AccordionGroup>
-  <Accordion title="SettableMessageReaction" description="Tapback and emoji reactions accepted by setReaction(...).">
-    | Option | Type | Description |
-    |---|---|---|
-    | `kind` | `"love" \| "like" \| "dislike" \| "laugh" \| "emphasize" \| "question" \| "emoji"` | Tapback family to add or remove. Use `placeSticker(...)` for stickers. |
-    | `emoji` | `string` | Emoji character to send when `kind` is `"emoji"`. Required for emoji reactions. |
-  </Accordion>
-  <Accordion title="StickerPlacement" description="Placement fields for an uploaded sticker attachment.">
-    | Option | Type | Description |
-    |---|---|---|
-    | `x` | `number` | Horizontal position in Apple's normalized coordinate space. |
-    | `y` | `number` | Vertical position in Apple's normalized coordinate space. |
-    | `rotation` | `number` | Optional clockwise rotation in Apple's normalized coordinate space. |
-    | `scale` | `number` | Optional scale factor for the sticker. |
-    | `width` | `number` | Optional rendered sticker width. |
-  </Accordion>
-</AccordionGroup>
-
-## Edit, unsend, and notify silenced
+For multipart messages, reactions and stickers can target one bubble with `partIndex`. `partIndex` is zero-based. When omitted, the first bubble is targeted.
 
 ```ts
-await im.messages.edit(chat.guid, sent.guid, "Corrected text", {
-  backwardCompatText: "Edited: Corrected text",
-  clientMessageId: "edit-1",
-});
-
-await im.messages.unsend(chat.guid, sent.guid, {
-  clientMessageId: "unsend-1",
-});
-```
-
-`edit(...)` returns the edited `Message`. `unsend(...)` returns `void` after the server accepts the retraction.
-
-For multipart messages, pass `partIndex` to target one bubble:
-
-```ts
-await im.messages.edit(chat.guid, sent.guid, "Only part 1 changed", {
+await im.messages.setReaction(chat.guid, sent.guid, { kind: "like" }, true, {
   partIndex: 1,
 });
 ```
 
-Apple enforces edit and unsend windows:
+`placeSticker(...)` supports the same `partIndex` option.
 
-| Action | Typical Apple window |
-|---|---|
-| `edit(...)` | 15 minutes after sending. |
-| `unsend(...)` | 2 minutes after sending. |
+## Edit and Unsend
 
-When the server rejects a mutation, the SDK surfaces the server error through the error hierarchy.
+`edit(...)` changes a sent message and returns the updated `Message`.
 
-When omitted, mutation `partIndex` defaults to the first bubble.
+```ts
+const edited = await im.messages.edit(chat.guid, sent.guid, "Corrected text", {
+  backwardCompatText: "Edited: Corrected text",
+});
 
-Optional edit fields:
+console.log(edited.guid);
+```
 
-| Option | Type | Meaning |
+`unsend(...)` retracts a sent message and returns `void`.
+
+```ts
+await im.messages.unsend(chat.guid, sent.guid);
+```
+
+| Operation | Apple window | Returns |
 |---|---|---|
-| `backwardCompatText` | `string` | Plain-text fallback used when rich edit rendering is unavailable. |
-| `partIndex` | `number` | Zero-based multipart bubble index. Defaults to `0`. |
-| `clientMessageId` | `string` | Stable key for retrying the same logical edit. |
+| `edit(...)` | Within 15 minutes of sending | `Message` |
+| `unsend(...)` | Within 2 minutes of sending | `void` |
 
-Optional unsend fields:
+After the Apple window expires, the server rejects the request and the SDK throws. See [error handling](/advanced-kits/imessage/error-handling).
 
-| Option | Type | Meaning |
+| Option | Used by | Meaning |
 |---|---|---|
-| `partIndex` | `number` | Zero-based multipart bubble index. Defaults to `0`. |
-| `clientMessageId` | `string` | Stable key for retrying the same logical unsend. |
+| `backwardCompatText` | `edit(...)` | Fallback text for clients that cannot display message edits |
+| `partIndex` | `edit(...)`, `unsend(...)` | Target bubble index for multipart messages; zero-based |
+| `clientMessageId` | `edit(...)`, `unsend(...)` | Idempotency key for job retries |
 
-Use `notifySilenced(...)` for Apple's Notify Anyway flow:
+## Notify Anyway
+
+`notifySilenced(...)` triggers Apple's "Notify Anyway" action after a recipient has Focus silence enabled.
 
 ```ts
 await im.messages.notifySilenced(chat.guid, sent.guid);
 ```
 
-`notifySilenced(...)` returns `void`. It targets the message that triggered the Focus-silenced conversation state.
+Returns `void`. To check Focus state before sending, use [`im.addresses.isFocusSilenced(address)`](/advanced-kits/imessage/addresses#check-focus-status).
 
-Pass `{ clientMessageId }` as the optional third argument when your own job system may retry the same Notify Anyway action.
+## Get and List Messages
 
-## Get and list messages
+### Get One Message
 
-Fetch one message inside a known chat:
+When you know `chat.guid` and `message.guid`, call `get(...)`:
 
 ```ts
 const message = await im.messages.get(chat.guid, sent.guid);
+
+console.log(message.content.text);
 ```
 
-`get(...)` returns one `Message` inside the given chat. It throws `NotFoundError` when the chat or message cannot be resolved.
+Missing chats or messages throw `NotFoundError`.
 
-List recent messages across chats:
+### List Recent Messages
+
+`listRecent(...)` lists recent messages across chats:
 
 ```ts
-const recent = await im.messages.listRecent({ pageSize: 25 });
+const recent = await im.messages.listRecent({
+  pageSize: 25,
+});
+
+for (const message of recent.messages) {
+  console.log(message.guid, message.content.text);
+}
 ```
 
-`listRecent(...)` returns a page of messages across chats.
-
-List messages in one chat:
+`listInChat(...)` lists messages in one chat:
 
 ```ts
 const page = await im.messages.listInChat(chat.guid, {
   pageSize: 25,
-  before: new Date(),
+  before: new Date("2026-01-01T00:00:00Z"),
 });
+
+for (const message of page.messages) {
+  console.log(message.guid);
+}
 ```
 
-`listInChat(...)` returns a page of messages from one chat.
-
-Continue with `nextPageToken`:
+For pagination, pass the previous response's `nextPageToken` as the next request's `pageToken`:
 
 ```ts
-let pageToken: string | undefined;
+let pageToken;
 
 do {
   const page = await im.messages.listInChat(chat.guid, {
@@ -355,33 +472,34 @@ do {
 } while (pageToken);
 ```
 
-`pageSize`, when provided, must be between `1` and `100`.
+| Filter | Meaning |
+|---|---|
+| `after` | Only messages created after this time |
+| `before` | Only messages created before this time |
+| `isFromMe` | `true` for sent messages only, `false` for received messages only |
+| `isRead` | `true` for read messages only, `false` for unread messages only |
+| `pageSize` | Number of messages per page; range `1..100` |
+| `pageToken` | `nextPageToken` from the previous response |
 
-Both list methods return `{ messages, nextPageToken }`. Pass `nextPageToken` back as `pageToken` to continue from the previous page.
+## Embedded Media
 
-{% set listFilter = symbol("ts:@photon-ai/advanced-imessage#MessageListFilter") %}
-<Accordion title="MessageListFilter" description="{{ listFilter.doc.summary }}">
-  | Option | Type | Description |
-  |---|---|---|
-  {% for m in listFilter.members -%}
-  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
-  {% endfor %}
-</Accordion>
-
-## Embedded media
-
-Digital Touch and handwritten messages can carry embedded media that is not a normal attachment. Fetch it with:
+Digital Touch and handwritten-message media are not exposed as regular attachments. Use `getEmbeddedMedia(...)` to read that media.
 
 ```ts
 const media = await im.messages.getEmbeddedMedia(chat.guid, message.guid);
+
 console.log(media.mimeType, media.data.byteLength);
 ```
 
-`getEmbeddedMedia(...)` returns raw media bytes plus the detected MIME type. It throws `NotFoundError` when the chat or message cannot be resolved, and `ValidationError` with `code === ErrorCode.operationNotSupported` when the message exists but is not a supported Digital Touch or handwritten message.
+| Case | Result |
+|---|---|
+| Message is Digital Touch or handwritten media | Returns `{ data, mimeType }` |
+| Chat or message does not exist | Throws `NotFoundError` |
+| Message is not an embedded-media type | Throws `ValidationError`, with `error.code === ErrorCode.operationNotSupported` |
 
-## Message events
+## Message Events
 
-Subscribe to live message changes:
+`subscribeEvents(...)` streams live message changes. To scope it to one chat, pass `{ chat: chat.guid }`:
 
 ```ts
 for await (const event of im.messages.subscribeEvents({ chat: chat.guid })) {
@@ -389,27 +507,66 @@ for await (const event of im.messages.subscribeEvents({ chat: chat.guid })) {
     case "message.received":
       console.log(event.message.guid, event.message.content.text);
       break;
+
     case "message.edited":
       console.log(event.messageGuid, event.editedAt);
+      break;
+
+    case "message.unsent":
+      console.log(event.messageGuid, event.retractedAt);
       break;
   }
 }
 ```
 
-`subscribeEvents(...)` returns a `TypedEventStream<MessageEvent>`. Pass `{ chat: chat.guid }` to scope the stream to one chat; omit the filter to receive message events for all chats.
+Omit the filter to receive events for all visible chats:
 
-<Accordion title="MessageEvent" description="Message changes emitted by im.messages.subscribeEvents(...).">
-  | `event.type` | Extra fields |
-  |---|---|
-  | `message.received` | `message` |
-  | `message.edited` | `messageGuid`, `content`, `editedAt` |
-  | `message.read` | `messageGuid`, `readAt` |
-  | `message.unsent` | `messageGuid`, `retractedAt` |
-  | `message.reactionAdded` | `messageGuid`, `reaction`, `targetPartIndex?` |
-  | `message.reactionRemoved` | `messageGuid`, `reaction`, `targetPartIndex?` |
-  | `message.stickerPlaced` | `messageGuid`, `sticker?`, `placement?`, `targetPartIndex?` |
-</Accordion>
+```ts
+for await (const event of im.messages.subscribeEvents()) {
+  console.log(event.chatGuid, event.type);
+}
+```
 
-All message events include `sequence`, `chatGuid`, `isFromMe`, `occurredAt`, and optional `actor`.
+Common event fields:
 
-Live streams are observation APIs. Use the response from a write method as the authoritative result for that write, and use [Events](/advanced-kits/imessage/events) after disconnects.
+```ts
+const event = {
+  // Event type.
+  type: "message.received",
+  // Durable event sequence.
+  sequence: 123,
+  // Chat that owns the event.
+  chatGuid: "any;-;alice@example.com",
+  // Whether the current account produced the event.
+  isFromMe: false,
+  occurredAt: new Date("2026-01-01T12:00:00Z"),
+  // Participant that triggered the event; may be absent.
+  actor: {
+    address: "alice@example.com",
+    service: "iMessage",
+  },
+  // Present on message.received.
+  message: {
+    guid: "message-guid",
+  },
+};
+```
+
+| `event.type` | Extra fields | Meaning |
+|---|---|---|
+| `message.received` | `message` | A message was received or became visible |
+| `message.edited` | `messageGuid`, `content`, `editedAt` | A message was edited |
+| `message.read` | `messageGuid`, `readAt` | A message was marked read |
+| `message.unsent` | `messageGuid`, `retractedAt` | A message was retracted |
+| `message.reactionAdded` | `messageGuid`, `reaction`, `targetPartIndex?` | A reaction was added |
+| `message.reactionRemoved` | `messageGuid`, `reaction`, `targetPartIndex?` | A reaction was removed |
+| `message.stickerPlaced` | `messageGuid`, `sticker?`, `placement?`, `targetPartIndex?` | A sticker was placed on a message |
+
+Write method return values tell you that the call you made has completed. Event streams are for changes from other people, other devices, or another part of your system. In production, consume live streams and recovery together; see [events](/advanced-kits/imessage/events).
+
+## Next Steps
+
+1. [Attachments](/advanced-kits/imessage/attachments) — upload files, get attachment GUIDs, and send attachment messages
+2. [Chats](/advanced-kits/imessage/chats) — create chats and get `chat.guid`
+3. [Events](/advanced-kits/imessage/events) — handle live events and recovery
+4. [Error Handling](/advanced-kits/imessage/error-handling) — handle errors, retries, and idempotent writes
