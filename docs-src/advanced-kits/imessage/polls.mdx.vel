@@ -1,11 +1,42 @@
 ---
 title: "Polls"
-description: "Create polls, vote, add choices, read state, and stream poll events"
+description: "Create polls, read state, vote, unvote, add options, and subscribe to poll events"
 ---
 
-`im.polls` manages iMessage poll messages. Create a poll in a chat, then use the returned `pollMessageGuid` for reads, votes, unvotes, and adding options.
+`im.polls` manages iMessage poll messages. A poll always belongs to a chat, so `create(...)` takes `chat.guid`. If you only have email addresses or phone numbers, create the chat first with [`im.chats.create(...)`](/advanced-kits/imessage/chats).
 
-## Create a poll
+After a poll is created, store `poll.pollMessageGuid`. You need it to read the poll, vote, unvote, add options, and subscribe to events for that poll.
+
+## What You Can Do
+
+| Need | Use this when |
+|---|---|
+| Create a poll | You want to send a new poll message into a chat |
+| Read state | You need the latest title, options, and votes |
+| Vote | The current account chooses an option or changes its choice |
+| Unvote | The current account removes its choice |
+| Add an option | You want to append another option to an existing poll |
+| Subscribe to events | You need live poll creation, option, vote, and unvote changes |
+
+## Two IDs
+
+Poll APIs use two IDs. Keep them separate and the rest of the API is straightforward:
+
+| ID | What it identifies | Where it comes from |
+|---|---|---|
+| `pollMessageGuid` | The poll | `poll.pollMessageGuid` |
+| `optionIdentifier` | A poll option | `poll.options[*].optionIdentifier` |
+
+The rule is simple:
+
+1. Pass `pollMessageGuid` to say which poll you are operating on.
+2. Pass `optionIdentifier` when you need to choose a specific option.
+
+<Warning>
+  Do not pass option text to `vote(...)`. The user may see `"Pizza"`, but the API needs that option's `optionIdentifier`.
+</Warning>
+
+## Create a Poll
 
 ```ts
 const poll = await im.polls.create(chat.guid, "What should we order?", [
@@ -17,73 +48,196 @@ const poll = await im.polls.create(chat.guid, "What should we order?", [
 console.log(poll.pollMessageGuid);
 ```
 
-Returns a `Poll` with the poll message GUID, current options, and current votes.
+The poll is sent to the chat as part of the same call. The return value is `Poll`:
 
-Create input rules:
-
-- `chat` is the chat GUID where the poll message should be sent.
-- `title` must not be empty after trimming.
-- `choices` must contain at least two strings.
-- Each choice must not be empty after trimming.
-- Pass `clientMessageId` only when retrying the same logical poll creation from your own job system.
-
-## Vote
-
-Pass the option's `optionIdentifier` from `poll.options`:
-
-```ts
-await im.polls.vote(poll.pollMessageGuid, poll.options[0]!.optionIdentifier, {
-  clientMessageId: "lunch-vote",
-});
+```jsonc
+{
+  "pollMessageGuid": "poll-message-guid",  // Poll message GUID; used by later poll calls
+  "chatGuid":        "any;+;group-id",     // Chat that contains the poll
+  "title":           "Lunch?",             // Poll title
+  "options": [                             // Current option list
+    {
+      "optionIdentifier": "option-1",      // Option ID; pass this to vote(...)
+      "text":             "Pizza"          // Text shown to users
+    }
+  ],
+  "votes": [                               // Current votes
+    {
+      "optionIdentifier": "option-1",      // Selected option ID
+      "participant": {                     // Voter
+        "address": "alice@example.com",
+        "service": "iMessage"
+      }
+    }
+  ]
+}
 ```
 
-`vote(...)` returns the updated `Poll`. Voting again changes the authenticated account's vote.
+| Input | Rule |
+|---|---|
+| `chat` | Pass `chat.guid`, not an email address or phone number |
+| `title` | Trimmed by the SDK/server; must not be empty after trimming |
+| `choices` | At least two strings; each choice is trimmed and must not be empty |
 
-The `optionIdentifier` must come from the poll's current `options`. Do not pass the visible option text.
+## Read and Modify
 
-`vote(...)` throws `NotFoundError` when the poll does not exist or `ValidationError` when the option identifier is not valid for that poll.
-
-## Remove your vote
-
-```ts
-await im.polls.unvote(poll.pollMessageGuid, {
-  clientMessageId: "lunch-unvote",
-});
-```
-
-`unvote(...)` returns the updated `Poll`.
-
-`unvote(...)` throws `NotFoundError` when the poll does not exist.
-
-Pass `clientMessageId` only when retrying the same logical unvote.
-
-## Add a new option
-
-```ts
-const updated = await im.polls.addOption(poll.pollMessageGuid, "Thai", {
-  clientMessageId: "lunch-add-thai",
-});
-```
-
-`addOption(...)` returns the updated `Poll`.
-
-The option text is trimmed by the server and must not be empty after trimming.
-
-Pass `clientMessageId` only when retrying the same logical option addition.
-
-## Get current state
+### Get State
 
 ```ts
 const latest = await im.polls.get(poll.pollMessageGuid);
+
+console.log(latest.title, latest.options, latest.votes);
 ```
 
-`get(...)` returns the latest `Poll` state for the poll message GUID. It throws `NotFoundError` when the poll does not exist.
+Returns the latest `Poll`. Use this when you need fresh option IDs or current vote state. Missing polls throw `NotFoundError`.
 
-Poll methods after creation take `pollMessageGuid`, not `chat.guid`.
+### Vote
 
-The returned poll includes option rows with `optionIdentifier` and `text`, plus vote rows with `optionIdentifier` and `participant`.
+```ts
+const option = poll.options[0];
 
-## Poll events
+const updated = await im.polls.vote(poll.pollMessageGuid, option.optionIdentifier);
+```
+
+Returns the updated `Poll`.
+
+| Case | Result |
+|---|---|
+| Current account has not voted | Records the selected option |
+| Current account already voted | Replaces the previous choice |
+| `pollMessageGuid` does not exist | Throws `NotFoundError` |
+| `optionIdentifier` is invalid | Throws `ValidationError` |
+
+### Unvote
+
+```ts
+const updated = await im.polls.unvote(poll.pollMessageGuid);
+```
+
+Returns the updated `Poll`. Missing polls throw `NotFoundError`.
+
+### Add an Option
+
+```ts
+const updated = await im.polls.addOption(poll.pollMessageGuid, "Thai");
+```
+
+Returns the updated `Poll`. The new option is appended to `options`.
+
+| Input | Rule |
+|---|---|
+| `pollMessageGuid` | Existing poll message GUID |
+| `text` | Trimmed by the SDK/server; must not be empty after trimming |
+
+Missing polls throw `NotFoundError`.
+
+<Note>
+  `create(...)`, `vote(...)`, `unvote(...)`, and `addOption(...)` accept optional `{ clientMessageId }` for idempotent retries from your job system. Most direct calls can omit it. See [error handling](/advanced-kits/imessage/error-handling) for details.
+</Note>
+
+## Poll Events
+
+`subscribeEvents(...)` returns `TypedEventStream<PollEvent>`. Use the stream to observe changes made by other people, other devices, or another part of your system. Immediately after your code calls `vote(...)`, `unvote(...)`, or `addOption(...)`, use that method's returned `Poll`.
+
+### Scope
+
+Only one poll:
+
+```ts
+const stream = im.polls.subscribeEvents({
+  pollMessage: poll.pollMessageGuid,
+});
+```
+
+All visible poll events:
+
+```ts
+const stream = im.polls.subscribeEvents();
+```
+
+### Outer Event
+
+Every poll event has `type: "poll.changed"`. The outer fields answer which poll changed, which chat it belongs to, who triggered it, and when:
+
+```jsonc
+{
+  "type":            "poll.changed",          // Fixed value for poll change events
+  "pollMessageGuid": "poll-message-guid",     // Poll message GUID that changed
+  "chatGuid":        "any;+;group-id",        // Chat that contains the poll
+  "sequence":        123,                     // Event sequence for ordering and catch-up
+  "isFromMe":        false,                   // Triggered by the current account
+  "occurredAt":      "2026-01-01T12:00:00Z",  // Event time
+  "actor": {                                  // Participant that triggered the event; may be absent
+    "address": "alice@example.com",
+    "service": "iMessage"
+  },
+  "delta": {                                  // The actual poll change
+    "type": "voted",
+    "optionIdentifier": "option-1"
+  }
+}
+```
+
+### Delta Types
+
+`event.delta.type` tells you what changed. Each type carries different fields:
+
+| `event.delta.type` | Meaning | Extra fields |
+|---|---|---|
+| `created` | The poll was created | `title`, `options` |
+| `optionAdded` | A new option was appended | `title`, `options` |
+| `voted` | A participant voted or changed their vote | `optionIdentifier` |
+| `unvoted` | A participant removed their vote | `optionIdentifier` |
+
+<CodeGroup>
+```jsonc created
+{
+  "type":    "created",  // Poll was created
+  "title":   "Lunch?",   // Current title
+  "options": [           // Full option list
+    {
+      "optionIdentifier": "option-1",
+      "text":             "Pizza"
+    }
+  ]
+}
+```
+
+```jsonc optionAdded
+{
+  "type":    "optionAdded",  // New option was appended
+  "title":   "Lunch?",       // Current title
+  "options": [               // Full option list after append
+    {
+      "optionIdentifier": "option-1",
+      "text":             "Pizza"
+    },
+    {
+      "optionIdentifier": "option-2",
+      "text":             "Thai"
+    }
+  ]
+}
+```
+
+```jsonc voted
+{
+  "type":             "voted",     // Participant voted or changed their vote
+  "optionIdentifier": "option-1"   // Selected option ID
+}
+```
+
+```jsonc unvoted
+{
+  "type":             "unvoted",   // Participant removed their vote
+  "optionIdentifier": "option-1"   // Removed option ID
+}
+```
+</CodeGroup>
+
+### Handle Events
+
+Switch on `event.delta.type`. When you subscribe to one poll, you do not need to check `pollMessageGuid` again:
 
 ```ts
 for await (const event of im.polls.subscribeEvents({
@@ -92,34 +246,30 @@ for await (const event of im.polls.subscribeEvents({
   switch (event.delta.type) {
     case "created":
     case "optionAdded":
-      console.log(event.delta.options);
+      console.log(event.delta.title, event.delta.options);
       break;
+
     case "voted":
-      console.log(event.delta.optionIdentifier);
-      break;
     case "unvoted":
-      console.log("vote removed for", event.delta.optionIdentifier);
+      console.log(event.delta.optionIdentifier);
       break;
   }
 }
 ```
 
-`subscribeEvents(...)` returns a `TypedEventStream<PollEvent>`. Pass `{ pollMessage: poll.pollMessageGuid }` to scope the stream to one poll; omit the filter to receive poll events for all polls.
+When you subscribe to all visible polls, use `event.pollMessageGuid` to identify the poll:
 
-<Accordion title="PollEvent" description="Poll changes emitted by im.polls.subscribeEvents(...).">
-  | Property | Meaning |
-  |---|---|
-  | `type` | Always `poll.changed`. |
-  | `pollMessageGuid` | Poll message GUID for the changed poll. |
-  | `delta` | The concrete poll change. |
-  | `sequence`, `chatGuid`, `isFromMe`, `occurredAt`, `actor?` | Shared event context fields. |
-</Accordion>
+```ts
+for await (const event of im.polls.subscribeEvents()) {
+  console.log(event.pollMessageGuid, event.delta.type);
+}
+```
 
-<Accordion title="PollChangeDelta" description="Concrete poll changes on event.delta.">
-  | `delta.type` | Extra fields |
-  |---|---|
-  | `created` | `title`, `options` |
-  | `optionAdded` | `title`, `options` |
-  | `voted` | `optionIdentifier` |
-  | `unvoted` | `optionIdentifier` |
-</Accordion>
+If the stream disconnects, use [events](/advanced-kits/imessage/events) to catch up on missed durable events, then continue consuming the live stream.
+
+## Next Steps
+
+1. [Chats](/advanced-kits/imessage/chats) — create a chat and get `chat.guid`
+2. [Messages](/advanced-kits/imessage/messages) — understand how poll messages appear in the message stream
+3. [Events](/advanced-kits/imessage/events) — catch up on durable events after a disconnect
+4. [Error Handling](/advanced-kits/imessage/error-handling) — handle `NotFoundError`, `ValidationError`, and idempotent retries

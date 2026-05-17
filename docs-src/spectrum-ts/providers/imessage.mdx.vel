@@ -196,6 +196,25 @@ await space.send(background("./wallpaper.jpg"));
 await space.send(background("clear"));
 ```
 
+After a successful set, the background usually syncs to other users' devices within `30s`. The background asset is uploaded to iCloud and then distributed to the other members of the conversation. Display time is not a hard SLA: network state, iCloud state, and the Messages client state can all affect when the UI appears.
+
+| Stage | What happens |
+|---|---|
+| Before `background(...)` resolves | The provider waits until the background asset reaches a distributable state |
+| After `background(...)` resolves | The conversation has accepted the background change; iCloud distributes the asset to other members |
+| Other members' devices | The background appears after the device receives the iCloud distribution |
+
+Background UI may not appear in these cases:
+
+| Case | Result |
+|---|---|
+| The recipient's network, iCloud, or Messages state is unhealthy | The background may appear late, often after reopening Messages |
+| A group member has never spoken, interacted, or is treated by the system as unknown (untrusted) | Apple may not show the background UI to that member |
+
+<Note>
+  The second case is an Apple Messages display limit, not a Spectrum option. If one group member never sees the background, have that member send a message in the group, mark the sender as known, or reopen Messages before retrying the background change.
+</Note>
+
 <Note>
   Chat backgrounds require cloud or dedicated mode. In local mode, `background()` throws an `UnsupportedError`.
 </Note>
