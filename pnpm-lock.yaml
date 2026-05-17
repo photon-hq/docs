@@ -12,8 +12,8 @@ importers:
         specifier: ^4.19.0
         version: 4.19.0(@typescript-eslint/rule-tester@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(@typescript-eslint/typescript-estree@8.58.2(typescript@5.9.3))(@typescript-eslint/utils@8.58.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(@vue/compiler-sfc@3.5.32)(eslint-plugin-format@2.0.1(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
       '@photon-ai/advanced-imessage':
-        specifier: ^0.7.1
-        version: 0.7.1
+        specifier: ^0.7.2
+        version: 0.7.2
       '@photon-ai/advanced-imessage-kit':
         specifier: ^1.14.3
         version: 1.14.3(typescript@5.9.3)
@@ -914,8 +914,8 @@ packages:
     peerDependencies:
       typescript: ^5.9.3
 
-  '@photon-ai/advanced-imessage@0.7.1':
-    resolution: {integrity: sha512-lVizHwEMFUUQV/doef0hy11U21p43Qc6XdEfq+MPWzKwI1LYQyqsgnxVt1jXyt/IE6kLUbG5iNQq9llapDKbJQ==}
+  '@photon-ai/advanced-imessage@0.7.2':
+    resolution: {integrity: sha512-pWB+eTGfbrHxyppyuz22zvvt2uwyJcEleLwt3MyuDn/gxZ/RPLxJ5RDugj4TqStdX1VCniLf/it4lkjTdD/CGQ==}
     engines: {node: '>=18.17'}
 
   '@photon-ai/imessage-kit@2.1.2':
@@ -3391,7 +3391,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@photon-ai/advanced-imessage@0.7.1':
+  '@photon-ai/advanced-imessage@0.7.2':
     dependencies:
       '@bufbuild/protobuf': 2.12.0
       '@grpc/grpc-js': 1.14.3
@@ -5439,7 +5439,7 @@ snapshots:
 
   spectrum-ts@1.8.0(typescript@5.9.3):
     dependencies:
-      '@photon-ai/advanced-imessage': 0.7.1
+      '@photon-ai/advanced-imessage': 0.7.2
       '@photon-ai/imessage-kit': 3.0.0
       '@photon-ai/otel': 0.1.1(typescript@5.9.3)
       '@photon-ai/whatsapp-business': 0.1.1
