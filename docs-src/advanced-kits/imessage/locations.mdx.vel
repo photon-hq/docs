@@ -1,9 +1,11 @@
 ---
 title: "Locations"
-description: "List, fetch, request, and watch shared Find My friend locations"
+description: "Request, list, fetch, and watch shared Find My friend locations"
 ---
 
-`im.locations` reads Find My friend locations that are already visible to the current iMessage account and can request location sharing from a chat participant. The `address` argument is a full email address or E.164 phone number. It is not a chat GUID.
+`im.locations` sends Find My location-sharing requests and reads friend locations that are already visible to the current iMessage account.
+
+Use `request(chat, address)` when you want to ask someone to share location. Use `list(...)`, `get(...)`, and `watch(...)` after location is already shared with the current account.
 
 <Warning>
   Location updates are not part of the durable event log. `im.locations.watch(...)` is a dedicated live stream. Updates missed while disconnected cannot be replayed with [`im.events.catchUp(...)`](/advanced-kits/imessage/events).
@@ -13,33 +15,67 @@ description: "List, fetch, request, and watch shared Find My friend locations"
 
 | Need | Use this when |
 |---|---|
+| Request location sharing | You want to send a visible Find My request card to a chat participant |
 | List shared locations | You want every currently visible friend location |
 | Fetch one location | You want the latest snapshot for one friend |
-| Request location sharing | You want to ask a chat participant to share their location |
 | Watch live updates | You are updating a map or background job as locations change |
 
 ## Before You Use It
 
 | Rule | Meaning |
 |---|---|
-| Reading does not start sharing | `list()`, `get()`, and `watch()` only read location shares already visible to the current account. Use `request()` to ask someone to share. |
-| Requesting does not grant access | `request()` sends a Find My request card. The other person must accept before their location appears in `get()`, `list()`, or `watch()`. |
-| Address means contact address | Pass an email address or E.164 phone number, not `chat.guid` |
+| Requests do not grant access | `request(...)` only sends a visible request card; the other person must accept or start sharing |
+| Reads only show visible shares | `list(...)`, `get(...)`, and `watch(...)` only return locations already visible to the current account |
 | Coordinates can be absent | Check both `latitude` and `longitude` before plotting a point |
 | Missed updates are gone | `watch(...)` updates missed during a disconnect are not replayed by `catchUp(...)` |
 
-## Input Format
+## Request Location Sharing
 
-`get(address)` and `watch(address)` accept the same `address` argument:
+Send a visible Find My request card in an existing direct or group chat:
 
-| Input | Accepted | Example |
-|---|---|---|
-| Full email address | Yes | `alice@example.com` |
-| E.164 phone number | Yes | `+15551234567` |
-| Chat GUID | No | `any;-;alice@example.com` |
-| Display name | No | `Alice` |
+```ts
+const receipt = await im.locations.request(chat.guid, "alice@example.com");
 
-Phone numbers must be E.164: include the country code, start with `+`, and omit spaces, parentheses, and dashes.
+console.log(receipt.requestStatus, receipt.messageGuid);
+```
+
+Inputs:
+
+| Argument | Meaning |
+|---|---|
+| `chat` | Where to send the request card. Pass a direct or group `chat.guid`, not an email or phone number. |
+| `address` | Who to ask for location. Pass that person's full email address or E.164 phone number. |
+| `options.clientMessageId` | Optional idempotency key for retrying the same logical request. |
+
+The `address` must belong to someone in `chat`. In a direct chat, that means the other participant. In a group chat, that means an existing group member.
+
+Returns `LocationRequestReceipt`. A successful call means the request card was sent or the server accepted the request operation. It does not mean the other person is now sharing location.
+
+The returned receipt includes:
+
+| Field | Meaning |
+|---|---|
+| `address` | The normalized email address or E.164 phone number that was requested |
+| `requested` | Whether the server sent or accepted a request operation |
+| `requestStatus` | Server status for the request operation |
+| `reason` | Optional reason when the request was not sent or needs explanation |
+| `messageGuid` | Message GUID for the request card, when a card was created |
+
+When `messageGuid` is present, use it like any other message GUID. For example, you can look it up with [`im.messages.get(...)`](/advanced-kits/imessage/messages).
+
+For idempotent retries from your job system, pass `clientMessageId`:
+
+```ts
+await im.locations.request(chat.guid, "alice@example.com", {
+  clientMessageId: `location-request-${job.id}`,
+});
+```
+
+<Note>
+  `clientMessageId` is only needed when your queue or worker may rerun the same logical request after a crash or timeout. Most direct calls can omit it. See [error handling](/advanced-kits/imessage/error-handling) for details.
+</Note>
+
+After the other person accepts or starts sharing, use `get(...)`, `list(...)`, or `watch(...)` to read their location.
 
 ## List Shared Locations
 
@@ -54,6 +90,8 @@ for (const location of locations) {
   console.log(location.address, location.latitude, location.longitude);
 }
 ```
+
+`list(...)` takes no arguments.
 
 Returns `SharedFriendLocation[]`. If no friends are sharing location, the array is empty. Each item is a location snapshot, and a snapshot is not guaranteed to include coordinates.
 
@@ -70,6 +108,14 @@ const location = await im.locations.get("alice@example.com");
 
 console.log(location.name ?? location.address, location.locationType);
 ```
+
+Input:
+
+| Argument | Meaning |
+|---|---|
+| `address` | The friend whose location you want. Pass a full email address or E.164 phone number. Do not pass `chat.guid` or a display name. |
+
+Phone numbers must include the country code, start with `+`, and omit spaces, parentheses, and dashes.
 
 Returns `SharedFriendLocation`. If the address is not sharing location or is not visible to the current account, `get(...)` throws `NotFoundError`.
 
@@ -90,40 +136,6 @@ The returned object looks like this:
   "longAddress":          "Mission District, SF"     // Full human-readable address; may be absent
 }
 ```
-
-## Request Location Sharing
-
-`request(chat, address)` sends a visible Find My location-sharing request card in a chat. The first argument is `chat.guid`, not a bare address.
-
-```ts
-const receipt = await im.locations.request(chat.guid, "alice@example.com");
-
-console.log(receipt.requestStatus, receipt.messageGuid);
-```
-
-Returns `LocationRequestReceipt`. The receipt includes the request status and, when available, the message GUID of the request card.
-
-```jsonc
-{
-  "address":       "alice@example.com",   // Address the request was sent to
-  "requested":     true,                  // Whether the request card was dispatched
-  "requestStatus": "sent",               // Status of the request
-  "reason":        "Find My request card dispatched to Messages", // Human-readable reason; may be absent
-  "messageGuid":   "message-guid"         // GUID of the request card message; may be absent
-}
-```
-
-The request supports idempotency via `clientMessageId`:
-
-```ts
-const receipt = await im.locations.request(chat.guid, "alice@example.com", {
-  clientMessageId: "location-request-1",
-});
-```
-
-<Warning>
-  Requesting does not grant access by itself. The other person must accept the request or start sharing before `get()`, `list()`, or `watch()` can return their location.
-</Warning>
 
 ## Location Types
 
@@ -163,6 +175,15 @@ for await (const update of im.locations.watch("alice@example.com")) {
   console.log(latitude, longitude);
 }
 ```
+
+Inputs:
+
+| Call | Meaning |
+|---|---|
+| `watch()` | Watch every visible friend's location updates |
+| `watch(address)` | Watch one friend by full email address or E.164 phone number |
+
+Do not pass `chat.guid` or a display name to `watch(...)`.
 
 ### Update Shape
 
