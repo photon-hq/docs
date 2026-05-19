@@ -165,7 +165,7 @@ The client is organized by resource:
 | `im.attachments` | Upload files, read metadata, and stream downloads |
 | `im.polls` | Create polls, vote, unvote, add options, and subscribe to poll events |
 | `im.addresses` | Check address metadata, Focus silence state, and iMessage availability |
-| `im.locations` | Read Find My shared friend locations and watch live updates |
+| `im.locations` | Read Find My shared friend locations, request location sharing, and watch live updates |
 | `im.events` | Replay durable events after a disconnect |
 
 ## Next Steps
@@ -183,4 +183,4 @@ Use as needed:
 - [Attachments](/advanced-kits/imessage/attachments) — upload files, read metadata, and stream downloads
 - [Polls](/advanced-kits/imessage/polls) — create polls, vote, and subscribe to poll events
 - [Addresses](/advanced-kits/imessage/addresses) — check addresses, Focus state, and iMessage availability
-- [Locations](/advanced-kits/imessage/locations) — read Find My shared friend locations
+- [Locations](/advanced-kits/imessage/locations) — read Find My shared friend locations and request location sharing
