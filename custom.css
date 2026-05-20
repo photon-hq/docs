@@ -5,7 +5,7 @@ code, pre, .code-block, .code-block * {
 }
 
 /* Code blocks and cards */
-/*.code-block,
+.code-block,
 [class*="CodeGroup"], [class*="code-group"],
 .card, [class*="Card"], [class*="card"],
 [class*="Callout"], [class*="callout"],
@@ -40,7 +40,7 @@ code, pre, .code-block, .code-block * {
 
 .rounded-2xl {
   border-radius: 8px !important;
-}*/
+}
 
 /* Scrollbars */
 ::-webkit-scrollbar {
@@ -74,7 +74,7 @@ code, pre, .code-block, .code-block * {
   scrollbar-color: var(--border, rgba(128, 128, 128, 0.3)) transparent;
 }
 
-/*.dark #navbar {
+.dark #navbar {
   background-color: #000000 !important;
   height: 60px !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
