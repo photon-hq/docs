@@ -222,5 +222,10 @@
       "linkedin": "https://www.linkedin.com/company/photonhq",
       "discord": "https://discord.gg/4c3VJzDfNA"
     }
+  },
+  "seo": {
+    "metatags": {
+      "canonical": "https://photon.codes/docs"
+    }
   }
 }
