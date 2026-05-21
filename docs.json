@@ -40,6 +40,7 @@
                 "pages": [
                   "spectrum-ts/providers",
                   "spectrum-ts/providers/imessage",
+                  "spectrum-ts/providers/slack",
                   "spectrum-ts/providers/terminal",
                   "spectrum-ts/providers/whatsapp-business"
                 ]

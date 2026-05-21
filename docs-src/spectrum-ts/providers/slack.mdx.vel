@@ -1,0 +1,179 @@
+---
+title: "Slack"
+description: "Send and receive messages through Slack workspaces"
+---
+
+```ts
+import { slack } from "spectrum-ts/providers/slack";
+```
+
+The Slack provider connects your agent to Slack workspaces. It supports messages, file attachments, voice files, reactions, threaded replies, and mentions across one or more workspaces.
+
+## Connection modes
+
+<Tabs>
+  <Tab title="Cloud (default)">
+    Authenticates with Spectrum Cloud and connects to managed Slack infrastructure. Tokens are renewed automatically at 80% of their TTL.
+
+    ```ts
+    slack.config({});
+    ```
+
+    Requires `projectId` and `projectSecret` on the `Spectrum()` call:
+
+    ```ts
+    const app = await Spectrum({
+      projectId: process.env.PROJECT_ID!,
+      projectSecret: process.env.PROJECT_SECRET!,
+      providers: [slack.config({})],
+    });
+    ```
+  </Tab>
+  <Tab title="Direct tokens">
+    Bring your own Slack bot tokens. Each key in `tokens` is a Slack team ID, and each value is a bot token for that workspace.
+
+    ```ts
+    slack.config({
+      tokens: {
+        T012ABCDE: process.env.SLACK_BOT_TOKEN!,
+      },
+    });
+    ```
+
+    Optionally pass `teams` metadata so the provider knows each workspace's bot user ID, app ID, and scopes without an extra API call:
+
+    ```ts
+    slack.config({
+      tokens: {
+        T012ABCDE: process.env.SLACK_BOT_TOKEN!,
+      },
+      teams: {
+        T012ABCDE: {
+          appId: "A012ABCDE",
+          botUserId: "U012ABCDE",
+          grantedScopes: ["chat:write", "files:read"],
+          teamName: "My Workspace",
+        },
+      },
+    });
+    ```
+  </Tab>
+</Tabs>
+
+| Option | Description |
+|---|---|
+| `tokens` | A record of Slack team IDs to bot tokens. Required for direct mode. |
+| `teams` | Optional metadata per team: `appId`, `botUserId`, `grantedScopes`, and `teamName`. |
+| `endpoint` | Optional custom endpoint for the Slack gRPC service. |
+
+## Example
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { slack } from "spectrum-ts/providers/slack";
+
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [slack.config({})],
+});
+
+for await (const [space, message] of app.messages) {
+  if (message.content.type === "text") {
+    await message.reply(`Got it: ${message.content.text}`);
+  }
+}
+```
+
+## Spaces and teams
+
+Every Slack space carries a `teamId` identifying the workspace. When creating a space programmatically, you must pass `teamId` as a space parameter.
+
+### Starting a DM
+
+Resolve a user by their Slack user ID and open a 1:1 conversation:
+
+```ts
+const sl = slack(app);
+const user = await sl.user({ userID: "U012ABCDE" });
+const space = await sl.space(user, { teamId: "T012ABCDE" });
+
+await space.send("Hello from Spectrum.");
+```
+
+### Sending to a channel
+
+Pass the channel ID directly as a space parameter:
+
+```ts
+const sl = slack(app);
+const space = await sl.space({ teamId: "T012ABCDE", channel: "C012ABCDE" });
+
+await space.send("Hello, channel.");
+```
+
+<Note>
+  Group DMs require an explicit channel ID — pass `channel` in the space params. Single-user DMs can use the user's ID directly.
+</Note>
+
+## Threaded replies
+
+Slack messages carry a `ts` (timestamp ID) used for threading. Use `message.reply()` to send a threaded reply:
+
+```ts
+for await (const [space, message] of app.messages) {
+  if (message.content.type === "text") {
+    await message.reply("Replying in-thread.");
+  }
+}
+```
+
+## Reactions
+
+React with any Slack emoji name (without colons):
+
+```ts
+for await (const [space, message] of app.messages) {
+  if (message.content.type === "text") {
+    await message.react("thumbsup");
+  }
+}
+```
+
+Incoming reactions arrive as `reaction` content messages with the emoji name in `content.emoji`.
+
+## Message metadata
+
+Slack messages include extra fields accessible through [platform narrowing](/spectrum-ts/platform-narrowing):
+
+```ts
+for await (const [space, message] of app.messages) {
+  if (message.platform !== "Slack") continue;
+  const slackMessage = slack(message);
+  console.log(slackMessage.isFromMe);
+  console.log(slackMessage.ts);
+  console.log(slackMessage.threadTs);
+  console.log(slackMessage.subtype);
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `isFromMe` | `boolean` | `true` when the message was sent by this installation's bot user. |
+| `ts` | `string` | The Slack message timestamp ID. Useful for constructing replies targeting the same thread. |
+| `threadTs` | `string \| undefined` | The parent message `ts` when the message is itself a threaded reply. |
+| `subtype` | `string \| undefined` | Slack's message subtype, e.g. `bot_message`, `reaction_added`. |
+
+## Supported content
+
+| Content type | Send | Receive |
+|---|---|---|
+| Text | Yes | Yes |
+| Attachments | Yes | Yes |
+| Voice | Yes | No |
+| Reactions | Yes | Yes |
+| Replies | Yes | Yes |
+| Mentions | No | Yes |
+| Typing indicators | No-op | N/A |
+
+Typing indicators are silently ignored — `space.startTyping()` and `space.responding()` work portably but produce no visible effect in Slack.
