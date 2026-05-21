@@ -1,0 +1,238 @@
+---
+title: Events
+description: The exact wire format Spectrum sends — headers, body, and what each field contains
+---
+
+
+
+In the [Quickstart](/webhooks/quickstart), a real delivery flew past in `console.log`. This page is the spec — every header and every field your handler will see on every request, slowed down and labelled.
+
+The body's `space`, `message`, `sender`, and `content` fields are the same shapes you'd see from the [`spectrum-ts` SDK](/spectrum-ts/messages) — with one important difference: function-typed properties (`.read()`, `.stream()`, `.reply()`, `.react()`, etc.) are stripped before serialization, since functions can't survive `JSON.stringify`.
+
+## Anatomy of a delivery
+
+```http
+POST /your-webhook-path HTTP/1.1
+Host: your-app.com
+Content-Type: application/json
+User-Agent: spectrum-webhook/0.1.0
+X-Spectrum-Event: messages
+X-Spectrum-Webhook-Id: 60d6d04f-f9fa-4a7b-9c97-37c9c90ce91c
+X-Spectrum-Timestamp: 1747242392
+X-Spectrum-Signature: v0=fc9bf49ef3ba4122ba4be6e289f88ac692f5ce8e13f0415cb38d59428eae8a8c
+
+{
+  "event": "messages",
+  "space": {
+    "id": "any;-;+15550100",
+    "platform": "iMessage"
+  },
+  "message": {
+    "id": "spc-msg-00000000-0000-4000-8000-000000000001",
+    "platform": "iMessage",
+    "direction": "inbound",
+    "timestamp": "2026-05-14T19:06:32.000Z",
+    "sender": {
+      "id": "+15550100",
+      "platform": "iMessage"
+    },
+    "space": {
+      "id": "any;-;+15550100",
+      "platform": "iMessage"
+    },
+    "content": {
+      "type": "text",
+      "text": "hey, what time is dinner?"
+    }
+  }
+}
+```
+
+The exact ID formats and the `platform` value are decided by each provider — not by Spectrum. The example above is real prod output for an iMessage delivery; WhatsApp Business and any future platform will use their own conventions. Don't pattern-match on these strings; use them as opaque identifiers.
+
+## Headers
+
+| Header | Value | Notes |
+| --- | --- | --- |
+| `Content-Type` | `application/json` | Always. The body is UTF-8 JSON. |
+| `User-Agent` | `spectrum-webhook/<version>` | Identifies the worker. Useful for IP/UA allow-listing. |
+| `X-Spectrum-Event` | Event type, e.g. `messages` | Mirrors the `event` field in the body. Lets you route without parsing the body first. |
+| `X-Spectrum-Webhook-Id` | UUID of the registered webhook | Identifies *which* of your URLs this delivery is for. Useful with multiple registrations and required for idempotency keys. |
+| `X-Spectrum-Timestamp` | UNIX epoch seconds at signing time | Required to verify the signature. Also reject deliveries older than ~5 minutes for replay protection. |
+| `X-Spectrum-Signature` | `v0=<64-char hex>` | HMAC-SHA256 of `v0:{timestamp}:{rawBody}` keyed by the webhook's signing secret. See [Verifying signatures](/webhooks/verifying-signatures). |
+
+<Note>
+HTTP headers are case-insensitive. Most frameworks normalize to lowercase (`x-spectrum-event`); use whichever your framework returns.
+</Note>
+
+## Body shape
+
+The body is a JSON object. The `event` field is a discriminator — every other field's shape depends on which event you're handling.
+
+```ts
+type WebhookEventPayload =
+  | { event: 'messages'; space: SerializedSpace; message: SerializedInboundMessage };
+  // future events extend this union
+```
+
+### `event: "messages"` payload
+
+This is the only event currently emitted. It fires once per inbound message that lands for your project.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `event` | `"messages"` | Discriminator. Always `"messages"` for this payload. |
+| `space` | `{ id, platform }` | The conversation context. See [Space](#space) below. |
+| `message` | `object` | The inbound message. See [Message](#message) below. |
+
+#### Space
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Opaque, stable identifier for the conversation. Format varies by platform and space type — treat it as a string you store and pass back unchanged. For iMessage DMs, looks like `any;-;+<E.164>`; for groups, a chat GUID. |
+| `platform` | `string` | The platform that owns this space. See [Providers](/spectrum-ts/providers) for the current set of values; new platforms add new values without breaking existing payloads. |
+
+The `space.id` matches the `space.id` you'd see from the [`spectrum-ts` SDK](/spectrum-ts/spaces-and-users) — pass it to `Space.send(...)` from a separately-running SDK instance to reply. There is no public HTTP send-message endpoint today.
+
+#### Message
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Stable opaque identifier for the message. The current format is `spc-msg-<uuid>` but treat it as opaque — use it for idempotency, don't parse it. |
+| `platform` | `string` | The platform that sourced the message. Same value as `space.platform`. |
+| `direction` | `"inbound"` | Always `"inbound"` — outbound messages are not delivered as webhooks. |
+| `timestamp` | `string` | ISO 8601 UTC timestamp from the platform (when the user sent it). |
+| `sender` | `{ id, platform }` | The user who sent the message. The `id` format is platform-defined (for iMessage it's the E.164 phone number `+15551234567`; for WhatsApp Business it's the WA contact id). |
+| `space` | `{ id, platform }` | A copy of the top-level `space` field, denormalized for convenience. |
+| `content` | object | The message content. Shape depends on the message type — see [Content shapes](#content-shapes) below. |
+
+#### Idempotency: the `message.id` rule
+
+A single inbound message **always carries the same `message.id` across every delivery it produces**, no matter how many webhook URLs you have registered. If you have two URLs registered for one project and a message arrives, both URLs receive a `POST` in parallel — and both bodies have the same `message.id`. If a delivery is retried (after a 5xx or timeout on your side), the retry also carries the same `message.id`.
+
+That makes `message.id` the right dedup key when one downstream consumer handles every webhook for the project:
+
+```ts
+const dedupeKey = payload.message.id;
+if (await store.exists(dedupeKey)) return new Response('ok', { status: 200 });
+await processOnce(payload);
+await store.set(dedupeKey, true, { ttl: 48 * 60 * 60 });
+```
+
+If different services consume different webhook URLs and each one needs its own dedup table, scope the key with the webhook id so the same message processed by service A doesn't suppress service B:
+
+```ts
+const dedupeKey = `${webhookId}:${payload.message.id}`;
+```
+
+#### Content shapes
+
+`content` is a discriminated union tagged by `type`. The two shapes verified end-to-end against prod today are:
+
+```ts
+type Content =
+  | { type: 'text'; text: string }
+  | {
+      type: 'attachment';
+      name: string;       // original filename, e.g. "IMG_4127.HEIC"
+      mimeType: string;   // e.g. "image/heic", "audio/mp4", "application/pdf"
+      size?: number;      // bytes — present when the provider knows the size (always for iMessage; may be absent for some custom providers)
+    };
+  // future content types may be added; handle unknown `type` values defensively
+```
+
+**Text** is what you'll see for the vast majority of inbound messages.
+
+**Attachment** is what you'll see for any non-text content from iMessage — photos, voice memos, audio files, videos, documents. The `mimeType` field is the discriminator for *what kind* of attachment it is:
+
+| `mimeType` prefix | Kind | Example values |
+| --- | --- | --- |
+| `image/*` | Photo or image attachment | `image/heic`, `image/jpeg`, `image/png` |
+| `audio/*` | Voice memo or audio file | `audio/mp4`, `audio/x-m4a` |
+| `video/*` | Video clip | `video/mp4`, `video/quicktime` |
+| `application/*` | Document or file | `application/pdf`, `application/zip` |
+
+The SDK's `Content` type defines additional arms (`reaction`, `richlink`, `poll`, `contact`, etc.) that may appear in future webhook deliveries. See [Spectrum content types](/spectrum-ts/messages#narrowing-content) for the canonical list. If a new arm ships, your `default:` switch arm is what catches it gracefully — see the snippet below.
+
+<Warning>
+**Attachment payloads are metadata only.** The wire format does not include the file bytes or a download URL — only the filename, MIME type, and size. To process the actual content you'll need an additional retrieval step. A first-class HTTP download endpoint is on the roadmap; until then, contact support if you need attachment retrieval.
+</Warning>
+
+<Tip>
+Always handle unknown `content.type` values gracefully — new content types may be added without a breaking version bump. A `default:` arm in your switch that logs and moves on is enough.
+
+```ts
+switch (content.type) {
+  case 'text':
+    handleText(content.text);
+    break;
+  case 'attachment':
+    if (content.mimeType.startsWith('image/')) handleImage(content);
+    else if (content.mimeType.startsWith('audio/')) handleAudio(content);
+    else handleGenericAttachment(content);
+    break;
+  default:
+    console.warn('unknown content type:', content);
+    break;
+}
+```
+</Tip>
+
+## What you don't get
+
+A few things that may be in the SDK's `Message` type but are intentionally **not** in the webhook payload:
+
+- **Methods like `.reply()` or `.react()`.** They depend on a live SDK connection. To respond, run [`spectrum-ts`](/spectrum-ts/getting-started) in a separate process and call `space.send(...)` against the `space.id` you got from the webhook. There is no HTTP send endpoint yet.
+- **Internal provider state.** Things like raw protocol headers, retry hints, and message acknowledgements are stripped before serialization.
+- **Outbound messages.** Webhooks deliver inbound only. A message you sent does not echo back as a webhook.
+
+## Forward compatibility
+
+The set of events will grow. To stay forward-compatible:
+
+1. **Branch on `event` defensively.** Use a `switch` with a `default` arm that returns `2xx` and logs the unknown event. Never crash on unknown values.
+
+   ```ts
+   switch (payload.event) {
+     case 'messages':
+       handleMessage(payload);
+       break;
+     default:
+       console.warn('unknown webhook event', payload.event);
+       break;
+   }
+   return new Response('ok', { status: 200 });
+   ```
+
+2. **Treat extra fields as unknown but tolerable.** New optional fields may appear in existing payload shapes. They'll never repurpose existing fields.
+
+3. **Don't subscribe to specific event types.** Today every URL receives every event. If a `subscriptions` field lands in the future, the default will continue to be "all events" so existing webhooks keep working.
+
+## Quick reference card
+
+```text
+Required to verify a delivery
+   X-Spectrum-Timestamp + X-Spectrum-Signature + raw body bytes + your signingSecret
+
+Required to route a delivery
+   X-Spectrum-Event   (or body.event)
+
+Required for idempotency
+   X-Spectrum-Webhook-Id + body.message.id (for messages event)
+
+Always returns 2xx fast
+   Process asynchronously after acknowledging — see /webhooks/delivery
+```
+
+## Where to next
+
+You now know exactly what arrives at your URL. The next two chapters cover *trusting* it and *handling failures* when something goes wrong.
+
+<Columns cols={2}>
+  <Card title="Verifying signatures" icon="shield-halved" href="/webhooks/verifying-signatures">
+    The four details every verifier has to get exactly right, with copy-paste implementations in four languages.
+  </Card>
+  <Card title="Delivery and retries" icon="repeat" href="/webhooks/delivery">
+    Retry policy, timeouts, idempotency, and what HTTP status codes mean to the worker.
+  </Card>
+</Columns>

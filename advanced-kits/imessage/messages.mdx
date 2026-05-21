@@ -1,0 +1,572 @@
+---
+title: "Messages"
+description: "Send, reply, react, edit, list, and subscribe to iMessage events"
+---
+
+`im.messages` sends, reads, mutates, and subscribes to messages.
+
+Get a `chat.guid` before calling message APIs. `chat.guid` is the server's chat identifier. It is not an email address or phone number. If you only have a recipient address, create or resolve the chat first with [`im.chats.create(...)`](/advanced-kits/imessage/chats).
+
+| Scenario | Argument shape |
+|---|---|
+| Send, read, edit, or unsend in one chat | First argument is `chat.guid` |
+| List messages in one chat | `listInChat(chat.guid, options)` |
+| Subscribe to one chat's message events | `subscribeEvents({ chat: chat.guid })` |
+| List recent messages across chats | `listRecent(options)`, no `chat.guid` |
+
+## What You Can Do
+
+| Need | Use |
+|---|---|
+| Send plain text | `im.messages.sendText(chat.guid, text)` |
+| Add a message effect | `effect: MessageEffect.*` |
+| Format text | `formatting: [...]` |
+| Send an attachment | Upload with `im.attachments.upload(...)`, then call `im.messages.sendAttachment(...)` |
+| Reply to a message | `replyTo` on `sendText(...)`, `sendAttachment(...)`, or `sendMultipart(...)` |
+| Send multipart content | `im.messages.sendMultipart(...)` |
+| Add or remove a reaction | `im.messages.setReaction(...)` |
+| Place a sticker | `im.messages.placeSticker(...)` |
+| Edit a message | `im.messages.edit(...)` |
+| Unsend a message | `im.messages.unsend(...)` |
+| Notify anyway | `im.messages.notifySilenced(...)` |
+| Get or list messages | `get(...)`, `listRecent(...)`, `listInChat(...)` |
+| Subscribe to message events | `im.messages.subscribeEvents(...)` |
+
+## Send Text
+
+```ts
+const sent = await im.messages.sendText(chat.guid, "Hello");
+
+console.log(sent.guid);
+```
+
+`sendText(...)` returns `Message`. `text` is trimmed by the server and must not be empty after trimming.
+
+Common `Message` fields:
+
+```ts
+const message = {
+  // Message GUID. Use it for edits, unsends, reactions, replies, and lookups.
+  guid: "message-guid",
+  // Chats that contain this message.
+  chatGuids: ["any;-;alice@example.com"],
+  content: {
+    text: "Hello",
+    attachments: [],
+    formatting: [],
+    mentions: [],
+  },
+  isFromMe: true,
+  dateCreated: new Date("2026-01-01T12:00:00Z"),
+};
+```
+
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/text-message.avif" alt="iMessage text bubble showing a sent Hello message" />
+</Frame>
+
+## Message Effects
+
+Message effects apply to the whole outgoing message: confetti, fireworks, slam, invisible ink, and similar iMessage effects.
+
+```ts
+import { MessageEffect } from "@photon-ai/advanced-imessage";
+
+await im.messages.sendText(chat.guid, "Happy birthday", {
+  effect: MessageEffect.confetti,
+});
+```
+
+| Constant | Effect |
+|---|---|
+| `MessageEffect.confetti` | Confetti |
+| `MessageEffect.fireworks` | Fireworks |
+| `MessageEffect.balloons` | Balloons |
+| `MessageEffect.heart` | Heart |
+| `MessageEffect.lasers` | Lasers |
+| `MessageEffect.celebration` | Celebration |
+| `MessageEffect.sparkles` | Sparkles |
+| `MessageEffect.spotlight` | Spotlight |
+| `MessageEffect.echo` | Echo |
+| `MessageEffect.slam` | Slam |
+| `MessageEffect.loud` | Loud |
+| `MessageEffect.gentle` | Gentle |
+| `MessageEffect.invisible` | Invisible ink |
+
+Clients that do not support a given effect show the message normally.
+
+## Text Formatting
+
+`formatting` applies bold, italic, underline, strikethrough, or animated text effects to a range of text.
+
+```ts
+import { TextEffect } from "@photon-ai/advanced-imessage";
+
+await im.messages.sendText(chat.guid, "Bold then bloom", {
+  formatting: [
+    { type: "bold", start: 0, length: 4 },
+    { type: "effect", start: 10, length: 5, effect: TextEffect.bloom },
+  ],
+});
+```
+
+| `type` | Effect | Shape |
+|---|---|---|
+| `"bold"` | Bold | `{ type: "bold", start, length }` |
+| `"italic"` | Italic | `{ type: "italic", start, length }` |
+| `"underline"` | Underline | `{ type: "underline", start, length }` |
+| `"strikethrough"` | Strikethrough | `{ type: "strikethrough", start, length }` |
+| `"effect"` | Animated text effect | `{ type: "effect", start, length, effect }` |
+
+`start` and `length` use UTF-16 code units. In plain ASCII text, offsets match what you see on screen. With emoji or other non-BMP characters, one visible character may use two code units.
+
+| Constant | Effect |
+|---|---|
+| `TextEffect.big` | Big |
+| `TextEffect.small` | Small |
+| `TextEffect.shake` | Shake |
+| `TextEffect.nod` | Nod |
+| `TextEffect.explode` | Explode |
+| `TextEffect.ripple` | Ripple |
+| `TextEffect.bloom` | Bloom |
+| `TextEffect.jitter` | Jitter |
+
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/text-formatting.avif" alt="iMessage messages showing bold italic underline strikethrough and text effects" />
+</Frame>
+
+## Send Attachments
+
+Sending an attachment has two steps:
+
+1. Upload file bytes with [`im.attachments.upload(...)`](/advanced-kits/imessage/attachments) to get an attachment GUID.
+2. Pass `uploaded.attachment.guid` to `sendAttachment(...)`.
+
+```ts
+const uploaded = await im.attachments.upload({
+  fileName: "photo.jpg",
+  data: await readFile("photo.jpg"),
+});
+
+const sent = await im.messages.sendAttachment(chat.guid, uploaded.attachment.guid);
+
+console.log(sent.guid);
+```
+
+The second argument to `sendAttachment(...)` is a server attachment GUID, not a local file path. Upload behavior, file extensions, Live Photos, and downloads are covered in [attachments](/advanced-kits/imessage/attachments).
+
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/image-attachment-message.avif" alt="iMessage image attachment message" />
+</Frame>
+
+### Audio Messages
+
+To use Apple's audio-message bubble UI, set `isAudioMessage: true`:
+
+```ts
+const audio = await im.attachments.upload({
+  fileName: "voice.m4a",
+  data: await readFile("voice.m4a"),
+});
+
+await im.messages.sendAttachment(chat.guid, audio.attachment.guid, {
+  isAudioMessage: true,
+});
+```
+
+| Option | Meaning |
+|---|---|
+| `isAudioMessage: true` | Shows the audio-message UI, such as a play button and waveform |
+| Omitted | Sends as a regular attachment |
+
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/audio-message.avif" alt="iMessage audio message bubble with play button and waveform" />
+</Frame>
+
+## Reply to a Message
+
+To reply to a message, pass the target message GUID as `replyTo`:
+
+```ts
+await im.messages.sendText(chat.guid, "Replying to this", {
+  replyTo: sent.guid,
+});
+```
+
+`replyTo` works with text, attachment, and multipart sends:
+
+| Method | Reply field |
+|---|---|
+| `sendText(...)` | `options.replyTo` |
+| `sendAttachment(...)` | `options.replyTo` |
+| `sendMultipart(...)` | `options.replyTo` |
+
+For a multipart target, pass both the message GUID and the zero-based bubble index:
+
+```ts
+await im.messages.sendText(chat.guid, "Replying to the second bubble", {
+  replyTo: {
+    guid: sent.guid,
+    partIndex: 1,
+  },
+});
+```
+
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/reply-message.avif" alt="iMessage reply showing a quoted original message and reply content" />
+</Frame>
+
+## Send Multipart Messages
+
+`sendMultipart(...)` sends text, mentions, and attachments as one logical message. Recipients see related bubbles instead of separate sends.
+
+```ts
+await im.messages.sendMultipart(chat.guid, [
+  { text: "Look at this " },
+  { text: "@Alice", mentionedAddress: "alice@example.com" },
+  {
+    attachmentGuid: uploaded.attachment.guid,
+    attachmentName: "photo.jpg",
+  },
+]);
+```
+
+Each part is one text, mention, or attachment bubble. Do not mix text and attachment fields in the same part object.
+
+Text part:
+
+```jsonc
+{
+  "text":             "Look at this",       // Text content
+  "mentionedAddress": "alice@example.com",  // Optional; marks this text part as a mention
+  "formatting":       []                    // Optional; applies only to this text part
+}
+```
+
+Attachment part:
+
+```jsonc
+{
+  "attachmentGuid":   "attachment-guid",    // Attachment GUID
+  "attachmentName":   "photo.jpg"           // Optional display name
+}
+```
+
+| Input | Rule |
+|---|---|
+| `parts` | Must not be empty |
+| Text part | Pass `text`; it is trimmed and must not be empty after trimming |
+| Attachment part | Pass `attachmentGuid`; do not pass a local file path |
+| `mentionedAddress` | Text parts only |
+| `formatting` | Applies only to the current text part |
+
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/multipart-message.avif" alt="iMessage multipart message with text mention and image attachment" />
+</Frame>
+
+Multiple images are also multipart messages: upload each image, then put each attachment GUID in the same `sendMultipart(...)` call.
+
+```ts
+const photos = await Promise.all(
+  ["photo-1.jpg", "photo-2.jpg", "photo-3.jpg"].map(async (fileName) => {
+    return im.attachments.upload({
+      fileName,
+      data: await readFile(fileName),
+    });
+  }),
+);
+
+await im.messages.sendMultipart(chat.guid, [
+  {
+    attachmentGuid: photos[0]!.attachment.guid,
+    attachmentName: "photo-1.jpg",
+  },
+  {
+    attachmentGuid: photos[1]!.attachment.guid,
+    attachmentName: "photo-2.jpg",
+  },
+  {
+    attachmentGuid: photos[2]!.attachment.guid,
+    attachmentName: "photo-3.jpg",
+  },
+]);
+```
+
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/multiple-attachments.avif" alt="iMessage message containing multiple image attachments" />
+</Frame>
+
+## Reactions and Stickers
+
+### Reactions
+
+`setReaction(...)` adds or removes a tapback / emoji reaction. The fourth argument is `true` to add and `false` to remove.
+
+```ts
+await im.messages.setReaction(chat.guid, sent.guid, { kind: "love" }, true);
+```
+
+```ts
+await im.messages.setReaction(chat.guid, sent.guid, { kind: "love" }, false);
+```
+
+| `kind` | Meaning |
+|---|---|
+| `"love"` | Heart |
+| `"like"` | Thumbs up |
+| `"dislike"` | Thumbs down |
+| `"laugh"` | Laugh |
+| `"emphasize"` | Emphasis |
+| `"question"` | Question mark |
+| `"emoji"` | Custom emoji; also pass `emoji` |
+
+```ts
+await im.messages.setReaction(chat.guid, sent.guid, { kind: "emoji", emoji: "👍" }, true);
+```
+
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/reactions.avif" alt="iMessage messages with tapback and emoji reactions" />
+</Frame>
+
+### Stickers
+
+A sticker is an image placed on top of a message. Upload the sticker image first, then call `placeSticker(...)`.
+
+Sticker placement is not screen pixels. Think of the target message bubble as a small coordinate space: `x: 0.5, y: 0.5` is roughly the center. Larger `x` moves right; smaller `x` moves left. Larger `y` moves down; smaller `y` moves up. Start near `0.5, 0.5` and make small adjustments. Do not pass pixel-like values such as `120` or `90`.
+
+```ts
+const sticker = await im.attachments.upload({
+  fileName: "sticker.png",
+  data: await readFile("sticker.png"),
+});
+
+await im.messages.placeSticker(chat.guid, sent.guid, sticker.attachment.guid, {
+  x: 0.54,
+  y: 0.48,
+  scale: 0.45,
+  rotation: -0.08,
+  width: 96,
+});
+```
+
+| Field | Meaning |
+|---|---|
+| `x` | Horizontal position. `0.5` is roughly centered; larger moves right, smaller moves left |
+| `y` | Vertical position. `0.5` is roughly centered; larger moves down, smaller moves up |
+| `scale` | Optional scale factor |
+| `rotation` | Optional rotation. Use small values such as `-0.08` or `0.08` for a slight tilt; do not pass `8` |
+| `width` | Display width. Pass it explicitly to keep large source images from covering the message |
+
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/sticker-placement.avif" alt="Custom sticker placed on an iMessage bubble" />
+</Frame>
+
+For multipart messages, reactions and stickers can target one bubble with `partIndex`. `partIndex` is zero-based. When omitted, the first bubble is targeted.
+
+```ts
+await im.messages.setReaction(chat.guid, sent.guid, { kind: "like" }, true, {
+  partIndex: 1,
+});
+```
+
+`placeSticker(...)` supports the same `partIndex` option.
+
+## Edit and Unsend
+
+`edit(...)` changes a sent message and returns the updated `Message`.
+
+```ts
+const edited = await im.messages.edit(chat.guid, sent.guid, "Corrected text", {
+  backwardCompatText: "Edited: Corrected text",
+});
+
+console.log(edited.guid);
+```
+
+`unsend(...)` retracts a sent message and returns `void`.
+
+```ts
+await im.messages.unsend(chat.guid, sent.guid);
+```
+
+| Operation | Apple window | Returns |
+|---|---|---|
+| `edit(...)` | Within 15 minutes of sending | `Message` |
+| `unsend(...)` | Within 2 minutes of sending | `void` |
+
+After the Apple window expires, the server rejects the request and the SDK throws. See [error handling](/advanced-kits/imessage/error-handling).
+
+| Option | Used by | Meaning |
+|---|---|---|
+| `backwardCompatText` | `edit(...)` | Fallback text for clients that cannot display message edits |
+| `partIndex` | `edit(...)`, `unsend(...)` | Target bubble index for multipart messages; zero-based |
+| `clientMessageId` | `edit(...)`, `unsend(...)` | Idempotency key for job retries |
+
+## Notify Anyway
+
+`notifySilenced(...)` triggers Apple's "Notify Anyway" action after a recipient has Focus silence enabled.
+
+```ts
+await im.messages.notifySilenced(chat.guid, sent.guid);
+```
+
+Returns `void`. To check Focus state before sending, use [`im.addresses.isFocusSilenced(address)`](/advanced-kits/imessage/addresses#check-focus-status).
+
+## Get and List Messages
+
+### Get One Message
+
+When you know `chat.guid` and `message.guid`, call `get(...)`:
+
+```ts
+const message = await im.messages.get(chat.guid, sent.guid);
+
+console.log(message.content.text);
+```
+
+Missing chats or messages throw `NotFoundError`.
+
+### List Recent Messages
+
+`listRecent(...)` lists recent messages across chats:
+
+```ts
+const recent = await im.messages.listRecent({
+  pageSize: 25,
+});
+
+for (const message of recent.messages) {
+  console.log(message.guid, message.content.text);
+}
+```
+
+`listInChat(...)` lists messages in one chat:
+
+```ts
+const page = await im.messages.listInChat(chat.guid, {
+  pageSize: 25,
+  before: new Date("2026-01-01T00:00:00Z"),
+});
+
+for (const message of page.messages) {
+  console.log(message.guid);
+}
+```
+
+For pagination, pass the previous response's `nextPageToken` as the next request's `pageToken`:
+
+```ts
+let pageToken;
+
+do {
+  const page = await im.messages.listInChat(chat.guid, {
+    pageSize: 50,
+    pageToken,
+  });
+
+  for (const message of page.messages) {
+    console.log(message.guid, message.content.text);
+  }
+
+  pageToken = page.nextPageToken;
+} while (pageToken);
+```
+
+| Filter | Meaning |
+|---|---|
+| `after` | Only messages created after this time |
+| `before` | Only messages created before this time |
+| `isFromMe` | `true` for sent messages only, `false` for received messages only |
+| `isRead` | `true` for read messages only, `false` for unread messages only |
+| `pageSize` | Number of messages per page; range `1..100` |
+| `pageToken` | `nextPageToken` from the previous response |
+
+## Embedded Media
+
+Digital Touch and handwritten-message media are not exposed as regular attachments. Use `getEmbeddedMedia(...)` to read that media.
+
+```ts
+const media = await im.messages.getEmbeddedMedia(chat.guid, message.guid);
+
+console.log(media.mimeType, media.data.byteLength);
+```
+
+| Case | Result |
+|---|---|
+| Message is Digital Touch or handwritten media | Returns `{ data, mimeType }` |
+| Chat or message does not exist | Throws `NotFoundError` |
+| Message is not an embedded-media type | Throws `ValidationError`, with `error.code === ErrorCode.operationNotSupported` |
+
+## Message Events
+
+`subscribeEvents(...)` streams live message changes. To scope it to one chat, pass `{ chat: chat.guid }`:
+
+```ts
+for await (const event of im.messages.subscribeEvents({ chat: chat.guid })) {
+  switch (event.type) {
+    case "message.received":
+      console.log(event.message.guid, event.message.content.text);
+      break;
+
+    case "message.edited":
+      console.log(event.messageGuid, event.editedAt);
+      break;
+
+    case "message.unsent":
+      console.log(event.messageGuid, event.retractedAt);
+      break;
+  }
+}
+```
+
+Omit the filter to receive events for all visible chats:
+
+```ts
+for await (const event of im.messages.subscribeEvents()) {
+  console.log(event.chatGuid, event.type);
+}
+```
+
+Common event fields:
+
+```ts
+const event = {
+  // Event type.
+  type: "message.received",
+  // Durable event sequence.
+  sequence: 123,
+  // Chat that owns the event.
+  chatGuid: "any;-;alice@example.com",
+  // Whether the current account produced the event.
+  isFromMe: false,
+  occurredAt: new Date("2026-01-01T12:00:00Z"),
+  // Participant that triggered the event; may be absent.
+  actor: {
+    address: "alice@example.com",
+    service: "iMessage",
+  },
+  // Present on message.received.
+  message: {
+    guid: "message-guid",
+  },
+};
+```
+
+| `event.type` | Extra fields | Meaning |
+|---|---|---|
+| `message.received` | `message` | A message was received or became visible |
+| `message.edited` | `messageGuid`, `content`, `editedAt` | A message was edited |
+| `message.read` | `messageGuid`, `readAt` | A message was marked read |
+| `message.unsent` | `messageGuid`, `retractedAt` | A message was retracted |
+| `message.reactionAdded` | `messageGuid`, `reaction`, `targetPartIndex?` | A reaction was added |
+| `message.reactionRemoved` | `messageGuid`, `reaction`, `targetPartIndex?` | A reaction was removed |
+| `message.stickerPlaced` | `messageGuid`, `sticker?`, `placement?`, `targetPartIndex?` | A sticker was placed on a message |
+
+Write method return values tell you that the call you made has completed. Event streams are for changes from other people, other devices, or another part of your system. In production, consume live streams and recovery together; see [events](/advanced-kits/imessage/events).
+
+## Next Steps
+
+1. [Attachments](/advanced-kits/imessage/attachments) — upload files, get attachment GUIDs, and send attachment messages
+2. [Chats](/advanced-kits/imessage/chats) — create chats and get `chat.guid`
+3. [Events](/advanced-kits/imessage/events) — handle live events and recovery
+4. [Error Handling](/advanced-kits/imessage/error-handling) — handle errors, retries, and idempotent writes
