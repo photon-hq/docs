@@ -5,7 +5,7 @@ description: "Install spectrum-ts and send your first message across platforms"
 
 import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 
-`spectrum-ts` is a unified messaging SDK for TypeScript. Write your logic once, deliver it across every platform — iMessage, WhatsApp Business, your terminal, or a custom platform you build yourself.
+`spectrum-ts` is a unified messaging SDK for TypeScript. Write your logic once, deliver it across every platform — iMessage, Slack, WhatsApp Business, your terminal, or a custom platform you build yourself.
 
 ## Installation
 

@@ -71,7 +71,7 @@ Available tapbacks:
 
 Both forms are equivalent — `message.reply(content)` wraps each content item in `reply(content, message)` and delegates to `space.send(...)` internally.
 
-On platforms with thread support (iMessage, WhatsApp Business), this sends a threaded reply. On platforms without, the call resolves as a no-op — **the reply is not downgraded to a regular send**. If you need guaranteed delivery, use `space.send(...)` instead.
+On platforms with thread support (iMessage, Slack, WhatsApp Business), this sends a threaded reply. On platforms without, the call resolves as a no-op — **the reply is not downgraded to a regular send**. If you need guaranteed delivery, use `space.send(...)` instead.
 
 `reply()` cannot wrap `reply`, `edit`, `reaction`, `group`, or `typing` content — the builder throws at construction time.
 

@@ -7,7 +7,7 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 
 {% set pi = symbol("ts:spectrum-ts#PlatformInstance") %}
 
-Every platform provider exports a callable — `imessage`, `terminal`, `whatsappBusiness` — that **narrows** generic Spectrum types into platform-specific ones. The same function handles three different inputs.
+Every platform provider exports a callable — `imessage`, `slack`, `terminal`, `whatsappBusiness` — that **narrows** generic Spectrum types into platform-specific ones. The same function handles three different inputs.
 
 ## Narrowing the app
 

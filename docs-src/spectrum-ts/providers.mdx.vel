@@ -11,6 +11,9 @@ Providers plug into Spectrum's type system and runtime. Each one exports a calla
   <Card title="iMessage" icon="comment" href="/spectrum-ts/providers/imessage">
     Local, cloud, and dedicated modes. Tapbacks, typing indicators, threaded replies, DMs and groups.
   </Card>
+  <Card title="Slack" icon="slack" href="/spectrum-ts/providers/slack">
+    Cloud or direct tokens. Messages, files, reactions, threaded replies, and mentions across workspaces.
+  </Card>
   <Card title="Terminal" icon="terminal" href="/spectrum-ts/providers/terminal">
     Reads stdin, writes stdout. Zero config, great for local development and tests.
   </Card>
@@ -27,13 +30,19 @@ Drop any combination into `providers`:
   <Tab title="Aggregate import">
     ```ts
     import { Spectrum } from "spectrum-ts";
-    import { imessage, terminal, whatsappBusiness } from "spectrum-ts/providers";
+    import {
+      imessage,
+      slack,
+      terminal,
+      whatsappBusiness,
+    } from "spectrum-ts/providers";
 
     const app = await Spectrum({
       projectId: "...",
       projectSecret: "...",
       providers: [
         imessage.config(),
+        slack.config({}),
         whatsappBusiness.config({
           accessToken: process.env.WA_TOKEN!,
           phoneNumberId: process.env.WA_NUMBER_ID!,
@@ -48,6 +57,7 @@ Drop any combination into `providers`:
     ```ts
     import { Spectrum } from "spectrum-ts";
     import { imessage } from "spectrum-ts/providers/imessage";
+    import { slack } from "spectrum-ts/providers/slack";
     import { terminal } from "spectrum-ts/providers/terminal";
     import { whatsappBusiness } from "spectrum-ts/providers/whatsapp-business";
 
@@ -56,6 +66,7 @@ Drop any combination into `providers`:
       projectSecret: "...",
       providers: [
         imessage.config(),
+        slack.config({}),
         whatsappBusiness.config({
           accessToken: process.env.WA_TOKEN!,
           phoneNumberId: process.env.WA_NUMBER_ID!,

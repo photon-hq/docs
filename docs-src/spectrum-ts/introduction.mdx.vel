@@ -23,15 +23,18 @@ A user might message you in iMessage today, WhatsApp tomorrow, and your app next
 
 With Spectrum, you run one agent server and add providers for the interfaces you want to support. Each provider connects a native interface to the same Spectrum API, so your agent can feel consistent everywhere.
 
-Today, Spectrum supports iMessage, WhatsApp Business, and terminal development. The same model is built for more interfaces over time: Slack, Discord, websites, apps, phone calls, meetings, and hardware like HomePod.
+Today, Spectrum supports iMessage, Slack, WhatsApp Business, and terminal development. The same model is built for more interfaces over time: Discord, websites, apps, phone calls, meetings, and hardware like HomePod.
 
 ## Supported interfaces today
 
 Spectrum currently includes official providers for:
 
-<CardGroup cols={3}>
+<CardGroup cols={2}>
   <Card title="iMessage" icon="comment" href="/spectrum-ts/providers/imessage">
     Run production iMessage agents through managed iMessage lines.
+  </Card>
+  <Card title="Slack" icon="slack" href="/spectrum-ts/providers/slack">
+    Connect to Slack workspaces with cloud credentials or direct tokens.
   </Card>
   <Card title="WhatsApp Business" icon="whatsapp" href="/spectrum-ts/providers/whatsapp-business">
     Connect to the official WhatsApp Business Cloud API.
@@ -41,7 +44,7 @@ Spectrum currently includes official providers for:
   </Card>
 </CardGroup>
 
-You can also build custom providers with `definePlatform`. Use custom providers to bring websites, apps, Slack, Discord, internal tools, or new device interfaces into Spectrum.
+You can also build custom providers with `definePlatform`. Use custom providers to bring websites, apps, Discord, internal tools, or new device interfaces into Spectrum.
 
 <Card title="View all providers" icon="plug" href="/spectrum-ts/providers">
   See the built-in providers and learn how to combine them.
