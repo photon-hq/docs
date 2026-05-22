@@ -37,7 +37,7 @@ The iMessage provider supports three connection modes — local, cloud, and dedi
     ```
 
     <Note>
-      Local mode only supports sending text and attachments. Reactions, typing indicators, threaded replies, group creation, and chat backgrounds are not available.
+      Local mode only supports sending text and attachments. Reactions, typing indicators, threaded replies, group creation, chat backgrounds, and read receipts are not available.
     </Note>
   </Tab>
   <Tab title="Dedicated">
@@ -221,6 +221,41 @@ Background UI may not appear in these cases:
 
 <Note>
   The string `"clear"` is a reserved sentinel. If you have a file literally named `clear` with no extension, pass `"./clear"` or load it as a `Buffer`.
+</Note>
+
+## Marking chats as read
+
+Mark all unread messages in a chat as read. Import `read` from the iMessage provider:
+
+```ts
+import { read, imessage } from "spectrum-ts/providers/imessage";
+```
+
+Three equivalent forms:
+
+<Tabs>
+  <Tab title="Sugar (message.read)">
+    ```ts
+    await message.read();
+    ```
+  </Tab>
+  <Tab title="Sugar (space.read)">
+    ```ts
+    const im = imessage(space);
+    await im.read(message);
+    ```
+  </Tab>
+  <Tab title="Canonical (space.send)">
+    ```ts
+    await space.send(read(message));
+    ```
+  </Tab>
+</Tabs>
+
+All three delegate to `space.send(read(message))` internally. The iMessage SDK only exposes a chat-level read receipt — there is no per-message API. Passing any message from a chat marks the entire chat as read.
+
+<Note>
+  Marking chats as read requires cloud or dedicated mode. In local mode, `read()` throws an `UnsupportedError`.
 </Note>
 
 ## Tapback constants
