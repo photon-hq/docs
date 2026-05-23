@@ -29,14 +29,7 @@ for await (const [space, message] of app.messages) {
 
 ## User
 
-Users are minimal: an ID and a platform tag.
-
-```ts
-interface User {
-  readonly id: string;
-  readonly __platform: string;
-}
-```
+Every <TypeTooltip name="User" type={`{{ user.signature }}`} /> is minimal: an ID and a platform tag. Users optionally carry a `kind` field — outgoing messages returned by `send()` and `reply()` have an `AgentSender` with `kind: "agent"`, making it easy to identify messages sent by your app.
 
 Resolve a user from a platform-specific identifier through a narrowed platform instance:
 

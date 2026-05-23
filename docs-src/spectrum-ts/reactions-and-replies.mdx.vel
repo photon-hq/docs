@@ -3,7 +3,7 @@ title: "Reactions and Replies"
 description: "React to incoming messages and send threaded replies"
 ---
 
-Both `react` and `reply` live directly on an incoming message. They no-op silently on platforms that don't support the feature — no `try/catch` required.
+`react`, `reply`, and `edit` live directly on every message. `react` and `reply` no-op silently on platforms that don't support the feature — no `try/catch` required. `edit` throws at runtime if called on an inbound message.
 
 Spectrum also exports first-class `reaction()` and `reply()` content builders that you can pass directly to `space.send(...)` — the sugar methods on `message` delegate through the same `send` pipeline.
 
@@ -94,7 +94,7 @@ On platforms with thread support (iMessage, WhatsApp Business), this sends a thr
   </Tab>
 </Tabs>
 
-`edit()` takes new content and the outbound message to rewrite. Edits are fire-and-forget — `space.send(edit(...))` resolves to `undefined`.
+`edit()` takes new content and the message to rewrite. Only outbound messages can be edited — both the `edit()` content builder and the `message.edit()` sugar throw at runtime if the target is inbound. Edits are fire-and-forget — `space.send(edit(...))` resolves to `undefined`.
 
 `edit()` cannot wrap `edit`, `reply`, `reaction`, `group`, or `typing` content.
 

@@ -216,7 +216,7 @@ await space.send(reply(text("Got it"), message));
 
 ## Edits
 
-Rewrite the content of a previously-sent outbound message. Edits are fire-and-forget — `space.send(edit(...))` resolves to `undefined`.
+Rewrite the content of a previously-sent message. Only outbound messages can be edited — `edit()` throws at build time if the target is inbound, so the misuse surfaces before the send pipeline runs. Edits are fire-and-forget — `space.send(edit(...))` resolves to `undefined`.
 
 ```ts
 import { edit, text } from "spectrum-ts";

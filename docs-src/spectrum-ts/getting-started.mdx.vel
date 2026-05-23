@@ -64,7 +64,7 @@ const app = await Spectrum({
 
 for await (const [space, message] of app.messages) {
   if (message.content.type === "text") {
-    console.log(`[${message.platform}] ${message.sender.id}: ${message.content.text}`);
+    console.log(`[${message.platform}] ${message.sender?.id}: ${message.content.text}`);
     await space.send("hello world");
   }
 }

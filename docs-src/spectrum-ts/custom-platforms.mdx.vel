@@ -96,7 +96,8 @@ export const myPlatform = definePlatform("my-platform", {
 | `space.resolve` | Yes | Resolves or creates a conversation. Receives an array of users plus optional params. |
 | `space.schema` | No | Optional Zod schema for the resolved space. |
 | `space.params` | No | Zod schema for additional space creation parameters — surfaces as the second arg to `platform(app).space()`. |
-| `space.actions` | No | A map of content-builder factories that become sugar methods on the resolved space. Each `space.<name>(...args)` delegates to `space.send(factory(...args))`. Names that collide with built-in `Space` methods (`send`, `edit`, `startTyping`, `stopTyping`, `responding`, `getMessage`) are skipped at runtime with a warning. |
+| `space.actions` | No | A map of async functions that become methods on the resolved space. Each function receives the built space as its first argument; the public surface drops it, so callers pass only the trailing args. Actions return `Promise<void>` and can delegate through `space.send(...)`, call the underlying SDK, or perform any other side effect. Names that collide with built-in `Space` methods (`send`, `edit`, `startTyping`, `stopTyping`, `responding`, `getMessage`) are skipped at runtime with a warning. |
+| `message.actions` | No | A map of async functions that become methods on messages. Each function receives the message as its first argument; the public surface drops it, so callers pass only the trailing args. Actions return `Promise<void>`. Names that collide with built-in `Message` methods (`react`, `reply`, `edit`) are skipped at runtime with a warning. |
 | `lifecycle.createClient` | Yes | Creates the platform client. Receives `config`, `projectId`, `projectSecret` (both may be `undefined`), and `store`. |
 | `lifecycle.destroyClient` | No | Tears down the client on shutdown. Omit if no cleanup is needed. |
 | `messages` | Yes | Async generator that yields incoming messages. |
