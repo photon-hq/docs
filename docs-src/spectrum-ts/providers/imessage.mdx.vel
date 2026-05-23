@@ -37,7 +37,7 @@ The iMessage provider supports three connection modes — local, cloud, and dedi
     ```
 
     <Note>
-      Local mode only supports sending text and attachments. Reactions, typing indicators, threaded replies, group creation, and chat backgrounds are not available.
+      Local mode only supports sending text and attachments. Reactions, typing indicators, threaded replies, group creation, chat backgrounds, chat renaming, and group avatars are not available.
     </Note>
   </Tab>
   <Tab title="Dedicated">
@@ -169,6 +169,41 @@ The wrapped content can be a string or any `attachment(...)`. Effects only apply
     | `imessage.effect.message.echo` | `"com.apple.messages.effect.CKEchoEffect"` |
   </Accordion>
 </AccordionGroup>
+
+## Chat renaming
+
+Rename a group chat using `space.rename()` or the canonical `rename()` content builder:
+
+```ts
+import { rename } from "spectrum-ts";
+
+// Sugar
+await space.rename("Book Club");
+
+// Canonical
+await space.send(rename("Book Club"));
+```
+
+Renaming requires cloud or dedicated mode and only works on group chats. In local mode or on a DM, `rename()` throws an `UnsupportedError`.
+
+## Group avatars
+
+Set or clear the group chat icon using `space.avatar()` or the canonical `avatar()` content builder:
+
+```ts
+import { avatar } from "spectrum-ts";
+
+// Sugar — set from a file path
+await space.avatar("./icon.png");
+
+// Sugar — clear the current avatar
+await space.avatar("clear");
+
+// Canonical
+await space.send(avatar("./icon.png"));
+```
+
+Group avatars require cloud or dedicated mode and only work on group chats. In local mode or on a DM, `avatar()` throws an `UnsupportedError`.
 
 ## Chat backgrounds
 
