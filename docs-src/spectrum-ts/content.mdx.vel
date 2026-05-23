@@ -1,6 +1,6 @@
 ---
 title: "Content"
-description: "Build text, attachments, voice, contacts, polls, rich links, groups, replies, edits, typing indicators, and platform-specific content for outgoing messages"
+description: "Build text, attachments, voice, contacts, polls, rich links, groups, replies, edits, typing indicators, rename, avatar, and platform-specific content for outgoing messages"
 ---
 
 import { TypeTooltip } from "/snippets/type-tooltip.mdx";
@@ -8,7 +8,7 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 {% set ci = symbol("ts:spectrum-ts#ContentInput") %}
 {% set cb = symbol("ts:spectrum-ts#ContentBuilder") %}
 
-Spectrum exposes a family of content builders — `text`, `attachment`, `voice`, `contact`, `richlink`, `poll`, `group`, `custom`, `reaction`, `reply`, `edit`, and `typing` — plus a string shortcut that's equivalent to `text()`. Any API that takes a <TypeTooltip name="ContentInput" type={`{{ ci.signature }}`} /> accepts a plain string or a <TypeTooltip name="ContentBuilder" type={`{{ cb.signature }}`} />.
+Spectrum exposes a family of content builders — `text`, `attachment`, `voice`, `contact`, `richlink`, `poll`, `group`, `custom`, `reaction`, `reply`, `edit`, `typing`, `rename`, and `avatar` — plus a string shortcut that's equivalent to `text()`. Any API that takes a <TypeTooltip name="ContentInput" type={`{{ ci.signature }}`} /> accepts a plain string or a <TypeTooltip name="ContentBuilder" type={`{{ cb.signature }}`} />.
 
 ## Text
 
@@ -212,7 +212,7 @@ import { reply, text } from "spectrum-ts";
 await space.send(reply(text("Got it"), message));
 ```
 
-`reply()` cannot wrap `reply`, `edit`, `reaction`, `group`, or `typing` content.
+`reply()` cannot wrap `reply`, `edit`, `reaction`, `group`, `typing`, `rename`, or `avatar` content.
 
 ## Edits
 
@@ -225,7 +225,7 @@ const sent = await space.send("Draft");
 await space.send(edit(text("Final version"), sent));
 ```
 
-`edit()` cannot wrap `edit`, `reply`, `reaction`, `group`, or `typing` content.
+`edit()` cannot wrap `edit`, `reply`, `reaction`, `group`, `typing`, `rename`, or `avatar` content.
 
 ## Typing indicators
 
@@ -239,6 +239,41 @@ await space.send(typing("stop"));  // stop typing
 ```
 
 `space.startTyping()`, `space.stopTyping()`, and `space.responding(fn)` are sugar over `space.send(typing(...))`. Platforms without a typing-indicator API silently no-op.
+
+## Rename
+
+Rename the current chat. Fire-and-forget — `space.send(rename(...))` resolves to `undefined`.
+
+```ts
+import { rename } from "spectrum-ts";
+
+await space.send(rename("New Chat Name"));
+```
+
+`space.rename(displayName)` is sugar for `space.send(rename(displayName))`. The builder throws at construction time if `displayName` is empty. Per-platform constraints (e.g. iMessage requires remote mode and a group chat) surface as `UnsupportedError` from the provider's send action.
+
+## Avatar
+
+Set or clear the chat avatar (group icon). Fire-and-forget — `space.send(avatar(...))` resolves to `undefined`.
+
+```ts
+import { avatar } from "spectrum-ts";
+
+// Set from a file path — MIME type inferred from the extension
+await space.send(avatar("./icon.png"));
+
+// Set from a buffer — mimeType is required
+await space.send(avatar(buffer, { mimeType: "image/jpeg" }));
+
+// Clear the current avatar
+await space.send(avatar("clear"));
+```
+
+`space.avatar(...)` is sugar for `space.send(avatar(...))`. Per-platform constraints (e.g. iMessage requires remote mode and a group chat) surface as `UnsupportedError` from the provider's send action.
+
+<Note>
+  The string `"clear"` is a reserved sentinel. If you have a file literally named `clear` with no extension, pass `"./clear"` or load it as a `Buffer`.
+</Note>
 
 ## Composing multiple items
 

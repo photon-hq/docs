@@ -20,6 +20,8 @@ Every <TypeTooltip name="Space" type={`{{ space.signature }}`} /> exposes the sa
 | `startTyping()` | Show a typing indicator. No-op if the platform doesn't support it. |
 | `stopTyping()` | Hide the typing indicator. |
 | `responding(fn)` | Start a typing indicator, run `fn`, and stop the indicator when it completes — even if `fn` throws. |
+| `rename(displayName)` | Rename the chat. Sugar for `send(rename(displayName))`. |
+| `avatar(input, options?)` | Set or clear the chat avatar. Sugar for `send(avatar(input, options?))`. |
 
 ```ts
 for await (const [space, message] of app.messages) {
