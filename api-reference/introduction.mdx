@@ -1,33 +1,80 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: "Introduction"
+description: "Manage Spectrum projects, webhooks, and platform configuration over HTTPS."
 ---
 
-<Note >
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-  </Note>
+The Spectrum API is the HTTP surface for managing a project's webhooks, platforms, lines, and users. It's the same thing the [Photon dashboard](https://app.photon.codes) and the [`photon` CLI](/cli/overview) call under the hood — reach for it when you want to automate setup, drive changes from CI, or build your own internal tooling.
 
-  Welcome
+If you're sending and receiving messages at runtime, you want the [`spectrum-ts` SDK](/spectrum-ts/getting-started) or [webhooks](/webhooks/overview) instead. This API is for the management plane around them.
 
-  There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
+## Base URL
 
-  <Card
-    title="Plant Store Endpoints"
-    icon="leaf"
-    href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-    View the OpenAPI specification file
-    </Card>
+Every endpoint lives under a single host. HTTPS only — plaintext requests are rejected.
 
-    Authentication
+```
+https://spectrum.photon.codes
+```
 
-  All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+## Authentication
+
+The API uses HTTP Basic auth. The username is your `projectId` and the password is your `projectSecret`. Credentials are scoped to a single project and never expire on their own.
+
+```sh
+curl -u "$PROJECT_ID:$PROJECT_SECRET" \
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/"
+```
+
+Retrieve credentials with [`photon projects show`](/cli/projects) or from the dashboard. If a secret leaks, rotate it with [`photon projects regenerate-secret`](/cli/projects#rotate-the-spectrum-api-secret).
+
+<Warning>
+Project credentials grant full management access to a project. Store them in a secrets manager, not in source control or shell history.
+</Warning>
+
+## Response format
+
+Every response is JSON wrapped in a `{ succeed, data }` envelope. On success, `data` holds the resource:
 
 ```json
-"security": [
-  {
-    "bearerAuth": []
+{
+  "succeed": true,
+  "data": {
+    "id": "6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b",
+    "webhookUrl": "https://your-app.com/spectrum-webhook",
+    "createdAt": "2026-05-14T19:00:00Z",
+    "updatedAt": "2026-05-14T19:00:00Z"
   }
-]
+}
 ```
+
+On error, `succeed` is `false` and the body carries an explanation:
+
+```json
+{
+  "succeed": false,
+  "message": "webhookUrl must be a valid URL"
+}
+```
+
+List endpoints return an array under `data` rather than a single object. The HTTP status code is the source of truth for whether a call succeeded — branch on it first, then read `data`.
+
+## Response codes
+
+| Code | Meaning |
+| --- | --- |
+| `200` | Request succeeded. |
+| `401` | Missing or invalid project credentials. |
+| `404` | Resource not found or already deleted. |
+| `409` | Conflict — for example, a resource with the same key already exists. |
+| `422` | Request body failed schema validation. |
+| `5xx` | Spectrum-side error. Safe to retry with backoff. |
+
+## Where to next
+
+<CardGroup cols={2}>
+  <Card title="Get project" icon="braces" href="/api-reference/projects/get-project">
+    The simplest endpoint to try first — fetch a project by id.
+  </Card>
+  <Card title="Get started with the SDK" icon="rocket" href="/spectrum-ts/getting-started">
+    Send and receive messages from your agent server with `spectrum-ts`.
+  </Card>
+</CardGroup>

@@ -170,6 +170,13 @@
         "tab": "API reference",
         "groups": [
           {
+            "group": "Getting Started",
+            "pages": [
+              "api-reference/introduction",
+              "api-reference/rate-limit"
+            ]
+          },
+          {
             "group": "Spectrum API",
             "openapi": "https://spectrum.photon.codes/openapi/json"
           }
