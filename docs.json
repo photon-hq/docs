@@ -178,7 +178,7 @@
           },
           {
             "group": "Dashboard API",
-            "openapi": "https://staging-app.photon.codes/docs/json"
+            "openapi": "api-reference/dashboard-openapi.json"
           },
           {
             "group": "Spectrum API",

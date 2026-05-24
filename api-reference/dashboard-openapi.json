@@ -1,0 +1,289 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Photon Dashboard API",
+    "version": "0.1.0",
+    "description": "Authenticated REST API for the Photon Dashboard. Used by the web app and the `photon` CLI. Only the public-surface endpoints are listed here today."
+  },
+  "servers": [
+    { "url": "https://app.photon.codes" }
+  ],
+  "tags": [
+    { "name": "Projects", "description": "Project CRUD and Spectrum credentials." },
+    { "name": "Device login", "description": "RFC 8628 device authorization flow used by the CLI." }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Access token obtained via the device login flow."
+      }
+    },
+    "schemas": {
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "location": { "type": "string", "example": "United States" },
+          "status": { "type": "string", "example": "running" },
+          "spectrum": { "type": "boolean" },
+          "spectrumProjectId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Spectrum project id. Use as the `projectId` half of HTTP Basic auth against the Spectrum API."
+          },
+          "projectSecret": {
+            "type": "string",
+            "nullable": true,
+            "description": "Spectrum project secret. Use as the `projectSecret` half of HTTP Basic auth against the Spectrum API. Returned only to project owners and members."
+          },
+          "template": { "type": "boolean" },
+          "observability": { "type": "boolean" },
+          "userId": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "name", "location", "status", "spectrum", "template", "observability", "userId", "createdAt", "updatedAt"]
+      }
+    }
+  },
+  "paths": {
+    "/api/projects/": {
+      "get": {
+        "tags": ["Projects"],
+        "summary": "List projects",
+        "description": "Returns every project the authenticated user owns or has been added to as a member.",
+        "operationId": "listProjects",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Projects accessible to the caller.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Project" }
+                }
+              }
+            }
+          },
+          "401": { "description": "Missing or invalid access token." }
+        }
+      },
+      "post": {
+        "tags": ["Projects"],
+        "summary": "Create project",
+        "description": "Creates a new project owned by the authenticated user. When `spectrum` is true, a Spectrum project is provisioned and its `spectrumProjectId` + `projectSecret` are set on the response.",
+        "operationId": "createProject",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "location": { "type": "string", "example": "United States" },
+                  "spectrum": { "type": "boolean", "default": false },
+                  "template": { "type": "boolean", "default": false },
+                  "observability": { "type": "boolean", "default": false },
+                  "platforms": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["imessage", "whatsapp_business", "voice"]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created project.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Project" }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "error": { "type": "string" } }
+                }
+              }
+            }
+          },
+          "401": { "description": "Missing or invalid access token." }
+        }
+      }
+    },
+    "/api/projects/{id}": {
+      "get": {
+        "tags": ["Projects"],
+        "summary": "Get project",
+        "description": "Returns a single project including its Spectrum credentials (`spectrumProjectId`, `projectSecret`). The caller must own the project or be a member.",
+        "operationId": "getProject",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project. Returns `null` if the caller has no access to the requested id (rather than 404).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Project" }
+              }
+            }
+          },
+          "401": { "description": "Missing or invalid access token." }
+        }
+      }
+    },
+    "/api/auth/device/code": {
+      "post": {
+        "tags": ["Device login"],
+        "summary": "Request device + user code",
+        "description": "Start a device authorization flow. Follows [RFC 8628 §3.2](https://datatracker.ietf.org/doc/html/rfc8628#section-3.2). The returned `user_code` is shown to the user; the CLI then polls `/api/auth/device/token` with `device_code` until the user approves.",
+        "operationId": "deviceCode",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["client_id"],
+                "properties": {
+                  "client_id": {
+                    "type": "string",
+                    "description": "Public client id of the application requesting authorization."
+                  },
+                  "scope": {
+                    "type": "string",
+                    "description": "Optional space-separated list of scopes."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Device authorization started.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "device_code": { "type": "string" },
+                    "user_code": { "type": "string" },
+                    "verification_uri": { "type": "string", "format": "uri" },
+                    "verification_uri_complete": { "type": "string", "format": "uri" },
+                    "expires_in": { "type": "integer", "description": "Device code lifetime in seconds." },
+                    "interval": { "type": "integer", "description": "Minimum polling interval in seconds." }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { "type": "string", "enum": ["invalid_request", "invalid_client"] },
+                    "error_description": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/device/token": {
+      "post": {
+        "tags": ["Device login"],
+        "summary": "Exchange device code for token",
+        "description": "Poll this endpoint with `device_code` until the user approves the request. Follows [RFC 8628 §3.4](https://datatracker.ietf.org/doc/html/rfc8628#section-3.4). While the user has not yet approved, the response is `400` with `error: authorization_pending`. Poll at most once per `interval` seconds, or you'll receive `slow_down`.",
+        "operationId": "deviceToken",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["grant_type", "device_code", "client_id"],
+                "properties": {
+                  "grant_type": {
+                    "type": "string",
+                    "enum": ["urn:ietf:params:oauth:grant-type:device_code"]
+                  },
+                  "device_code": { "type": "string" },
+                  "client_id": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User has approved. Session is returned; the `set-auth-token` response header carries the bearer token to use for subsequent calls.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "session": { "type": "object" },
+                    "user": { "type": "object" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Pending, denied, or otherwise failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "authorization_pending",
+                        "slow_down",
+                        "expired_token",
+                        "access_denied",
+                        "invalid_request",
+                        "invalid_grant"
+                      ]
+                    },
+                    "error_description": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
