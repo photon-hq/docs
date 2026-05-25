@@ -29,7 +29,8 @@ pnpx @photon-ai/cli login
 pnpx @photon-ai/cli projects ls
 ```
 
-```sh yarn
+```sh yarn dlx
+# Yarn Berry / v2+ only
 yarn dlx @photon-ai/cli login
 yarn dlx @photon-ai/cli projects ls
 ```
@@ -134,7 +135,7 @@ curl -L -o /usr/local/bin/photon \
 chmod +x /usr/local/bin/photon
 ```
 
-If you use `npx` / `pnpx` / `bunx`, you automatically pick up new releases — no manual update needed. These tools cache resolved versions, so to force the latest immediately, pin to `@latest`:
+If you use a one-off runner (`npx` / `pnpx` / `yarn dlx` / `bunx`), you automatically pick up new releases — no manual update needed. These tools cache resolved versions, so to force the latest immediately, pin to `@latest`:
 
 ```sh
 npx @photon-ai/cli@latest projects ls
