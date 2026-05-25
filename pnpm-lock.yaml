@@ -12,8 +12,8 @@ importers:
         specifier: ^4.19.0
         version: 4.19.0(@typescript-eslint/rule-tester@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(@typescript-eslint/typescript-estree@8.58.2(typescript@5.9.3))(@typescript-eslint/utils@8.58.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(@vue/compiler-sfc@3.5.32)(eslint-plugin-format@2.0.1(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
       '@photon-ai/advanced-imessage':
-        specifier: ^0.8.0
-        version: 0.8.0
+        specifier: ^0.9.1
+        version: 0.9.1
       '@photon-ai/advanced-imessage-kit':
         specifier: ^1.14.3
         version: 1.14.3(typescript@5.9.3)
@@ -916,6 +916,10 @@ packages:
 
   '@photon-ai/advanced-imessage@0.8.0':
     resolution: {integrity: sha512-wn3Ya7bHbEotCng2zGlrmsvInfWWZBHUQLyu8d8htDbJHIBGvJQsBaPSIxNQZZzh1iB2q6oCyXburIQYFZz/4Q==}
+    engines: {node: '>=18.17'}
+
+  '@photon-ai/advanced-imessage@0.9.1':
+    resolution: {integrity: sha512-4orJw3hO25EptFfbtsFdvURpi99AadRKPLMlL8QpYbJz6GMiFETA9aUXeE9ujtwoDQjBDX3GHeUlLALkL3ZFPg==}
     engines: {node: '>=18.17'}
 
   '@photon-ai/imessage-kit@2.1.2':
@@ -3402,6 +3406,13 @@ snapshots:
       nice-grpc: 2.1.15
       nice-grpc-common: 2.0.3
 
+  '@photon-ai/advanced-imessage@0.9.1':
+    dependencies:
+      '@bufbuild/protobuf': 2.12.0
+      '@grpc/grpc-js': 1.14.3
+      nice-grpc: 2.1.15
+      nice-grpc-common: 2.0.3
+
   '@photon-ai/imessage-kit@2.1.2':
     dependencies:
       node-typedstream: 1.4.1
@@ -3544,8 +3555,8 @@ snapshots:
 
   '@typescript-eslint/project-service@8.58.1(typescript@5.9.3)':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.58.1(typescript@5.9.3)
-      '@typescript-eslint/types': 8.58.1
+      '@typescript-eslint/tsconfig-utils': 8.58.2(typescript@5.9.3)
+      '@typescript-eslint/types': 8.58.2
       debug: 4.4.3
       typescript: 5.9.3
     transitivePeerDependencies:
