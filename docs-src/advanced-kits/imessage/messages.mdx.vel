@@ -202,12 +202,12 @@ console.log(sent.guid);
 ```
 
 <Frame>
-  <img src="/images/advanced-kits/imessage/messages/mini-app-card.avif" alt="Mini app card preview showing a Spectrum landing page card" />
+  <img src="/images/advanced-kits/imessage/messages/mini-app-card.avif" alt="Mini app card preview showing a custom web page card" />
 </Frame>
 
 The SDK only asks for the destination URL and the preview content shown on the card. The server handles the iMessage app-card details internally.
 
-Only `url` and `preview.title` are required. Most cards should also set `subtitle`, `body`, and `imageJpeg` when that content is available. To include an image, pass JPEG bytes as `preview.imageJpeg`:
+Only `url` and `preview.title` are required. Most cards should also set `preview.subtitle`, `preview.body`, and `preview.imageJpeg` when that content is available. To include an image, pass JPEG bytes as `preview.imageJpeg`:
 
 ```ts
 await im.messages.sendMiniApp(chat.guid, {
@@ -234,10 +234,10 @@ await im.messages.sendMiniApp(chat.guid, {
 
 | Option | Meaning |
 |---|---|
-| `clientMessageId` | Optional third-argument idempotency key for job retries |
+| `clientMessageId` | Optional idempotency key for job retries; pass it as `options.clientMessageId` in the final argument |
 
 <Warning>
-  Pass JPEG bytes to `imageJpeg`. If your source image is PNG, WebP, HEIC, or another format, convert it to JPEG before calling `sendMiniApp(...)`.
+  Pass JPEG bytes to `preview.imageJpeg`. If your source image is PNG, WebP, HEIC, or another format, convert it to JPEG before calling `sendMiniApp(...)`.
 </Warning>
 
 <Note>
