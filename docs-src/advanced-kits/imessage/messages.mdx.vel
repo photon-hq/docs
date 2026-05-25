@@ -22,6 +22,7 @@ Get a `chat.guid` before calling message APIs. `chat.guid` is the server's chat 
 | Add a message effect | `effect: MessageEffect.*` |
 | Format text | `formatting: [...]` |
 | Send an attachment | Upload with `im.attachments.upload(...)`, then call `im.messages.sendAttachment(...)` |
+| Send a mini app card | `im.messages.sendMiniApp(chat.guid, { url, preview })` |
 | Reply to a message | `replyTo` on `sendText(...)`, `sendAttachment(...)`, or `sendMultipart(...)` |
 | Send multipart content | `im.messages.sendMultipart(...)` |
 | Add or remove a reaction | `im.messages.setReaction(...)` |
@@ -182,6 +183,66 @@ await im.messages.sendAttachment(chat.guid, audio.attachment.guid, {
 <Frame>
   <img src="/images/advanced-kits/imessage/messages/audio-message.avif" alt="iMessage audio message bubble with play button and waveform" />
 </Frame>
+
+## Send Mini App Cards
+
+`sendMiniApp(...)` sends a tappable iMessage card that opens a URL. Use it when you want a custom preview card instead of an automatic link preview.
+
+```ts
+const sent = await im.messages.sendMiniApp(chat.guid, {
+  url: "https://photon.codes",
+  preview: {
+    title: "Photon",
+    subtitle: "photon.codes",
+    body: "Build messaging agents with advanced iMessage support.",
+  },
+});
+
+console.log(sent.guid);
+```
+
+<Frame>
+  <img src="/images/advanced-kits/imessage/messages/mini-app-card.avif" alt="Mini app card preview showing a custom web page card" />
+</Frame>
+
+The SDK only asks for the destination URL and the preview content shown on the card. The server handles the iMessage app-card details internally.
+
+Only `url` and `preview.title` are required. Most cards should also set `preview.subtitle`, `preview.body`, and `preview.imageJpeg` when that content is available. To include an image, pass JPEG bytes as `preview.imageJpeg`:
+
+```ts
+await im.messages.sendMiniApp(chat.guid, {
+  url: "https://photon.codes",
+  preview: {
+    title: "Photon",
+    subtitle: "photon.codes",
+    imageJpeg: await readFile("preview.jpg"),
+  },
+});
+```
+
+| Field | Required | Meaning |
+|---|---|---|
+| `url` | Yes | URL opened when the recipient taps the card |
+| `preview.title` | Yes | Primary text shown on the card |
+| `preview.subtitle` | No | Secondary text |
+| `preview.body` | No | Supporting text |
+| `preview.imageJpeg` | No | JPEG preview image bytes |
+| `preview.caption` | No | Additional small label when the card layout has room |
+| `preview.footer` | No | Additional footer label when the card layout has room |
+| `preview.detail` | No | Additional detail label when the card layout has room |
+| `preview.summary` | No | Fallback summary for surfaces that cannot show the full card |
+
+| Option | Meaning |
+|---|---|
+| `clientMessageId` | Optional idempotency key for job retries; pass it as `options.clientMessageId` in the final argument |
+
+<Warning>
+  Pass JPEG bytes to `preview.imageJpeg`. If your source image is PNG, WebP, HEIC, or another format, convert it to JPEG before calling `sendMiniApp(...)`.
+</Warning>
+
+<Note>
+  `sendMiniApp(...)` is its own send operation. It does not upload files first, does not take an attachment GUID, and does not use `replyTo` or message effects.
+</Note>
 
 ## Reply to a Message
 

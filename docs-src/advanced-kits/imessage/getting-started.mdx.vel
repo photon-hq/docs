@@ -159,7 +159,7 @@ The client is organized by resource:
 
 | Namespace | What it does |
 |---|---|
-| `im.messages` | Send text, attachments, multipart messages, replies, reactions, stickers, edits, unsends, list queries, and message events |
+| `im.messages` | Send text, attachments, mini app cards, multipart messages, replies, reactions, stickers, edits, unsends, list queries, and message events |
 | `im.chats` | Create chats, read chat state, count chats, mark read, set typing, share contact cards, and manage chat backgrounds |
 | `im.groups` | Rename groups, manage participants, set group icons, and leave groups |
 | `im.attachments` | Upload files, read metadata, and stream downloads |
@@ -172,7 +172,7 @@ The client is organized by resource:
 
 Core path:
 
-1. [Messages](/advanced-kits/imessage/messages) — send text, attachments, multipart messages, reactions, edits, unsends, and subscribe to message events
+1. [Messages](/advanced-kits/imessage/messages) — send text, attachments, mini app cards, multipart messages, reactions, edits, unsends, and subscribe to message events
 2. [Chats](/advanced-kits/imessage/chats) — create chats, mark read, set typing, and manage chat backgrounds
 3. [Events](/advanced-kits/imessage/events) — catch up on durable events after a disconnect
 4. [Error Handling](/advanced-kits/imessage/error-handling) — understand error classes, retries, and idempotency keys
