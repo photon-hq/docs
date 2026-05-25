@@ -87,6 +87,45 @@ photon projects open --no-browser   # prints the URL instead
 
 Opens the project's Dashboard page in your default browser.
 
+## Upgrade subscription
+
+Subscribe a project or manage its existing subscription. The command smart-routes based on current state:
+
+- **Free or unsubscribed projects** → Stripe Checkout
+- **Active or past-due subscriptions** → Stripe Customer Portal (change plan, payment method, cancel, etc.)
+
+```sh
+# Interactive picker (recommended)
+photon projects upgrade
+
+# Skip the picker with a positional tier
+photon projects upgrade pro
+photon projects upgrade <project-id> business
+
+# Force a specific flow
+photon projects upgrade --checkout         # always Checkout, even if subscribed
+photon projects upgrade --manage           # always Portal (downgrade / cancel / change card)
+
+# Use a specific Stripe price (escape hatch)
+photon projects upgrade --plan price_xxx
+```
+
+Available tiers: `pro`, `business`, `enterprise`.
+
+| Flag | Description |
+|------|-------------|
+| `[tier]` | Positional tier (`pro` / `business` / `enterprise`). Skips the picker. |
+| `--plan <price-id>` | Stripe price ID. Escape hatch when you need a specific price. |
+| `--qty <n>` | Quantity (default 1) |
+| `--checkout` | Force Checkout even if the project already has a subscription |
+| `--manage` | Force the Stripe Customer Portal (use this for downgrades / cancellation) |
+| `--no-browser` | Print the URL instead of opening it |
+| `--json` | Output `{action, url, tier?}` as JSON and skip opening the browser |
+
+<Note>
+`--manage` wins over `[tier]` / `--plan` / `--checkout` when both are passed. Downgrades and cancellations live in the Stripe Portal — there's no dedicated `downgrade` command.
+</Note>
+
 ## Check phone number availability
 
 ```sh

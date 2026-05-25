@@ -99,6 +99,42 @@ Available platforms:
 
 Each binary ships with a corresponding `.sha256` checksum on the [release page](https://github.com/photon-hq/cli/releases/latest).
 
+## Update
+
+The CLI shows a notification when a new version is available. To update:
+
+<CodeGroup>
+```sh npm
+npm update -g @photon-ai/cli
+```
+
+```sh pnpm
+pnpm update -g @photon-ai/cli
+```
+
+```sh yarn
+yarn global upgrade @photon-ai/cli
+```
+
+```sh bun
+bun update -g @photon-ai/cli
+```
+</CodeGroup>
+
+If you installed via a standalone binary, re-download the latest release:
+
+```sh
+curl -L -o /usr/local/bin/photon \
+  https://github.com/photon-hq/cli/releases/latest/download/photon-<os>-<arch>
+chmod +x /usr/local/bin/photon
+```
+
+If you use `npx` / `pnpx` / `bunx`, you always get the latest release automatically — no manual update needed.
+
+<Note>
+To suppress the update notification, set `PHOTON_NO_UPDATE_NOTIFIER=1`.
+</Note>
+
 ## Verify the installation
 
 ```sh
