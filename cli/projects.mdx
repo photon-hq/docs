@@ -89,10 +89,10 @@ Opens the project's Dashboard page in your default browser.
 
 ## Upgrade subscription
 
-Subscribe a project or manage its existing subscription. The command smart-routes based on current state:
+Use this command to subscribe a project or manage its existing subscription. The CLI routes you to the right Stripe surface based on the project's current state:
 
-- **Free or unsubscribed projects** → Stripe Checkout
-- **Active or past-due subscriptions** → Stripe Customer Portal (change plan, payment method, cancel, etc.)
+- **Free or unsubscribed projects** — opens Stripe Checkout
+- **Active or past-due subscriptions** — opens the Stripe Customer Portal (change plan, payment method, cancel, etc.)
 
 ```sh
 # Interactive picker (recommended)

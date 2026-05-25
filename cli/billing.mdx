@@ -38,7 +38,7 @@ photon billing checkout business --qty 5
 photon billing checkout --plan price_xxx
 ```
 
-Creates a Stripe Checkout session and opens it in your browser. With no arguments, the CLI lists available plans and lets you pick one interactively. Pass a `[tier]` positional or `--plan <price-id>` to skip the picker.
+When you run this command, the CLI creates a Stripe Checkout session and opens it in your browser. If you don't pass any arguments, you get an interactive picker listing the available plans. Pass a `[tier]` positional or `--plan <price-id>` to skip the picker.
 
 Available tiers: `pro`, `business`, `enterprise`.
 

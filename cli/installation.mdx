@@ -129,7 +129,11 @@ curl -L -o /usr/local/bin/photon \
 chmod +x /usr/local/bin/photon
 ```
 
-If you use `npx` / `pnpx` / `bunx`, you always get the latest release automatically — no manual update needed.
+If you use `npx` / `pnpx` / `bunx`, you automatically pick up new releases — no manual update needed. These tools cache resolved versions, so to force the latest immediately, pin to `@latest`:
+
+```sh
+npx @photon-ai/cli@latest projects ls
+```
 
 <Note>
 To suppress the update notification, set `PHOTON_NO_UPDATE_NOTIFIER=1`.
