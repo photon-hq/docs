@@ -12,6 +12,7 @@ You know what arrives ([Events](/webhooks/events)) and how to prove it's real ([
 - **Fast permanent failure.** Other `4xx` codes (`400`/`401`/`404`/etc.) are treated as fatal — we don't waste your retry budget when the request will never succeed.
 - **Bounded budget.** 30-second per-attempt timeout, with ~6.2 seconds of backoff sleeps between attempts. If your server is still down after the final attempt, the event is logged and the worker moves on.
 - **At-least-once delivery.** A retry after your server timed out can re-deliver an event you already processed — always dedupe in your handler (see [Be idempotent](#be-idempotent) below).
+- **URL guard, fail-closed.** Before every attempt the worker validates the target URL: it must be `https://`, must resolve to a public address, and must not redirect. A URL that fails the check is dropped immediately — fatal, no retry — see [Where we won't deliver](#where-we-wont-deliver) below.
 
 This is a bounded-retry contract, not zero-loss delivery. If your use case requires *every* event regardless of downtime (financial audit, transactional state machines), pair webhooks with periodic reconciliation against the [Spectrum API](/api-reference/introduction) — covered later on this page.
 
@@ -69,16 +70,32 @@ Multiple registered URLs receive the same event in parallel via `Promise.allSett
 | Status code(s) | Worker treats as | Result |
 | --- | --- | --- |
 | `2xx` | Success | Delivery complete. Stop. |
+| `3xx` (redirect) | Fatal | We send with `redirect: "manual"` and never follow. Register the endpoint's final URL directly. See [Where we won't deliver](#where-we-wont-deliver). |
 | `5xx` | Retriable | Wait, retry up to 3 more times. |
 | `408 Request Timeout` | Retriable | Wait, retry. |
 | `429 Too Many Requests` | Retriable | Wait, retry. We don't honor `Retry-After` yet — use any 5xx/429 to backpressure. |
 | Any other `4xx` (e.g. `400`, `401`, `403`, `404`, `422`) | Fatal | Don't retry. The assumption is that the request will never succeed (auth bug, schema mismatch, missing route). |
-| Connection refused / DNS error / TCP reset | Retriable | Wait, retry. |
+| Connection refused / TCP reset (after the URL guard passes) | Retriable | Wait, retry. |
+| Hostname doesn't resolve (DNS failure) | Fatal | Caught by the URL guard *before* the request — fail-closed, no retry. |
 | Per-attempt timeout (>30s) | Retriable | Wait, retry. |
 
 <Tip>
 **Return `4xx` deliberately.** Returning `400` or `401` from a real bug (e.g. signature verification failure) is correct — it tells us "stop retrying, this request will never work." Returning `500` for the same bug wastes our retry budget and your CPU cycles.
 </Tip>
+
+## Where we won't deliver
+
+Before each attempt the worker validates the destination URL and **fails closed** — if a URL can't be confirmed safe, the delivery is dropped (fatal, no retry) rather than sent. Three rules:
+
+- **HTTPS only.** Plain `http://` URLs are rejected. Deliveries carry message content and a signature; we won't put either on the wire in plaintext.
+- **Public addresses only.** The hostname must resolve to a public IP. URLs that resolve to loopback (`localhost`, `127.0.0.1`), private networks (`10.x`, `172.16–31.x`, `192.168.x`), or link-local / cloud-metadata addresses (`169.254.169.254` and friends) are blocked. This is SSRF protection — it stops a registered webhook from being turned into a probe against internal services. IPv6 loopback, link-local, and unique-local ranges are blocked the same way.
+- **No redirects.** The worker sends with `redirect: "manual"` and never follows a `3xx`. An endpoint that 301/302s — a trailing-slash redirect, an `http`→`https` bounce, a load-balancer redirect — is treated as a fatal misconfiguration. Register the final URL directly.
+
+A malformed URL or a DNS lookup that fails counts as "can't confirm safe" and is dropped the same way.
+
+<Warning>
+These checks run at **delivery** time, not registration. A URL that violates them still registers successfully — registration only validates URL *syntax* — but then **silently drops every event**, logged as a fatal delivery on our side and invisible on yours. If a freshly-registered webhook never fires, this is the first thing to check: see [Troubleshooting → Every delivery is dropped immediately](/webhooks/troubleshooting#every-delivery-is-dropped-immediately).
+</Warning>
 
 ## What you should do on your end
 
@@ -133,6 +150,9 @@ Returning `503` on overload is fine — we'll back off and retry. But it eats in
 | Endpoint returns `503`, recovers within 6s | Retried, eventually delivered. One process (assuming no `2xx` on the failed attempt). |
 | Endpoint times out after 30s, then succeeds | Retried, eventually delivered. **Possibly processed twice** — your handler ran during the timeout and again on retry. Dedupe required. |
 | Endpoint returns `400` (signature bug, etc.) | Dropped immediately, no retry. Event lost. Logged on our side. |
+| Webhook URL is `http://` (not HTTPS) | Dropped immediately by the URL guard, no retry. Every event lost until you re-register an `https://` URL. |
+| Webhook URL resolves to a private/internal IP | Dropped immediately, no retry (SSRF guard). Logged. |
+| Endpoint responds with a `3xx` redirect | Dropped immediately, no retry. Register the final URL instead. |
 | Endpoint down for >6 seconds | Dropped after 4 attempts. Event lost. |
 | Spectrum worker crashes mid-delivery | Event lost — no durable queue. Subsequent events resume after restart. |
 
