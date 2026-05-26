@@ -81,6 +81,10 @@ When a message arrives on any enabled platform for a project that has webhooks r
 
 Failed deliveries are retried for a few seconds with exponential backoff, then dropped. There is no persistent retry queue or dead-letter destination — see [Delivery and retries](/webhooks/delivery) for the precise policy.
 
+<Note>
+Your webhook URL must be a public **HTTPS** endpoint. The worker won't deliver to plain `http://`, to private/internal addresses (`localhost`, `10.x`, cloud-metadata IPs), or through a redirect — see [Delivery → Where we won't deliver](/webhooks/delivery#where-we-wont-deliver).
+</Note>
+
 ## The mental model
 
 Four ideas cover everything else in these docs:

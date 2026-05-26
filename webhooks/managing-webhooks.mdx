@@ -90,9 +90,14 @@ The `signingSecret` is **only returned in this response**. There is no `GET` end
 
 ### URL requirements
 
-- Should be `https://`. We accept `http://` URLs today and don't reject them at registration, but delivery is then sent in plaintext — anyone on the network path can read the payload and forge requests. Treat HTTPS as a hard requirement for any non-toy webhook.
-- Must be reachable from the public internet — if Spectrum can't reach it, every delivery fails after the retry budget exhausts.
-- Path component is yours to choose; we POST to it as-is.
+Registration only validates that `webhookUrl` is a syntactically valid URL — a malformed string gets a `422`. The real requirements are enforced at **delivery** time by the URL guard, so a URL can register successfully and still drop every event if it violates them:
+
+- **Must be `https://`.** Plain `http://` URLs register but are rejected at delivery (fatal, no retry) — we won't put signed message payloads on the wire in plaintext.
+- **Must resolve to a public address.** URLs pointing at `localhost`, private networks (`10.x` / `172.16–31.x` / `192.168.x`), or link-local / cloud-metadata addresses are blocked as SSRF. The IPv6 equivalents are blocked too.
+- **Must not redirect.** A `3xx` response is treated as a fatal misconfiguration — register the endpoint's final URL directly.
+- **Path component is yours to choose;** we POST to it as-is.
+
+See [Delivery → Where we won't deliver](/webhooks/delivery#where-we-wont-deliver) for the full contract, and [Troubleshooting → Every delivery is dropped immediately](/webhooks/troubleshooting#every-delivery-is-dropped-immediately) if a registered URL never fires.
 
 ## List registered webhooks
 

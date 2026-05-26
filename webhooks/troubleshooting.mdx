@@ -72,6 +72,8 @@ Walk through this checklist in order:
   ```
 
   If this hangs, times out, or returns DNS errors from outside your network, our worker can't reach you either. Check firewalls, security groups, and DNS.
+
+  Also confirm the URL is `https://`, resolves to a public address, and doesn't redirect — otherwise the URL guard drops every delivery before it leaves our worker. See ["Every delivery is dropped immediately"](#every-delivery-is-dropped-immediately) below.
   </Step>
 
   <Step title="Confirm the platform is enabled and connected">
@@ -90,6 +92,21 @@ Walk through this checklist in order:
   We can confirm whether deliveries left our worker via support — include the webhook id, the approximate timestamp, and the URL. We log every delivery attempt with structured fields.
   </Step>
 </Steps>
+
+## "Every delivery is dropped immediately"
+
+The webhook is registered and the platform is sending events, but nothing reaches your server — and our logs show the delivery never left the worker. This is almost always the **URL guard**: we validate the destination before every attempt and fail closed, so a URL that doesn't meet the delivery requirements drops every event without a single `POST`. Registration doesn't catch this — it only checks URL syntax — so the webhook looks healthy in the list.
+
+Check the registered URL against each rule:
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| URL starts with `http://` | HTTPS is required; plaintext is rejected | Re-register with an `https://` URL |
+| URL is `localhost` / `127.0.0.1` / a private or internal address | Blocked as SSRF — must resolve to a public IP | Expose the endpoint publicly (ngrok in dev, a real host in prod) |
+| URL 301/302-redirects (trailing slash, `http`→`https` bounce, LB redirect) | We send `redirect: "manual"` and never follow a `3xx` | Register the final URL the redirect points to |
+| Hostname doesn't resolve | DNS lookup fails; the guard fails closed | Fix DNS, or register a resolvable host |
+
+All of these drop the event as **fatal** — no retry. There's no update endpoint, so fix the URL by deleting and re-registering (see [Managing webhooks](/webhooks/managing-webhooks#delete-a-webhook)); the next event will deliver. Full contract: [Delivery → Where we won't deliver](/webhooks/delivery#where-we-wont-deliver).
 
 ## "I receive duplicates"
 
@@ -113,7 +130,7 @@ A 24-48 hour TTL is plenty — we never retry beyond a few seconds.
 
 ## "Deliveries time out"
 
-If you're seeing your endpoint logged as "took >10s," it triggers a retry on our side and a likely duplicate processing on yours.
+If you're seeing your endpoint logged as "took >30s," it triggers a retry on our side and a likely duplicate processing on yours.
 
 ### Diagnosis
 
@@ -128,7 +145,7 @@ app.post('/spectrum-webhook', async (c) => {
 });
 ```
 
-Anything network-dependent in the request path can blow past 10s.
+Anything network-dependent in the request path can blow past 30s.
 
 ### Fix
 
