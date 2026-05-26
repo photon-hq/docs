@@ -10,7 +10,7 @@ You know what arrives ([Events](/webhooks/events)) and how to prove it's real ([
 - **Strong retry behaviour.** Up to 4 attempts per event, with backoff on `5xx`, `408`, `429`, network errors, and worker-side timeouts. The vast majority of deliveries land on attempt 1; the retries are there for the occasional bad minute on your side.
 - **Fast acknowledgement.** Any `2xx` ends it — the worker stops as soon as your server says ok.
 - **Fast permanent failure.** Other `4xx` codes (`400`/`401`/`404`/etc.) are treated as fatal — we don't waste your retry budget when the request will never succeed.
-- **Bounded budget.** 10-second per-attempt timeout, ~6.2 second total across all retries. If your server is still down after that, the event is logged and the worker moves on.
+- **Bounded budget.** 30-second per-attempt timeout, with ~6.2 seconds of backoff sleeps between attempts. If your server is still down after the final attempt, the event is logged and the worker moves on.
 - **At-least-once delivery.** A retry after your server timed out can re-deliver an event you already processed — always dedupe in your handler (see [Be idempotent](#be-idempotent) below).
 
 This is a bounded-retry contract, not zero-loss delivery. If your use case requires *every* event regardless of downtime (financial audit, transactional state machines), pair webhooks with periodic reconciliation against the [Spectrum API](/api-reference/introduction) — covered later on this page.
@@ -45,7 +45,7 @@ sequenceDiagram
   Note over W: ✓ delivered after retry
 ```
 
-Total wall-clock budget across all attempts: roughly 6.2 seconds (200ms + 1s + 5s of sleeps, plus per-attempt time on the network). The worker stops as soon as it gets a 2xx or determines further retries are pointless.
+The backoff *sleeps* total ~6.2 seconds (200ms + 1s + 5s). Wall-clock time also includes per-attempt network time, bounded by the 30-second per-attempt timeout: a healthy delivery finishes in milliseconds, while a worst case where every attempt hangs to the timeout can run up to ~2 minutes before the worker gives up. It stops as soon as it gets a 2xx or determines further retries are pointless.
 
 ## Retry policy
 
@@ -56,7 +56,7 @@ Total wall-clock budget across all attempts: roughly 6.2 seconds (200ms + 1s + 5
 | 3 | 1 second after attempt 2 ends |
 | 4 | 5 seconds after attempt 3 ends |
 
-Per-attempt timeout: **10 seconds** (configurable via `DELIVERY_TIMEOUT_MS` on our side, but you should treat 10s as the practical ceiling).
+Per-attempt timeout: **30 seconds** (configurable via `DELIVERY_TIMEOUT_MS` on our side). Treat it as a hard ceiling, not a target — acknowledge in well under a second and push slow work off the response path (see [Acknowledge fast](#acknowledge-fast-process-asynchronously) below).
 
 After attempt 4 fails, the event is logged and dropped. There is no persistent queue and no dead-letter destination — both are out of scope for v1.
 
@@ -74,7 +74,7 @@ Multiple registered URLs receive the same event in parallel via `Promise.allSett
 | `429 Too Many Requests` | Retriable | Wait, retry. We don't honor `Retry-After` yet — use any 5xx/429 to backpressure. |
 | Any other `4xx` (e.g. `400`, `401`, `403`, `404`, `422`) | Fatal | Don't retry. The assumption is that the request will never succeed (auth bug, schema mismatch, missing route). |
 | Connection refused / DNS error / TCP reset | Retriable | Wait, retry. |
-| Per-attempt timeout (>10s) | Retriable | Wait, retry. |
+| Per-attempt timeout (>30s) | Retriable | Wait, retry. |
 
 <Tip>
 **Return `4xx` deliberately.** Returning `400` or `401` from a real bug (e.g. signature verification failure) is correct — it tells us "stop retrying, this request will never work." Returning `500` for the same bug wastes our retry budget and your CPU cycles.
@@ -97,7 +97,7 @@ app.post('/spectrum-webhook', async (c) => {
 });
 ```
 
-If your handler takes >10 seconds, the worker will time out the connection, mark it retriable, and `POST` again. Now you'll process the same event twice.
+If your handler takes >30 seconds, the worker will time out the connection, mark it retriable, and `POST` again. Now you'll process the same event twice.
 
 ### Be idempotent
 
@@ -131,7 +131,7 @@ Returning `503` on overload is fine — we'll back off and retry. But it eats in
 | --- | --- |
 | Endpoint returns `2xx` on first try | Best case. One delivery, one process. |
 | Endpoint returns `503`, recovers within 6s | Retried, eventually delivered. One process (assuming no `2xx` on the failed attempt). |
-| Endpoint times out after 10s, then succeeds | Retried, eventually delivered. **Possibly processed twice** — your handler ran during the timeout and again on retry. Dedupe required. |
+| Endpoint times out after 30s, then succeeds | Retried, eventually delivered. **Possibly processed twice** — your handler ran during the timeout and again on retry. Dedupe required. |
 | Endpoint returns `400` (signature bug, etc.) | Dropped immediately, no retry. Event lost. Logged on our side. |
 | Endpoint down for >6 seconds | Dropped after 4 attempts. Event lost. |
 | Spectrum worker crashes mid-delivery | Event lost — no durable queue. Subsequent events resume after restart. |
