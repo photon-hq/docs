@@ -4,7 +4,8 @@
   "private": true,
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "docs:generate": "vellum build",
+    "docs:generate": "vellum build && tsx scripts/llms-generator/index.ts",
+    "docs:llms": "tsx scripts/llms-generator/index.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck:docs": "tsx scripts/typecheck-docs/index.ts",

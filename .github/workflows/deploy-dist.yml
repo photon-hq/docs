@@ -49,6 +49,9 @@ jobs:
           # Force-add all Vellum-generated files (gitignored, but needed on dist)
           git add -f $(find docs-src -name '*.vel' | sed 's|^docs-src/||;s|\.vel$||')
 
+          # Force-add custom llms.txt generator output (also gitignored)
+          git add -f llms.txt llms-full.txt llms-*.txt
+
           # Commit onto a detached HEAD so main is untouched
           TREE=$(git write-tree)
           PARENT=$(git rev-parse HEAD)
