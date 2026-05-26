@@ -50,7 +50,7 @@ Every message conforms to <TypeTooltip name="Message" type={`{{ message.signatur
     </tr>
     <tr>
       <td><code>platform</code></td>
-      <td>Name of the provider that delivered the message (e.g. <code>"iMessage"</code>, <code>"terminal"</code>).</td>
+      <td>Name of the provider that delivered the message (e.g. <code>"iMessage"</code>, <code>"Terminal"</code>).</td>
     </tr>
     <tr>
       <td><code>timestamp</code></td>
