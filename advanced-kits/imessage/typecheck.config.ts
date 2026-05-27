@@ -8,8 +8,10 @@ import type {
   AdvancedIMessage,
   AttachmentInfo,
   Chat,
+  CustomizedMiniAppMessage,
   LocationRequestReceipt,
   Message,
+  MiniAppLayout,
   Poll,
   UploadAttachmentResult,
 } from "@photon-ai/advanced-imessage";

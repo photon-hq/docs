@@ -3,6 +3,11 @@ title: "Messages"
 description: "Send, reply, react, edit, list, and subscribe to iMessage events"
 ---
 
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+{% set customizedMiniApp = symbol("ts:@photon-ai/advanced-imessage#CustomizedMiniAppMessage") %}
+{% set miniAppLayout = symbol("ts:@photon-ai/advanced-imessage#MiniAppLayout") %}
+
 `im.messages` sends, reads, mutates, and subscribes to messages.
 
 Get a `chat.guid` before calling message APIs. `chat.guid` is the server's chat identifier. It is not an email address or phone number. If you only have a recipient address, create or resolve the chat first with [`im.chats.create(...)`](/advanced-kits/imessage/chats).
@@ -22,7 +27,7 @@ Get a `chat.guid` before calling message APIs. `chat.guid` is the server's chat 
 | Add a message effect | `effect: MessageEffect.*` |
 | Format text | `formatting: [...]` |
 | Send an attachment | Upload with `im.attachments.upload(...)`, then call `im.messages.sendAttachment(...)` |
-| Send a mini app card | `im.messages.sendMiniApp(chat.guid, { url, preview })` |
+| Send a customized mini app card | `im.messages.sendCustomizedMiniApp(chat.guid, message)` |
 | Reply to a message | `replyTo` on `sendText(...)`, `sendAttachment(...)`, or `sendMultipart(...)` |
 | Send multipart content | `im.messages.sendMultipart(...)` |
 | Add or remove a reaction | `im.messages.setReaction(...)` |
@@ -184,17 +189,22 @@ await im.messages.sendAttachment(chat.guid, audio.attachment.guid, {
   <img src="/images/advanced-kits/imessage/messages/audio-message.avif" alt="iMessage audio message bubble with play button and waveform" />
 </Frame>
 
-## Send Mini App Cards
+## Send Customized Mini App Cards
 
-`sendMiniApp(...)` sends a tappable iMessage card that opens a URL. Use it when you want a custom preview card instead of an automatic link preview.
+`sendCustomizedMiniApp(...)` sends an iMessage mini-app card backed by your own iMessage extension. The server assembles Apple's balloon plugin id from `teamId` and `extensionBundleId`. Recipients with the extension installed open it on tap; others see the App Store entry referenced by `appStoreId`.
+
+Pass a <TypeTooltip name="CustomizedMiniAppMessage" type={`{{ customizedMiniApp.signature }}`} /> describing the extension ownership and card layout:
 
 ```ts
-const sent = await im.messages.sendMiniApp(chat.guid, {
-  url: "https://photon.codes",
-  preview: {
-    title: "Photon",
-    subtitle: "photon.codes",
-    body: "Build messaging agents with advanced iMessage support.",
+const sent = await im.messages.sendCustomizedMiniApp(chat.guid, {
+  teamId: "TEAMID1234",
+  extensionBundleId: "com.example.app.MessagesExtension",
+  appName: "Example",
+  appStoreId: 1234567890,
+  url: "exampleapp://card/42",
+  layout: {
+    caption: "Card Title",
+    subcaption: "example.com",
   },
 });
 
@@ -202,46 +212,53 @@ console.log(sent.guid);
 ```
 
 <Frame>
-  <img src="/images/advanced-kits/imessage/messages/mini-app-card.avif" alt="Mini app card preview showing a custom web page card" />
+  <img src="/images/advanced-kits/imessage/messages/mini-app-card.avif" alt="Mini app card preview showing a custom iMessage extension card" />
 </Frame>
 
-The SDK only asks for the destination URL and the preview content shown on the card. The server handles the iMessage app-card details internally.
-
-Only `url` and `preview.title` are required. Most cards should also set `preview.subtitle`, `preview.body`, and `preview.imageJpeg` when that content is available. To include an image, pass JPEG bytes as `preview.imageJpeg`:
+The `layout` field mirrors Apple's `MSMessageTemplateLayout`. At least one of `caption`, `subcaption`, `trailingCaption`, `trailingSubcaption`, or `image` must be set, otherwise the card renders as an empty bubble and is rejected. To include an image, pass JPEG bytes as `layout.image`:
 
 ```ts
-await im.messages.sendMiniApp(chat.guid, {
-  url: "https://photon.codes",
-  preview: {
-    title: "Photon",
-    subtitle: "photon.codes",
-    imageJpeg: await readFile("preview.jpg"),
+await im.messages.sendCustomizedMiniApp(chat.guid, {
+  teamId: "TEAMID1234",
+  extensionBundleId: "com.example.app.MessagesExtension",
+  appName: "Example",
+  appStoreId: 1234567890,
+  url: "exampleapp://card/42",
+  layout: {
+    caption: "Card Title",
+    subcaption: "example.com",
+    image: await readFile("preview.jpg"),
+    imageTitle: "Overlay title",
   },
 });
 ```
 
-| Field | Required | Meaning |
-|---|---|---|
-| `url` | Yes | URL opened when the recipient taps the card |
-| `preview.title` | Yes | Primary text shown on the card |
-| `preview.subtitle` | No | Secondary text |
-| `preview.body` | No | Supporting text |
-| `preview.imageJpeg` | No | JPEG preview image bytes |
-| `preview.caption` | No | Additional small label when the card layout has room |
-| `preview.footer` | No | Additional footer label when the card layout has room |
-| `preview.detail` | No | Additional detail label when the card layout has room |
-| `preview.summary` | No | Fallback summary for surfaces that cannot show the full card |
+<Accordion title="CustomizedMiniAppMessage" description="{{ customizedMiniApp.doc.summary }}">
+  | Field | Type | Description |
+  |---|---|---|
+  {% for m in customizedMiniApp.members -%}
+  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
+  {% endfor %}
+</Accordion>
+
+<Accordion title="MiniAppLayout" description="{{ miniAppLayout.doc.summary }}">
+  | Field | Type | Description |
+  |---|---|---|
+  {% for m in miniAppLayout.members -%}
+  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
+  {% endfor %}
+</Accordion>
 
 | Option | Meaning |
 |---|---|
 | `clientMessageId` | Optional idempotency key for job retries; pass it as `options.clientMessageId` in the final argument |
 
 <Warning>
-  Pass JPEG bytes to `preview.imageJpeg`. If your source image is PNG, WebP, HEIC, or another format, convert it to JPEG before calling `sendMiniApp(...)`.
+  Pass JPEG bytes to `layout.image`. If your source image is PNG, WebP, HEIC, or another format, convert it to JPEG before calling `sendCustomizedMiniApp(...)`.
 </Warning>
 
 <Note>
-  `sendMiniApp(...)` is its own send operation. It does not upload files first, does not take an attachment GUID, and does not use `replyTo` or message effects.
+  `sendCustomizedMiniApp(...)` is its own send operation. It does not upload files first, does not take an attachment GUID, and does not use `replyTo` or message effects.
 </Note>
 
 ## Reply to a Message
