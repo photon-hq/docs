@@ -6,12 +6,14 @@ description: The exact wire format Spectrum sends — headers, body, and what ea
 {# We deliberately do NOT use TypeTooltip on the Space/User/Message types here.
    The SDK interfaces include methods (`.send()`, `.edit()`, `.getMessage()`,
    etc.) that don't survive `JSON.stringify` — showing them as the type of a
-   webhook payload field is actively misleading. The serialized shapes on the
-   wire are simpler: `{ id, platform }` for Space and User. #}
+   webhook payload field is actively misleading. The wire shapes are simpler:
+   `space` carries `{ id, platform, ...platformSchemaFields }` (e.g. iMessage
+   forwards `phone` + `type` from `imessage.space`), and `user` carries
+   `{ id, platform }`. #}
 
 In the [Quickstart](/webhooks/quickstart), a real delivery flew past in `console.log`. This page is the spec — every header and every field your handler will see on every request, slowed down and labelled.
 
-The body's `space`, `message`, `sender`, and `content` fields are the same shapes you'd see from the [`spectrum-ts` SDK](/spectrum-ts/messages) — with one important difference: function-typed properties (`.read()`, `.stream()`, `.reply()`, `.react()`, etc.) are stripped before serialization, since functions can't survive `JSON.stringify`.
+The body's `space`, `message`, `sender`, and `content` fields are the same shapes you'd see from the [`spectrum-ts` SDK](/spectrum-ts/messages) — with one important difference: function-typed properties (`.read()`, `.stream()`, `.reply()`, `.react()`, etc.) are stripped before serialization, since functions can't survive `JSON.stringify`. Every other own enumerable field declared by the platform's `Space` schema (e.g. iMessage's `phone` and `type`) is forwarded unchanged.
 
 ## Anatomy of a delivery
 
@@ -29,7 +31,9 @@ X-Spectrum-Signature: v0=fc9bf49ef3ba4122ba4be6e289f88ac692f5ce8e13f0415cb38d594
   "event": "messages",
   "space": {
     "id": "any;-;+15550100",
-    "platform": "iMessage"
+    "platform": "iMessage",
+    "type": "dm",
+    "phone": "+15551234567"
   },
   "message": {
     "id": "spc-msg-00000000-0000-4000-8000-000000000001",
@@ -42,7 +46,9 @@ X-Spectrum-Signature: v0=fc9bf49ef3ba4122ba4be6e289f88ac692f5ce8e13f0415cb38d594
     },
     "space": {
       "id": "any;-;+15550100",
-      "platform": "iMessage"
+      "platform": "iMessage",
+      "type": "dm",
+      "phone": "+15551234567"
     },
     "content": {
       "type": "text",
@@ -86,15 +92,23 @@ This is the only event currently emitted. It fires once per inbound message that
 | Field | Type | Description |
 | --- | --- | --- |
 | `event` | `"messages"` | Discriminator. Always `"messages"` for this payload. |
-| `space` | `{ id, platform }` | The conversation context. See [Space](#space) below. |
+| `space` | `object` | The conversation context. Always carries `id` + `platform`; additional fields depend on the platform — see [Space](#space) below. |
 | `message` | `object` | The inbound message. See [Message](#message) below. |
 
 #### Space
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `id` | `string` | Opaque, stable identifier for the conversation. Format varies by platform and space type — treat it as a string you store and pass back unchanged. For iMessage DMs, looks like `any;-;+<E.164>`; for groups, a chat GUID. |
-| `platform` | `string` | The platform that owns this space. See [Providers](/spectrum-ts/providers) for the current set of values; new platforms add new values without breaking existing payloads. |
+Every `space` object guarantees `id` and `platform`. Every other own enumerable field declared by the platform's [`Space`](/spectrum-ts/spaces-and-users) schema is forwarded inline — function-typed SDK methods (`send`, `edit`, `getMessage`, etc.) are the only thing stripped. The current per-platform fields are:
+
+| Field | Type | Platforms | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | all | Opaque, stable identifier for the conversation. Format varies by platform and space type — treat it as a string you store and pass back unchanged. For iMessage DMs, looks like `any;-;+<E.164>`; for groups, a chat GUID. |
+| `platform` | `string` | all | The platform that owns this space. See [Providers](/spectrum-ts/providers) for the current set of values; new platforms add new values without breaking existing payloads. |
+| `type` | `"dm" \| "group"` | iMessage | Conversation kind. `"dm"` is a 1:1 chat with one phone number; `"group"` is a multi-recipient chat. |
+| `phone` | `string` | iMessage | The E.164 phone number this conversation was received on. Use it to disambiguate which of your project's registered iMessage numbers the message landed on. |
+
+<Note>
+**Forward-compatible.** New platform schema fields are forwarded automatically without a webhook deploy. Read the fields you care about; ignore the rest.
+</Note>
 
 The `space.id` matches the `space.id` you'd see from the [`spectrum-ts` SDK](/spectrum-ts/spaces-and-users) — pass it to `Space.send(...)` from a separately-running SDK instance to reply. There is no public HTTP send-message endpoint today.
 
@@ -107,7 +121,7 @@ The `space.id` matches the `space.id` you'd see from the [`spectrum-ts` SDK](/sp
 | `direction` | `"inbound"` | Always `"inbound"` — outbound messages are not delivered as webhooks. |
 | `timestamp` | `string` | ISO 8601 UTC timestamp from the platform (when the user sent it). |
 | `sender` | `{ id, platform }` | The user who sent the message. The `id` format is platform-defined (for iMessage it's the E.164 phone number `+15551234567`; for WhatsApp Business it's the WA contact id). |
-| `space` | `{ id, platform }` | A copy of the top-level `space` field, denormalized for convenience. |
+| `space` | `object` | A copy of the top-level `space` field, denormalized for convenience. Same shape — see [Space](#space) above. |
 | `content` | object | The message content. Shape depends on the message type — see [Content shapes](#content-shapes) below. |
 
 #### Idempotency: the `message.id` rule
