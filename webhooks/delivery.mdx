@@ -7,10 +7,10 @@ You know what arrives ([Events](/webhooks/events)) and how to prove it's real ([
 
 ## The contract at a glance
 
-- **Strong retry behaviour.** Up to 4 attempts per event by default, with exponential backoff plus jitter on `5xx`, `408`, `429`, network errors, and worker-side timeouts. The vast majority of deliveries land on attempt 1; the retries are there for the occasional bad minute on your side.
+- **Strong retry behaviour.** Up to 6 attempts per event by default, with exponential backoff plus jitter on `5xx`, `408`, `429`, network errors, and worker-side timeouts. The vast majority of deliveries land on attempt 1; the retries are there for the occasional bad minute on your side.
 - **Fast acknowledgement.** Any `2xx` ends it — the worker stops as soon as your server says ok.
 - **Fast permanent failure.** Other `4xx` codes (`400`/`401`/`404`/etc.) are treated as fatal — we don't waste your retry budget when the request will never succeed.
-- **Bounded budget.** 30-second per-attempt timeout, with up to ~9.3 seconds of backoff sleeps between attempts (jittered). If your server is still down after the final attempt, the event is logged and the worker moves on — there is no dead-letter queue today.
+- **Bounded budget.** 30-second per-attempt timeout, with up to ~39 seconds of backoff sleeps between attempts (jittered). If your server is still down after the final attempt, the event is logged and the worker moves on — there is no dead-letter queue today.
 - **At-least-once delivery.** A retry after your server timed out can re-deliver an event you already processed — always dedupe in your handler (see [Be idempotent](#be-idempotent) below).
 - **URL guard, fail-closed.** Before every attempt the worker validates the target URL: it must be `https://`, must resolve to a public address, and must not redirect. A URL that fails the check is dropped immediately — fatal, no retry — see [Where we won't deliver](#where-we-wont-deliver) below.
 
@@ -46,7 +46,7 @@ sequenceDiagram
   Note over W: ✓ delivered after retry
 ```
 
-The backoff *sleeps* sum to ~6.2 seconds in the average case (200ms + 1s + 5s) and ~9.3 seconds in the worst case (jitter ceiling). Wall-clock time also includes per-attempt network time, bounded by the 30-second per-attempt timeout: a healthy delivery finishes in milliseconds, while a worst case where every attempt hangs to the timeout can run up to ~2 minutes before the worker gives up. It stops as soon as it gets a 2xx or determines further retries are pointless.
+The backoff *sleeps* sum to ~26.2 seconds in the average case (200ms + 1s + 5s + 10s + 10s) and ~39.3 seconds in the worst case (jitter ceiling). Wall-clock time also includes per-attempt network time, bounded by the 30-second per-attempt timeout: a healthy delivery finishes in milliseconds, while a worst case where every attempt hangs to the timeout can run up to ~3.5 minutes before the worker gives up. It stops as soon as it gets a 2xx or determines further retries are pointless.
 
 ## Retry policy
 
@@ -58,10 +58,12 @@ Retries follow an exponential-backoff schedule with ±50% jitter applied to ever
 | 2 | 200ms after attempt 1 ends | `[100ms, 300ms)` |
 | 3 | 1 second after attempt 2 ends | `[500ms, 1500ms)` |
 | 4 | 5 seconds after attempt 3 ends | `[2.5s, 7.5s)` |
+| 5 | 10 seconds after attempt 4 ends (clamped from a formula value of 25s by the per-attempt cap) | `[5s, 15s)` |
+| 6 | 10 seconds after attempt 5 ends (clamped from a formula value of 125s by the per-attempt cap) | `[5s, 15s)` |
 
 Per-attempt timeout: **30 seconds**. Treat it as a hard ceiling, not a target — acknowledge in well under a second and push slow work off the response path (see [Acknowledge fast](#acknowledge-fast-process-asynchronously) below).
 
-After attempt 4 fails, the event is logged and dropped. There is no persistent queue and no dead-letter destination — both are out of scope for v1.
+After attempt 6 fails, the event is logged and dropped. There is no persistent queue and no dead-letter destination — both are out of scope for v1.
 
 <Note>
 Multiple registered URLs receive the same event in parallel via `Promise.allSettled`. One slow or failing URL never delays delivery to the others.
@@ -69,18 +71,18 @@ Multiple registered URLs receive the same event in parallel via `Promise.allSett
 
 ### Why jitter matters
 
-A naive deterministic schedule (`200ms, 1s, 5s` to the millisecond) means that when *every* project's deliveries flap at once — a rolling deploy on your side, a regional DB failover, a noisy upstream — every retry across every project queues at exactly the same offsets and lands on your first healthy moment as a coordinated herd. Jitter spreads each scheduled delay across a window twice as wide as the expected value, so the retry volume smears out and your connection pool / WAF / autoscaler get room to absorb the load gracefully.
+A naive deterministic schedule (`200ms, 1s, 5s, 10s, 10s` to the millisecond) means that when *every* project's deliveries flap at once — a rolling deploy on your side, a regional DB failover, a noisy upstream — every retry across every project queues at exactly the same offsets and lands on your first healthy moment as a coordinated herd. Jitter spreads each scheduled delay across a window twice as wide as the expected value, so the retry volume smears out and your connection pool / WAF / autoscaler get room to absorb the load gracefully.
 
 ### Tunable on our side
 
-The retry schedule is operator-configurable. The Photon team can adjust these knobs per environment to trade latency for durability — useful, for example, if a regulated workload needs to tolerate a longer outage than the default ~6.5s budget covers. The full set:
+The retry schedule is operator-configurable. The Photon team can adjust these knobs per environment to trade latency for durability — useful, for example, if a regulated workload needs to tolerate a longer outage than the default ~30s budget covers. The full set:
 
 | Knob | Default | Effect |
 | --- | --- | --- |
 | Initial delay | 200ms | The `i = 0` term — delay before the first retry. |
 | Growth factor | 5× | Multiplier applied per retry index (`200ms → 1s → 5s → ...`). |
 | Per-attempt cap | 10 seconds | Ceiling applied to every computed delay before jitter, so the curve can't run away. |
-| Total attempts | 4 (initial + 3 retries) | Higher values trade wall-clock latency for more retries against a flaky endpoint. |
+| Total attempts | 6 (initial + 5 retries) | Higher values trade wall-clock latency for more retries against a flaky endpoint. |
 
 These are *internal* env vars on the spectrum-webhook worker — customers can't set them per-webhook today. If you have a use case that needs different retry behaviour (more retries, longer ceiling), reach out and we'll discuss tuning the deployment-wide defaults or adding a per-project override. Open an issue on the [docs repo](https://github.com/photon-hq/docs) or message us in the [Discord](https://discord.gg/4c3VJzDfNA).
 
@@ -94,7 +96,7 @@ If you're seeing duplicates after long handler waits — say, attempt 1 takes 28
 | --- | --- | --- |
 | `2xx` | Success | Delivery complete. Stop. |
 | `3xx` (redirect) | Fatal | We send with `redirect: "manual"` and never follow. Register the endpoint's final URL directly. See [Where we won't deliver](#where-we-wont-deliver). |
-| `5xx` | Retriable | Wait, retry up to 3 more times. |
+| `5xx` | Retriable | Wait, retry up to 5 more times. |
 | `408 Request Timeout` | Retriable | Wait, retry. |
 | `429 Too Many Requests` | Retriable | Wait, retry. We don't honor `Retry-After` yet — use any 5xx/429 to backpressure. |
 | Any other `4xx` (e.g. `400`, `401`, `403`, `404`, `422`) | Fatal | Don't retry. The assumption is that the request will never succeed (auth bug, schema mismatch, missing route). |
@@ -154,7 +156,7 @@ await processOnce(payload);
 await markProcessed(dedupeKey);
 ```
 
-A short TTL (24-48 hours) on the dedupe table is enough — the retry budget is bounded to under a minute even with jitter, so anything we'd re-deliver lands well inside that window.
+A short TTL (24-48 hours) on the dedupe table is enough — the retry budget is bounded to a few minutes even with jitter and per-attempt timeouts, so anything we'd re-deliver lands well inside that window.
 
 ### Handle bursts
 
@@ -170,13 +172,13 @@ Returning `503` on overload is fine — we'll back off and retry. But it eats in
 | Scenario | Outcome |
 | --- | --- |
 | Endpoint returns `2xx` on first try | Best case. One delivery, one process. |
-| Endpoint returns `503`, recovers within 6s | Retried, eventually delivered. One process (assuming no `2xx` on the failed attempt). |
+| Endpoint returns `503`, recovers within ~30s | Retried, eventually delivered. One process (assuming no `2xx` on the failed attempt). |
 | Endpoint times out after 30s, then succeeds | Retried, eventually delivered. **Possibly processed twice** — your handler ran during the timeout and again on retry. Dedupe required. |
 | Endpoint returns `400` (signature bug, etc.) | Dropped immediately, no retry. Event lost. Logged on our side. |
 | Webhook URL is `http://` (not HTTPS) | Dropped immediately by the URL guard, no retry. Every event lost until you re-register an `https://` URL. |
 | Webhook URL resolves to a private/internal IP | Dropped immediately, no retry (SSRF guard). Logged. |
 | Endpoint responds with a `3xx` redirect | Dropped immediately, no retry. Register the final URL instead. |
-| Endpoint down for the full retry window (~6.5s default, more if you've requested tuning) | Dropped after the final attempt. Event lost — no DLQ today. |
+| Endpoint down for the full retry window (~30s default, more if you've requested tuning) | Dropped after the final attempt. Event lost — no DLQ today. |
 | Spectrum worker crashes mid-delivery | Event lost — no durable queue. Subsequent events resume after restart. |
 
 The "event lost" rows are why this is **at-least-once, with bounded retries**, not "guaranteed delivery." If your use case requires zero loss (financial transactions, audit logging), pair webhooks with periodic reconciliation against the [Spectrum API](/api-reference/introduction) — list messages on the space and backfill anything you missed.
