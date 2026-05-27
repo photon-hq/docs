@@ -22,7 +22,7 @@ Get a `chat.guid` before calling message APIs. `chat.guid` is the server's chat 
 | Add a message effect | `effect: MessageEffect.*` |
 | Format text | `formatting: [...]` |
 | Send an attachment | Upload with `im.attachments.upload(...)`, then call `im.messages.sendAttachment(...)` |
-| Send a mini app card | `im.messages.sendMiniApp(chat.guid, { url, preview })` |
+| Send a card that opens your iMessage extension | `im.messages.sendCustomizedMiniApp(chat.guid, message)` |
 | Reply to a message | `replyTo` on `sendText(...)`, `sendAttachment(...)`, or `sendMultipart(...)` |
 | Send multipart content | `im.messages.sendMultipart(...)` |
 | Add or remove a reaction | `im.messages.setReaction(...)` |
@@ -186,63 +186,65 @@ await im.messages.sendAttachment(chat.guid, audio.attachment.guid, {
 
 ## Send Mini App Cards
 
-`sendMiniApp(...)` sends a tappable iMessage card that opens a URL. Use it when you want a custom preview card instead of an automatic link preview.
+`sendCustomizedMiniApp(...)` sends a card that, when tapped, opens your iMessage extension and hands it `url`. Use it to launch your own app with a structured payload; for plain link previews, just put the URL in `sendText(...)`.
+
+You need a published iMessage extension on the App Store before you can call this. `appName`, `appStoreId`, `teamId`, and `extensionBundleId` identify that extension so Messages.app can route the tap to it on the recipient's device.
+
+For most cards we recommend an image preview with an overlaid title:
 
 ```ts
-const sent = await im.messages.sendMiniApp(chat.guid, {
-  url: "https://photon.codes",
-  preview: {
-    title: "Photon",
-    subtitle: "photon.codes",
-    body: "Build messaging agents with advanced iMessage support.",
+const sent = await im.messages.sendCustomizedMiniApp(chat.guid, {
+  appName: "MyGame",
+  appStoreId: 1234567890,
+  teamId: "ABCDE12345",
+  extensionBundleId: "com.example.mygame.MessagesExtension",
+  url: "https://mygame.example.com/level/7",
+  layout: {
+    image: await readFile("preview.jpg"),
+    imageTitle: "Level 7",
   },
 });
 
 console.log(sent.guid);
 ```
 
-<Frame>
-  <img src="/images/advanced-kits/imessage/messages/mini-app-card.avif" alt="Mini app card preview showing a custom web page card" />
-</Frame>
-
-The SDK only asks for the destination URL and the preview content shown on the card. The server handles the iMessage app-card details internally.
-
-Only `url` and `preview.title` are required. Most cards should also set `preview.subtitle`, `preview.body`, and `preview.imageJpeg` when that content is available. To include an image, pass JPEG bytes as `preview.imageJpeg`:
-
-```ts
-await im.messages.sendMiniApp(chat.guid, {
-  url: "https://photon.codes",
-  preview: {
-    title: "Photon",
-    subtitle: "photon.codes",
-    imageJpeg: await readFile("preview.jpg"),
-  },
-});
-```
-
-| Field | Required | Meaning |
-|---|---|---|
-| `url` | Yes | URL opened when the recipient taps the card |
-| `preview.title` | Yes | Primary text shown on the card |
-| `preview.subtitle` | No | Secondary text |
-| `preview.body` | No | Supporting text |
-| `preview.imageJpeg` | No | JPEG preview image bytes |
-| `preview.caption` | No | Additional small label when the card layout has room |
-| `preview.footer` | No | Additional footer label when the card layout has room |
-| `preview.detail` | No | Additional detail label when the card layout has room |
-| `preview.summary` | No | Fallback summary for surfaces that cannot show the full card |
-
-| Option | Meaning |
+| Field | Meaning |
 |---|---|
-| `clientMessageId` | Optional idempotency key for job retries; pass it as `options.clientMessageId` in the final argument |
-
-<Warning>
-  Pass JPEG bytes to `preview.imageJpeg`. If your source image is PNG, WebP, HEIC, or another format, convert it to JPEG before calling `sendMiniApp(...)`.
-</Warning>
+| `appName` | Display name of your app. Recipients without your extension installed see this on an App Store install prompt. |
+| `appStoreId` | Numeric App Store id, e.g. `1234567890` from `apps.apple.com/app/id1234567890`. Positive integer. |
+| `teamId` | 10-character uppercase alphanumeric Apple Team ID. Find it in App Store Connect → Membership. |
+| `extensionBundleId` | Bundle identifier of the iMessage extension target inside your app. |
+| `url` | Absolute URL delivered to your extension when the recipient taps the card. |
+| `layout` | What the card looks like in the conversation, covered in [Card Layout](#card-layout) below. |
 
 <Note>
-  `sendMiniApp(...)` is its own send operation. It does not upload files first, does not take an attachment GUID, and does not use `replyTo` or message effects.
+  This call does not accept `replyTo`, message effects, or `subject`. The only option you can pass in the final argument is `clientMessageId`, used as an idempotency key for job retries.
 </Note>
+
+### Card Layout
+
+`layout` mirrors Apple's `MSMessageTemplateLayout` — slot names match the Apple field names, so Apple's documentation applies directly.
+
+| Slot | Where it renders |
+|---|---|
+| `caption` | Top-left, bold. The most prominent text slot. |
+| `subcaption` | Below `caption`, on the left. |
+| `trailingCaption` | Top-right. |
+| `trailingSubcaption` | Below `trailingCaption`, on the right. |
+| `image` | JPEG preview image filling the card. |
+| `imageTitle` | Overlay text above the image. |
+| `imageSubtitle` | Overlay text below `imageTitle`. |
+| `summary` | Fallback text for notifications, lock screens, and other surfaces that cannot render the full card. |
+
+The server enforces these rules at send time:
+
+- At least one of `caption`, `subcaption`, `trailingCaption`, `trailingSubcaption`, or `image` must be set. `summary` alone is not enough — it only appears on fallback surfaces.
+- `image` and `imageTitle` must be set together. Setting one without the other is rejected.
+- `imageSubtitle` requires `image`.
+
+<Warning>
+  `layout.image` must be JPEG bytes. The server checks the JPEG SOI marker (`FF D8`) and rejects any other format. Convert PNG, WebP, HEIC, or anything else to JPEG before calling.
+</Warning>
 
 ## Reply to a Message
 
