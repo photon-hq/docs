@@ -3,11 +3,6 @@ title: "Messages"
 description: "Send, reply, react, edit, list, and subscribe to iMessage events"
 ---
 
-import { TypeTooltip } from "/snippets/type-tooltip.mdx";
-
-{% set customizedMiniApp = symbol("ts:@photon-ai/advanced-imessage#CustomizedMiniAppMessage") %}
-{% set miniAppLayout = symbol("ts:@photon-ai/advanced-imessage#MiniAppLayout") %}
-
 `im.messages` sends, reads, mutates, and subscribes to messages.
 
 Get a `chat.guid` before calling message APIs. `chat.guid` is the server's chat identifier. It is not an email address or phone number. If you only have a recipient address, create or resolve the chat first with [`im.chats.create(...)`](/advanced-kits/imessage/chats).
@@ -27,7 +22,7 @@ Get a `chat.guid` before calling message APIs. `chat.guid` is the server's chat 
 | Add a message effect | `effect: MessageEffect.*` |
 | Format text | `formatting: [...]` |
 | Send an attachment | Upload with `im.attachments.upload(...)`, then call `im.messages.sendAttachment(...)` |
-| Send a customized mini app card | `im.messages.sendCustomizedMiniApp(chat.guid, message)` |
+| Send a card that opens your iMessage extension | `im.messages.sendCustomizedMiniApp(chat.guid, message)` |
 | Reply to a message | `replyTo` on `sendText(...)`, `sendAttachment(...)`, or `sendMultipart(...)` |
 | Send multipart content | `im.messages.sendMultipart(...)` |
 | Add or remove a reaction | `im.messages.setReaction(...)` |
@@ -189,77 +184,67 @@ await im.messages.sendAttachment(chat.guid, audio.attachment.guid, {
   <img src="/images/advanced-kits/imessage/messages/audio-message.avif" alt="iMessage audio message bubble with play button and waveform" />
 </Frame>
 
-## Send Customized Mini App Cards
+## Send Mini App Cards
 
-`sendCustomizedMiniApp(...)` sends an iMessage mini-app card backed by your own iMessage extension. The server assembles Apple's balloon plugin id from `teamId` and `extensionBundleId`. Recipients with the extension installed open it on tap; others see the App Store entry referenced by `appStoreId`.
+`sendCustomizedMiniApp(...)` sends a card that, when tapped, opens your iMessage extension and hands it `url`. Use it to launch your own app with a structured payload; for plain link previews, just put the URL in `sendText(...)`.
 
-Pass a <TypeTooltip name="CustomizedMiniAppMessage" type={`{{ customizedMiniApp.signature }}`} /> describing the extension ownership and card layout:
+You need a published iMessage extension on the App Store before you can call this. `appName`, `appStoreId`, `teamId`, and `extensionBundleId` identify that extension so Messages.app can route the tap to it on the recipient's device.
+
+For most cards we recommend an image preview with an overlaid title:
 
 ```ts
 const sent = await im.messages.sendCustomizedMiniApp(chat.guid, {
-  teamId: "TEAMID1234",
-  extensionBundleId: "com.example.app.MessagesExtension",
-  appName: "Example",
+  appName: "MyGame",
   appStoreId: 1234567890,
-  url: "exampleapp://card/42",
+  teamId: "ABCDE12345",
+  extensionBundleId: "com.example.mygame.MessagesExtension",
+  url: "https://mygame.example.com/level/7",
   layout: {
-    caption: "Card Title",
-    subcaption: "example.com",
+    image: await readFile("preview.jpg"),
+    imageTitle: "Level 7",
   },
 });
 
 console.log(sent.guid);
 ```
 
-<Frame>
-  <img src="/images/advanced-kits/imessage/messages/mini-app-card.avif" alt="Mini app card preview showing a custom iMessage extension card" />
-</Frame>
-
-The `layout` field mirrors Apple's `MSMessageTemplateLayout`. At least one of `caption`, `subcaption`, `trailingCaption`, `trailingSubcaption`, or `image` must be set, otherwise the card renders as an empty bubble and is rejected. To include an image, pass JPEG bytes as `layout.image`:
-
-```ts
-await im.messages.sendCustomizedMiniApp(chat.guid, {
-  teamId: "TEAMID1234",
-  extensionBundleId: "com.example.app.MessagesExtension",
-  appName: "Example",
-  appStoreId: 1234567890,
-  url: "exampleapp://card/42",
-  layout: {
-    caption: "Card Title",
-    subcaption: "example.com",
-    image: await readFile("preview.jpg"),
-    imageTitle: "Overlay title",
-  },
-});
-```
-
-<Accordion title="CustomizedMiniAppMessage" description="{{ customizedMiniApp.doc.summary }}">
-  | Field | Type | Description |
-  |---|---|---|
-  {% for m in customizedMiniApp.members -%}
-  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
-  {% endfor %}
-</Accordion>
-
-<Accordion title="MiniAppLayout" description="{{ miniAppLayout.doc.summary }}">
-  | Field | Type | Description |
-  |---|---|---|
-  {% for m in miniAppLayout.members -%}
-  | `{{ m.name }}` | `{{ m.type.text | replace("\n", " ") | replace("    ", "") | replace("|", "\\|") | replace("<", "&lt;") | replace(">", "&gt;") }}` | {{ m.doc.summary }} |
-  {% endfor %}
-</Accordion>
-
-| Option | Meaning |
+| Field | Meaning |
 |---|---|
-| `clientMessageId` | Optional idempotency key for job retries; pass it as `options.clientMessageId` in the final argument |
-
-<Warning>
-  Pass JPEG bytes to `layout.image`. If your source image is PNG, WebP, HEIC, or another format, convert it to JPEG before calling `sendCustomizedMiniApp(...)`.
-</Warning>
+| `appName` | Display name of your app. Recipients without your extension installed see this on an App Store install prompt. |
+| `appStoreId` | Numeric App Store id, e.g. `1234567890` from `apps.apple.com/app/id1234567890`. Positive integer. |
+| `teamId` | 10-character uppercase alphanumeric Apple Team ID. Find it in App Store Connect → Membership. |
+| `extensionBundleId` | Bundle identifier of the iMessage extension target inside your app. |
+| `url` | Absolute URL delivered to your extension when the recipient taps the card. |
+| `layout` | What the card looks like in the conversation, covered in [Card Layout](#card-layout) below. |
 
 <Note>
-  `sendCustomizedMiniApp(...)` is its own send operation. It does not upload files first, does not take an attachment GUID, and does not use `replyTo` or message effects.
+  This call does not accept `replyTo`, message effects, or `subject`. The only option you can pass in the final argument is `clientMessageId`, used as an idempotency key for job retries.
 </Note>
+
+### Card Layout
+
+`layout` mirrors Apple's `MSMessageTemplateLayout` — slot names match the Apple field names, so Apple's documentation applies directly.
+
+| Slot | Where it renders |
+|---|---|
+| `caption` | Top-left, bold. The most prominent text slot. |
+| `subcaption` | Below `caption`, on the left. |
+| `trailingCaption` | Top-right. |
+| `trailingSubcaption` | Below `trailingCaption`, on the right. |
+| `image` | JPEG preview image filling the card. |
+| `imageTitle` | Overlay text above the image. |
+| `imageSubtitle` | Overlay text below `imageTitle`. |
+| `summary` | Fallback text for notifications, lock screens, and other surfaces that cannot render the full card. |
+
+The server enforces these rules at send time:
+
+- At least one of `caption`, `subcaption`, `trailingCaption`, `trailingSubcaption`, or `image` must be set. `summary` alone is not enough — it only appears on fallback surfaces.
+- `image` and `imageTitle` must be set together. Setting one without the other is rejected.
+- `imageSubtitle` requires `image`.
+
+<Warning>
+  `layout.image` must be JPEG bytes. The server checks the JPEG SOI marker (`FF D8`) and rejects any other format. Convert PNG, WebP, HEIC, or anything else to JPEG before calling.
+</Warning>
 
 ## Reply to a Message
 
