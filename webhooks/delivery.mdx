@@ -143,30 +143,18 @@ If your handler takes >30 seconds, the worker will time out the connection, mark
 
 ### Be idempotent
 
-At-least-once delivery means the same event can arrive more than once if your server hung after processing but before responding. The cheapest dedupe key for the `messages` event is the `X-Spectrum-Event-Id` header — set to `message.id`, identical across every retry of the same delivery, distinct across events:
+At-least-once delivery means the same event can arrive more than once if your server hung after processing but before responding. Dedupe in your handler using a composite of the `X-Spectrum-Webhook-Id` header (the webhook config ID) and an event-scoped identifier from the payload — e.g. `payload.message.id` for the `messages` event:
 
 ```ts
-const eventId = c.req.header('X-Spectrum-Event-Id');
+const dedupeKey = `${webhookId}:${payload.message.id}`;
 
-if (eventId && await alreadyProcessed(eventId)) {
+if (await alreadyProcessed(dedupeKey)) {
   return c.text('ok', 200);
 }
 
 await processOnce(payload);
-if (eventId) await markProcessed(eventId);
+await markProcessed(dedupeKey);
 ```
-
-The header carries the same value as `payload.message.id` in the body. Reading it from the header lets dedupe middleware run before JSON parsing — useful when you want to short-circuit duplicates on a hot path or before signature verification on a path that prefers cheap rejection first.
-
-If you need per-URL scoping (multiple services each running their own dedupe table on the same project), compose with `X-Spectrum-Webhook-Id`:
-
-```ts
-const dedupeKey = `${webhookId}:${eventId}`;
-```
-
-<Note>
-`X-Spectrum-Event-Id` is set on `messages` deliveries only. Dynamic-event deliveries (typing indicators, custom provider events) omit the header because their payloads don't share a canonical id field across providers. For those, parse the body and pick an appropriate event-scoped identifier yourself.
-</Note>
 
 A short TTL (24-48 hours) on the dedupe table is enough — the retry budget is bounded to a few minutes even with jitter and per-attempt timeouts, so anything we'd re-deliver lands well inside that window.
 
