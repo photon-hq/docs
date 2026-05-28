@@ -185,6 +185,17 @@ type Content =
 
 Every arm of the `Content` union, post-projection. Hand-written rather than vellum-driven because the wire shapes deliberately diverge from the SDK shapes (function thunks dropped, server-internal fields suppressed, recursive targets reduced to slim refs).
 
+<Note>
+**Wire format compatibility notes** — changed in the May 2026 release.
+
+If your handler reads only the documented public fields (`name`, `mimeType`, `text`, `emoji`, etc.), no changes are needed. The following fields were touched and may require small handler updates:
+
+- **`reaction.target` / `reply.target` / `edit.target`** are now slim references — `{ id, platform, timestamp, sender?, contentPreview? }` — instead of recursive full-message trees. To render "in reply to ..." UIs, read `target.contentPreview` (truncated to 80 chars). To look the parent message up in your own store, use `target.id`.
+- **`attachment.path` / `voice.path`** are no longer included. These carried server-internal filesystem paths and should never have been used by customer code.
+- **`__platform`** on nested `space` / `sender` / `user` objects is now normalized to **`platform`** (without the underscores).
+- **`contact.raw`** is now included on the wire — the provider-native vCard string for iMessage, the WhatsApp Business `nativeCard` for WhatsApp. Additive; opt in only if you need provider-specific fidelity beyond the projected `name` / `phones` / `emails` / etc. fields.
+</Note>
+
 | `type` | What it is | Wire fields (post-projection) |
 | --- | --- | --- |
 | `text` | A plain text message — the most common arm. | `text: string` |
