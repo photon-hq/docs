@@ -126,7 +126,7 @@ await processOnce(payload);
 await store.set(key, true, { ttl: 48 * 60 * 60 });
 ```
 
-A 24-48 hour TTL is plenty — we never retry beyond a few seconds.
+A 24-48 hour TTL is plenty — our retry budget is bounded to a few minutes at most, so anything we'd re-deliver lands well inside that window.
 
 ## "Deliveries time out"
 

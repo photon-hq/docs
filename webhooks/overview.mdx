@@ -29,6 +29,24 @@ X-Spectrum-Timestamp: 1747242392
 
 Spectrum handles staying connected to every [supported platform](/spectrum-ts/providers), batching, reconnects, and signing. You handle the HTTP request that lands at your door.
 
+## What's in a delivery (and what isn't)
+
+The webhook tells you **what happened** and **enough about it to decide what to do next** — nothing more. It is not a vehicle for raw bytes, lazy-loaded SDK fields, or anything that requires a live `Spectrum()` instance to materialize.
+
+**What every delivery carries:**
+
+- **Routing context.** `space.id` (the conversation), `message.id` (the event), `sender` (who triggered it), and platform identifiers you can use to look things up in your own systems.
+- **Content metadata.** The `content` field's `type` discriminator plus every JSON-safe field the SDK exposes — text, filenames, MIME types, sizes, URLs.
+- **Provenance.** Signed `X-Spectrum-Signature` / `X-Spectrum-Timestamp` headers, plus an `X-Spectrum-Webhook-Id` header for dedupe and replay protection.
+
+**What every delivery deliberately omits:**
+
+- **Bytes for binary content.** Attachments, voice memos, and contact photos ship `mimeType` / `size` / filename — never the raw bytes themselves and never a download URL. To process the actual content, hold a [`spectrum-ts`](/spectrum-ts/getting-started) instance and call its byte accessors. A first-class HTTP download endpoint is on the roadmap.
+- **Resolved link previews.** The `richlink` arm ships the `url` only. To render an OG-style title, summary, or cover image, fetch the URL yourself and parse the tags — the worker doesn't do that on your behalf, both to keep delivery latency bounded and to avoid making the worker an attack surface for hostile URLs.
+- **Recursive message trees.** Reactions, replies, and edits ship a slim *reference* to the parent message (`id`, `platform`, `timestamp`, an 80-char `contentPreview`) — not the full parent content. Look the parent up in your own store using `target.id`. See [Events → Target refs](/webhooks/events#target-refs) for the exact shape.
+
+This is the same shape Twilio, Stripe, and most other webhook providers use: **the webhook is the doorbell, not the package.** Use it to know an event happened and to route into your own handling; pull heavyweight payloads on demand when you actually need them.
+
 ## How this guide flows
 
 The next six pages build on each other. Skim straight to the topic you need, or read top-to-bottom in about fifteen minutes for the complete model.
@@ -68,7 +86,7 @@ flowchart LR
   WK -->|HTTPS POST| URL1[your-app.com/webhook]
   WK -->|HTTPS POST| URL2[other-service.com/hook]
   URL1 -->|2xx| Done([Delivered])
-  URL2 -->|5xx / timeout| Retry[Retry up to 3x]
+  URL2 -->|5xx / timeout| Retry[Retry up to 5x]
   Retry --> URL2
 ```
 
@@ -79,7 +97,7 @@ When a message arrives on any enabled platform for a project that has webhooks r
 3. For every URL registered on that project, it computes an HMAC-SHA256 signature and POSTs the body.
 4. Your server verifies the signature, returns `2xx`, and processes the event.
 
-Failed deliveries are retried for a few seconds with exponential backoff, then dropped. There is no persistent retry queue or dead-letter destination — see [Delivery and retries](/webhooks/delivery) for the precise policy.
+Failed deliveries are retried with exponential backoff and jitter — up to 6 attempts spanning tens of seconds of backoff (longer if your endpoint hangs) — then dropped. There is no persistent retry queue or dead-letter destination — see [Delivery and retries](/webhooks/delivery) for the precise policy.
 
 <Note>
 Your webhook URL must be a public **HTTPS** endpoint. The worker won't deliver to plain `http://`, to private/internal addresses (`localhost`, `10.x`, cloud-metadata IPs), or through a redirect — see [Delivery → Where we won't deliver](/webhooks/delivery#where-we-wont-deliver).
@@ -100,7 +118,7 @@ Four ideas cover everything else in these docs:
 
 Today there is one event: **`messages`**. Each delivery carries `X-Spectrum-Event: messages` and a body of shape `{ event, space, message }` — see [Events](/webhooks/events) for every field.
 
-The set will grow (reactions, typing indicators, custom provider events). New event types are additive: existing handlers that ignore unknown values keep working without changes.
+Reactions aren't a separate event — they already arrive today *inside* a `messages` payload, distinguished by `message.content.type` (you branch on `content.type`, not `event`). The set of top-level events may still grow later; new event types are additive, so handlers that ignore unknown values keep working without changes.
 
 ## Security in one paragraph
 

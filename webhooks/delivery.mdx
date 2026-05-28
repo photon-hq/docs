@@ -194,7 +194,7 @@ If your handler depends on order, sort by `message.timestamp` (which is the plat
 ## What we *don't* deliver
 
 - **Outbound messages.** A message you send via the API does not echo back as a webhook.
-- **Read receipts, typing indicators, reactions.** Coming as separate event types in future versions — they are not in `messages` payloads today.
+- **Standalone reaction events.** Reactions arrive *today* as a `content.type` arm inside the `messages` payload, not as a separate top-level event — branch on `content.type`. Typing indicators, edits, poll votes, and read receipts aren't delivered in any form yet.
 - **Acknowledgements that you processed correctly.** Returning `2xx` only tells us the delivery succeeded; we don't track downstream state.
 
 ## When to use the SDK loop instead
