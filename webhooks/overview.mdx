@@ -41,9 +41,9 @@ The webhook tells you **what happened** and **enough about it to decide what to 
 
 **What every delivery deliberately omits:**
 
-- **Bytes for binary content.** Attachments, voice memos, and contact photos ship `mimeType` / `size` / filename — never the raw bytes themselves and never a download URL. To process the actual content, hold a [`spectrum-ts`](/spectrum-ts/getting-started) instance and call its byte accessors. A first-class HTTP download endpoint is on the roadmap.
+- **Bytes for binary content.** Attachments, voice memos, and contact photos ship `mimeType` / `size` / filename — never the raw bytes themselves and never a download URL. Fetching the actual content is a separate step.
 - **Resolved link previews.** The `richlink` arm ships the `url` only. To render an OG-style title, summary, or cover image, fetch the URL yourself and parse the tags — the worker doesn't do that on your behalf, both to keep delivery latency bounded and to avoid making the worker an attack surface for hostile URLs.
-- **Recursive message trees.** Reactions, replies, and edits ship a slim *reference* to the parent message (`id`, `platform`, `timestamp`, an 80-char `contentPreview`) — not the full parent content. Look the parent up in your own store using `target.id`. See [Events → Target refs](/webhooks/events#target-refs) for the exact shape.
+- **Recursive message trees.** A reaction ships a slim *reference* to the message it targets (`id`, `platform`, `timestamp`, an 80-char `contentPreview`) — not the full target. Look it up in your own store using `target.id`. See [Events → Target refs](/webhooks/events#target-refs) for the exact shape.
 
 This is the same shape Twilio, Stripe, and most other webhook providers use: **the webhook is the doorbell, not the package.** Use it to know an event happened and to route into your own handling; pull heavyweight payloads on demand when you actually need them.
 
@@ -118,7 +118,7 @@ Four ideas cover everything else in these docs:
 
 Today there is one event: **`messages`**. Each delivery carries `X-Spectrum-Event: messages` and a body of shape `{ event, space, message }` — see [Events](/webhooks/events) for every field.
 
-Reactions, typing, edits, and replies aren't separate events — they already arrive today *inside* a `messages` payload, distinguished by `message.content.type` (you branch on `content.type`, not `event`). The set of top-level events may still grow later; new event types are additive, so handlers that ignore unknown values keep working without changes.
+Reactions aren't a separate event — they already arrive today *inside* a `messages` payload, distinguished by `message.content.type` (you branch on `content.type`, not `event`). The set of top-level events may still grow later; new event types are additive, so handlers that ignore unknown values keep working without changes.
 
 ## Security in one paragraph
 
