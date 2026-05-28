@@ -11,3 +11,8 @@ spectrum-ts/*.mdx
 spectrum-ts/**/*.mdx
 webhooks/events.mdx
 
+# Custom llms.txt generator output (built from docs.json + rendered .mdx)
+llms.txt
+llms-full.txt
+llms-*.txt
+

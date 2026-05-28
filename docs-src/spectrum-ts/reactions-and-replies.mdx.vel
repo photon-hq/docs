@@ -73,7 +73,7 @@ Both forms are equivalent — `message.reply(content)` wraps each content item i
 
 On platforms with thread support (iMessage, WhatsApp Business), this sends a threaded reply. On platforms without, the call resolves as a no-op — **the reply is not downgraded to a regular send**. If you need guaranteed delivery, use `space.send(...)` instead.
 
-`reply()` cannot wrap `reply`, `edit`, `reaction`, `group`, or `typing` content — the builder throws at construction time.
+`reply()` cannot wrap `reply`, `edit`, `reaction`, `group`, `typing`, `rename`, or `avatar` content — the builder throws at construction time.
 
 ## Editing messages
 
@@ -96,7 +96,7 @@ On platforms with thread support (iMessage, WhatsApp Business), this sends a thr
 
 `edit()` takes new content and the outbound message to rewrite. Edits are fire-and-forget — `space.send(edit(...))` resolves to `undefined`.
 
-`edit()` cannot wrap `edit`, `reply`, `reaction`, `group`, or `typing` content.
+`edit()` cannot wrap `edit`, `reply`, `reaction`, `group`, `typing`, `rename`, or `avatar` content.
 
 ## When to use what
 

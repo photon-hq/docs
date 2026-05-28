@@ -121,6 +121,7 @@
                   "advanced-kits/imessage/getting-started",
                   "advanced-kits/imessage/messages",
                   "advanced-kits/imessage/chats",
+                  "advanced-kits/imessage/groups",
                   "advanced-kits/imessage/attachments",
                   "advanced-kits/imessage/polls",
                   "advanced-kits/imessage/addresses",
@@ -168,6 +169,17 @@
       {
         "tab": "API reference",
         "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "api-reference/introduction",
+              "api-reference/rate-limit"
+            ]
+          },
+          {
+            "group": "Dashboard API",
+            "openapi": "api-reference/dashboard-openapi.json"
+          },
           {
             "group": "Spectrum API",
             "openapi": "https://spectrum.photon.codes/openapi/json"
@@ -220,6 +232,11 @@
       "github": "https://github.com/photon-hq",
       "linkedin": "https://www.linkedin.com/company/photonhq",
       "discord": "https://discord.gg/4c3VJzDfNA"
+    }
+  },
+  "seo": {
+    "metatags": {
+      "canonical": "https://photon.codes/docs"
     }
   }
 }

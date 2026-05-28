@@ -8,6 +8,7 @@ import type {
   AdvancedIMessage,
   AttachmentInfo,
   Chat,
+  LocationRequestReceipt,
   Message,
   Poll,
   UploadAttachmentResult,
@@ -36,6 +37,7 @@ declare const uploaded: UploadAttachmentResult;
 declare const audio: UploadAttachmentResult;
 declare const attachment: AttachmentInfo;
 declare const poll: Poll;
+declare const receipt: LocationRequestReceipt;
 declare const lastHandledSequence: number | undefined;
 declare const pageToken: string | undefined;
 declare const since: number | undefined;

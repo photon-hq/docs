@@ -27,18 +27,32 @@ Displays the active subscription for the current project, including plan details
 ## Start a checkout
 
 ```sh
-photon billing checkout --plan <price-id>
-photon billing checkout --plan <price-id> --qty 5
+# Interactive picker — recommended for first-time use
+photon billing checkout
+
+# Skip the picker with a positional tier
+photon billing checkout pro
+photon billing checkout business --qty 5
+
+# Use a specific Stripe price (escape hatch)
+photon billing checkout --plan price_xxx
 ```
 
-Creates a Stripe Checkout session and opens it in your browser. Pass `--no-browser` to print the URL instead, or `--json` to get the session URL programmatically.
+When you run this command, the CLI creates a Stripe Checkout session and opens it in your browser. If you don't pass any arguments, you get an interactive picker listing the available plans. Pass a `[tier]` positional or `--plan <price-id>` to skip the picker.
+
+Available tiers: `pro`, `business`, `enterprise`.
 
 | Flag | Description |
 |------|-------------|
-| `--plan <price-id>` | Stripe price ID (required — get it from `billing plans`) |
+| `[tier]` | Positional tier (`pro` / `business` / `enterprise`). Skips the picker. |
+| `--plan <price-id>` | Stripe price ID. Escape hatch when you need a specific price. |
 | `--qty <number>` | Quantity for the line item |
 | `--no-browser` | Print the checkout URL instead of opening it |
-| `--json` | Output the checkout session as JSON |
+| `--json` | Output `{action, url, tier?}` as JSON and skip opening the browser |
+
+<Note>
+For project-scoped subscription management (which smart-routes between Checkout and the Stripe Portal), use [`photon projects upgrade`](/cli/projects#upgrade-subscription) instead.
+</Note>
 
 ## Manage subscription (Stripe Portal)
 

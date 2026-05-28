@@ -4,7 +4,8 @@
   "private": true,
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "docs:generate": "vellum build",
+    "docs:generate": "vellum build && tsx scripts/llms-generator/index.ts",
+    "docs:llms": "tsx scripts/llms-generator/index.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck:docs": "tsx scripts/typecheck-docs/index.ts",
@@ -12,7 +13,7 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^4.19.0",
-    "@photon-ai/advanced-imessage": "^0.7.1",
+    "@photon-ai/advanced-imessage": "^0.10.0",
     "@photon-ai/advanced-imessage-kit": "^1.14.3",
     "@photon-ai/imessage-kit": "^2.1.2",
     "@photon-ai/whatsapp-business": "^0.1.1",
@@ -27,7 +28,7 @@
     "eslint-plugin-format": "^2.0.1",
     "husky": "^9.1.7",
     "oxfmt": "^0.44.0",
-    "spectrum-ts": "1.8.0",
+    "spectrum-ts": "1.11.3",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }

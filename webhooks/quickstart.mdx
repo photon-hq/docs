@@ -11,7 +11,7 @@ If you already have a deployed HTTPS URL, skip the ngrok step.
 
 - A Spectrum project with at least one platform enabled. See [Providers](/spectrum-ts/providers) for the current list, or [Getting Started with Spectrum](/spectrum-ts/getting-started) if you don't have a project yet.
 - Your project id and project secret, from the [dashboard](https://app.photon.codes/dashboard) or `photon projects show`.
-- A reachable HTTPS URL — ngrok works for local development.
+- A reachable, public HTTPS URL — ngrok works for local development. The worker won't deliver to plain `http://` or to a private/internal address like `localhost`, so point it at the ngrok `https://` URL, not the local port directly.
 
 <Steps>
   <Step title="Stand up a local endpoint">
