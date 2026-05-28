@@ -177,7 +177,7 @@ type Content =
 | `application/*` | Document or file | `application/pdf`, `application/zip` |
 
 <Warning>
-**Byte-bearing arms ship metadata, not bytes.** `attachment` and `contact.photo` both carry `mimeType` / `size` / filename — never the raw bytes themselves and never a download URL. To process the actual content you need an additional retrieval step. Hold a [`spectrum-ts`](/spectrum-ts/getting-started) instance in a long-lived process and call its byte accessors, or contact support if you need attachment retrieval — the `message.id` from the webhook is the canonical handle any future retrieval API will accept. A first-class HTTP download endpoint is on the roadmap.
+**Byte-bearing arms ship metadata, not bytes.** `attachment` and `contact.photo` both carry `mimeType` / `size` / filename — never the raw bytes themselves and never a download URL. Fetching the actual content is a separate step.
 </Warning>
 
 ##### Per-arm wire reference
