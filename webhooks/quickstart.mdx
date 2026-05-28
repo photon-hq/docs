@@ -171,10 +171,14 @@ If you already have a deployed HTTPS URL, skip the ngrok step.
     projectSecret: process.env.PROJECT_SECRET!,
     providers: [imessage.config()],
   });
+  const im = imessage(app);
 
-  // call this from your webhook handler (e.g. via a queue / RPC)
-  export const reply = async (spaceId: string, body: string) => {
-    const space = await app.spaces.get(spaceId);
+  // call this from your webhook handler (e.g. via a queue / RPC).
+  // There is no "get space by id" API — rebuild the DM from the sender's
+  // address (the webhook's `message.sender.id`, an E.164 number for iMessage).
+  export const reply = async (senderId: string, body: string) => {
+    const user = await im.user(senderId);
+    const space = await im.space(user);
     await space.send(text(body));
   };
   ```
@@ -186,7 +190,7 @@ If you already have a deployed HTTPS URL, skip the ngrok step.
     if (!verify(c)) return c.text('bad signature', 401);
     const payload = JSON.parse(await c.req.text());
     if (payload.event === 'messages' && payload.message.content.type === 'text') {
-      void enqueueReply(payload.space.id, `echo: ${payload.message.content.text}`);
+      void enqueueReply(payload.message.sender.id, `echo: ${payload.message.content.text}`);
     }
     return c.text('ok', 200);
   });

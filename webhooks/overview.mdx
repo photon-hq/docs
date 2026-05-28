@@ -118,7 +118,7 @@ Four ideas cover everything else in these docs:
 
 Today there is one event: **`messages`**. Each delivery carries `X-Spectrum-Event: messages` and a body of shape `{ event, space, message }` — see [Events](/webhooks/events) for every field.
 
-Reactions, typing, edits, and replies aren't separate events — they already arrive today *inside* a `messages` payload, distinguished by `message.content.type` (you branch on `content.type`, not `event`). The set of top-level events may still grow later; new event types are additive, so handlers that ignore unknown values keep working without changes.
+Reactions aren't a separate event — they already arrive today *inside* a `messages` payload, distinguished by `message.content.type` (you branch on `content.type`, not `event`). The set of top-level events may still grow later; new event types are additive, so handlers that ignore unknown values keep working without changes.
 
 ## Security in one paragraph
 
