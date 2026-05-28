@@ -151,7 +151,7 @@ const dedupeKey = `${webhookId}:${payload.message.id}`;
 
 #### Content shapes
 
-`content` is a discriminated union tagged by `type`. Every arm has a fixed wire projection — function thunks (`read()`, `stream()`, async OG accessors) and server-internal fields (filesystem paths) are stripped before delivery, since neither survives `JSON.stringify` nor is useful to a remote handler. The SDK's <TypeTooltip name="Content" type={`{{ content.signature }}`} /> union has 14 published arms today plus two forward-compat arms (`rename`, `avatar`) the worker handles defensively; the two you'll see on the vast majority of inbound deliveries are `text` and `attachment`:
+`content` is a discriminated union tagged by `type`. Every arm has a fixed wire projection — function thunks (`read()`, `stream()`, async OG accessors) and server-internal fields (filesystem paths) are stripped before delivery, since neither survives `JSON.stringify` nor is useful to a remote handler. The SDK's <TypeTooltip name="Content" type={`{{ content.signature }}`} /> union has 12 published arms today plus one forward-compat arm (`rename`) the worker handles defensively; the two you'll see on the vast majority of inbound deliveries are `text` and `attachment`:
 
 ```ts
 type Content =
@@ -178,7 +178,7 @@ type Content =
 | `application/*` | Document or file | `application/pdf`, `application/zip` |
 
 <Warning>
-**Byte-bearing arms ship metadata, not bytes.** `attachment`, `voice`, `avatar` (set arm), and `contact.photo` all carry `mimeType` / `size` / filename — never the raw bytes themselves and never a download URL. To process the actual content you need an additional retrieval step. Hold a [`spectrum-ts`](/spectrum-ts/getting-started) instance in a long-lived process and call its byte accessors, or contact support if you need attachment retrieval — the `message.id` from the webhook is the canonical handle any future retrieval API will accept. A first-class HTTP download endpoint is on the roadmap.
+**Byte-bearing arms ship metadata, not bytes.** `attachment`, `voice`, and `contact.photo` all carry `mimeType` / `size` / filename — never the raw bytes themselves and never a download URL. To process the actual content you need an additional retrieval step. Hold a [`spectrum-ts`](/spectrum-ts/getting-started) instance in a long-lived process and call its byte accessors, or contact support if you need attachment retrieval — the `message.id` from the webhook is the canonical handle any future retrieval API will accept. A first-class HTTP download endpoint is on the roadmap.
 </Warning>
 
 ##### Per-arm wire reference
@@ -268,24 +268,6 @@ Every arm of the `Content` union, post-projection. Hand-written rather than vell
     | `items` | `SerializedInboundMessage[]` | Each item is a full inbound-message projection (recursed). The SDK forbids nested groups. |
   </Accordion>
 
-  <Accordion title="poll" description="A poll definition.">
-    | Field | Type | Description |
-    | --- | --- | --- |
-    | `type` | `"poll"` | Discriminator. |
-    | `title` | `string` | Poll title. |
-    | `options` | `{ title: string }[]` | Available choices. |
-  </Accordion>
-
-  <Accordion title="poll_option" description="A vote on a poll option.">
-    | Field | Type | Description |
-    | --- | --- | --- |
-    | `type` | `"poll_option"` | Discriminator. |
-    | `title` | `string` | Title of the chosen option. |
-    | `option` | `{ title }` | Echo of the option for convenience. |
-    | `poll` | `SerializedPoll` | Full poll context (which one was voted on). |
-    | `selected` | `boolean` | `true` for selected, `false` for deselected. |
-  </Accordion>
-
   <Accordion title="effect" description="An iMessage-style effect wrapping inner content.">
     | Field | Type | Description |
     | --- | --- | --- |
@@ -313,15 +295,6 @@ Every arm of the `Content` union, post-projection. Hand-written rather than vell
     | --- | --- | --- |
     | `type` | `"rename"` | Discriminator. |
     | `displayName` | `string` | The new chat name. |
-  </Accordion>
-
-  <Accordion title="avatar" description="A chat icon update. Forward-compat — handled defensively until the SDK pin lands it in the published `Content` union.">
-    | Field | Type | Description |
-    | --- | --- | --- |
-    | `type` | `"avatar"` | Discriminator. |
-    | `action` | `{ kind: "set"; mimeType: string } \| { kind: "clear" }` | Whether the avatar was set (with the new image's `mimeType`; bytes retrieved out of band) or cleared. |
-
-    On `kind: "set"` the `read()` byte thunk is stripped — only `mimeType` rides. The `clear` arm carries no extra data.
   </Accordion>
 
   <Accordion title="(unknown future arm)" description="A new arm the SDK ships before the worker has a hand-shaped projection.">
