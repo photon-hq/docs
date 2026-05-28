@@ -117,16 +117,24 @@ This is expected behavior under at-least-once delivery. The two scenarios that c
 
 ### Fix
 
-Dedupe at the top of your handler using `X-Spectrum-Webhook-Id` plus `payload.message.id` as a composite key:
+For the `messages` event, the cheapest dedupe key is the `X-Spectrum-Event-Id` header — it carries `message.id`, is identical across every retry, and is readable before JSON parsing:
 
 ```ts
-const key = `${webhookId}:${payload.message.id}`;
-if (await store.exists(key)) return c.text('ok', 200);
+const eventId = c.req.header('X-Spectrum-Event-Id');
+if (eventId && await store.exists(eventId)) return c.text('ok', 200);
 await processOnce(payload);
-await store.set(key, true, { ttl: 48 * 60 * 60 });
+if (eventId) await store.set(eventId, true, { ttl: 48 * 60 * 60 });
+```
+
+If multiple services run their own dedupe table on the same project, scope by webhook id too:
+
+```ts
+const key = `${webhookId}:${eventId}`;
 ```
 
 A 24-48 hour TTL is plenty — we never retry beyond a few seconds.
+
+`X-Spectrum-Event-Id` is omitted on dynamic-event deliveries (typing indicators, custom provider events) because their payloads don't share a canonical id field across providers — for those, parse the body and pick an event-scoped identifier yourself.
 
 ## "Deliveries time out"
 
@@ -221,6 +229,7 @@ console.log(
     -H "Content-Type: application/json" \\
     -H "X-Spectrum-Event: messages" \\
     -H "X-Spectrum-Webhook-Id: 6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b" \\
+    -H "X-Spectrum-Event-Id: spc-msg-00000000-0000-4000-8000-000000000001" \\
     -H "X-Spectrum-Timestamp: ${timestamp}" \\
     -H "X-Spectrum-Signature: ${signature}" \\
     -d '${body}'`

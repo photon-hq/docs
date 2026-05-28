@@ -21,6 +21,7 @@ for await (const [space, message] of app.messages) { /* ... */ }
 # With webhooks, Spectrum runs the loop and POSTs each message to you.
 POST https://your-app.com/spectrum-webhook
 X-Spectrum-Event: messages
+X-Spectrum-Event-Id: spc-msg-...
 X-Spectrum-Signature: v0=<hmac>
 X-Spectrum-Timestamp: 1747242392
 

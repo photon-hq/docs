@@ -22,6 +22,7 @@ Content-Type: application/json
 User-Agent: spectrum-webhook/0.1.0
 X-Spectrum-Event: messages
 X-Spectrum-Webhook-Id: 60d6d04f-f9fa-4a7b-9c97-37c9c90ce91c
+X-Spectrum-Event-Id: spc-msg-00000000-0000-4000-8000-000000000001
 X-Spectrum-Timestamp: 1747242392
 X-Spectrum-Signature: v0=fc9bf49ef3ba4122ba4be6e289f88ac692f5ce8e13f0415cb38d59428eae8a8c
 
@@ -65,13 +66,16 @@ The exact ID formats and the `platform` value are decided by each provider — n
 | `Content-Type` | `application/json` | Always. The body is UTF-8 JSON. |
 | `User-Agent` | `spectrum-webhook/<version>` | Identifies the worker. Useful for IP/UA allow-listing. |
 | `X-Spectrum-Event` | Event type, e.g. `messages` | Mirrors the `event` field in the body. Lets you route without parsing the body first. |
-| `X-Spectrum-Webhook-Id` | UUID of the registered webhook | Identifies *which* of your URLs this delivery is for. Useful with multiple registrations and required for idempotency keys. |
-| `X-Spectrum-Timestamp` | UNIX epoch seconds at signing time | Required to verify the signature. Also reject deliveries older than ~5 minutes for replay protection. |
+| `X-Spectrum-Webhook-Id` | UUID of the registered webhook config | Identifies *which* of your URLs this delivery is for. Stable per `(project, URL)` pair — identical across every event for the same registration. Useful with multiple registrations. |
+| `X-Spectrum-Event-Id` | `message.id` (only on `messages` events) | Per-event identifier. Same value across every retry of the same delivery, distinct across events — the right key for an idempotent dedupe table without parsing the body. **Omitted** on dynamic-event deliveries (typing, custom provider events, etc.) because there is no canonical id field across providers; absence ≠ empty. See [Idempotency](#idempotency-the-message-id-rule). |
+| `X-Spectrum-Timestamp` | UNIX epoch seconds at signing time | Part of the signed input. The verifier rejects deliveries more than ±5 minutes from your clock — see [Verifying signatures](/webhooks/verifying-signatures#3-reject-stale-timestamps). |
 | `X-Spectrum-Signature` | `v0=<64-char hex>` | HMAC-SHA256 of `v0:{timestamp}:{rawBody}` keyed by the webhook's signing secret. See [Verifying signatures](/webhooks/verifying-signatures). |
 
 <Note>
 HTTP headers are case-insensitive. Most frameworks normalize to lowercase (`x-spectrum-event`); use whichever your framework returns.
 </Note>
+
+The split between `X-Spectrum-Webhook-Id` (config row) and `X-Spectrum-Event-Id` (per-event) mirrors [Stripe's `Webhook-Endpoint-Id` / per-event `id`](https://stripe.com/docs/webhooks#receive-a-webhook): the first answers "which subscription is this?", the second answers "which delivery is this?". Idempotent endpoints should key off `X-Spectrum-Event-Id`.
 
 ## Body shape
 
@@ -134,7 +138,16 @@ The `space.id` matches the `space.id` you'd see from the [`spectrum-ts` SDK](/sp
 
 A single inbound message **always carries the same `message.id` across every delivery it produces**, no matter how many webhook URLs you have registered. If you have two URLs registered for one project and a message arrives, both URLs receive a `POST` in parallel — and both bodies have the same `message.id`. If a delivery is retried (after a 5xx or timeout on your side), the retry also carries the same `message.id`.
 
-That makes `message.id` the right dedup key when one downstream consumer handles every webhook for the project:
+The same value rides on the `X-Spectrum-Event-Id` header for `messages` deliveries, so middleware that runs **before** JSON parsing can dedupe without buffering the full body:
+
+```ts
+const eventId = c.req.header('X-Spectrum-Event-Id');
+if (eventId && await store.exists(eventId)) {
+  return c.text('ok', 200);
+}
+```
+
+When the body has already been parsed, key off `payload.message.id` directly — it's the same value:
 
 ```ts
 const dedupeKey = payload.message.id;
@@ -148,6 +161,10 @@ If different services consume different webhook URLs and each one needs its own 
 ```ts
 const dedupeKey = `${webhookId}:${payload.message.id}`;
 ```
+
+<Note>
+`X-Spectrum-Event-Id` is set on `messages` deliveries only. Dynamic-event deliveries (typing indicators, custom provider events) omit the header because their payloads don't share a canonical id field across providers. Dedupe of those still requires parsing the body.
+</Note>
 
 #### Content shapes
 
@@ -413,8 +430,11 @@ Required to verify a delivery
 Required to route a delivery
    X-Spectrum-Event   (or body.event)
 
-Required for idempotency
-   X-Spectrum-Webhook-Id + body.message.id (for messages event)
+Required for idempotency (messages event)
+   X-Spectrum-Event-Id   (or body.message.id — same value)
+
+Required for idempotency (other events)
+   X-Spectrum-Webhook-Id + an event-scoped id parsed from the body
 
 Always returns 2xx fast
    Process asynchronously after acknowledging — see /webhooks/delivery
