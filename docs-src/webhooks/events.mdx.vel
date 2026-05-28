@@ -178,8 +178,43 @@ type Content =
 | `application/*` | Document or file | `application/pdf`, `application/zip` |
 
 <Warning>
-**Byte-bearing arms ship metadata, not bytes.** `attachment`, `voice`, and `contact.photo` all carry `mimeType` / `size` / filename — never the raw bytes themselves and never a download URL. To process the actual content you need an additional retrieval step. Hold a [`spectrum-ts`](/spectrum-ts/getting-started) instance in a long-lived process and call its byte accessors, or contact support if you need attachment retrieval — the `message.id` from the webhook is the canonical handle any future retrieval API will accept. A first-class HTTP download endpoint is on the roadmap.
+**Byte-bearing arms ship metadata, not bytes.** `attachment`, `voice`, and `contact.photo` carry `mimeType` / `size` / filename — never raw bytes and never a download URL. See [Retrieving attachment bytes](#retrieving-attachment-bytes) below.
 </Warning>
+
+##### Retrieving attachment bytes
+
+The webhook payload tells you an attachment exists and hands you its metadata. To process the actual file bytes, you need a separate retrieval step. Two options today:
+
+**Option 1 — `spectrum-ts` SDK in a long-lived process**
+
+```ts
+import { Spectrum } from 'spectrum-ts';
+import { imessage } from 'spectrum-ts/providers/imessage';
+
+// One Spectrum instance per process, reused across requests
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [imessage.config()],
+});
+
+async function fetchAttachment(payload: WebhookEventPayload): Promise<Buffer> {
+  const space = await app.spaces.get(payload.space.id);
+  const message = await space.getMessage(payload.message.id);
+  if (message?.content.type !== 'attachment') {
+    throw new Error('Expected attachment content');
+  }
+  return await message.content.read();
+}
+```
+
+This works today. **Don't construct a new `Spectrum()` per request** — construction hits a rate-limited cloud API and will 429 under any real volume. Hoist to module scope and share across requests.
+
+**Option 2 — HTTP download endpoint (on the roadmap)**
+
+A first-class `GET /v1/messages/{messageId}/attachment` endpoint that returns bytes directly is planned. Until it ships, contact support for attachment retrieval in production environments where Option 1 isn't viable (serverless or edge runtimes, etc.).
+
+The `message.id` from the webhook is the canonical handle any future retrieval API will accept.
 
 ##### Per-arm wire reference
 
