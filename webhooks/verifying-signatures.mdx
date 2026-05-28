@@ -14,11 +14,11 @@ The recipe is small, but four details have to be exactly right or every legitima
 For every incoming request:
 
 1. **Capture the raw body bytes** before any JSON parser touches them.
-2. **Reject the timestamp** if it's more than 5 minutes from your current clock.
+2. **Reject the timestamp** if it's more than ±5 minutes (300 seconds) from your current clock.
 3. **Recompute the HMAC** locally: `HMAC-SHA256(signingSecret, "v0:" + timestamp + ":" + rawBody)`.
 4. **Compare in constant time** against the `X-Spectrum-Signature` header.
 
-If any check fails, return `401 Unauthorized` and stop processing.
+A stale timestamp returns `400 Bad Request` (the request was well-formed but no longer fresh — your clock or our clock is off, or this is a captured replay). A failed HMAC compare returns `401 Unauthorized` (the secret doesn't match or the body was tampered with). Keep the two distinct so customer-side log analysis can tell clock-skew incidents apart from active probing — Spectrum's own [`verifyPhotonWebhook`](#reusing-our-verifier) returns a discriminated union for the same reason.
 
 ```text
 sig = 'v0=' + hmacSha256Hex(signingSecret, 'v0:' + timestamp + ':' + rawBody)
@@ -253,7 +253,11 @@ const age = Math.abs(now - timestamp);
 if (age > 5 * 60) reject();
 ```
 
-5 minutes is the recommended tolerance — generous enough to absorb clock drift between our worker and your server, tight enough to make captured-and-replayed attacks impractical. Tighten or loosen it based on your threat model.
+5 minutes (300 seconds) is the recommended tolerance — generous enough to absorb clock drift between our worker and your server, tight enough to make captured-and-replayed attacks impractical. Tighten or loosen it based on your threat model.
+
+The bound mirrors [Stripe's `Stripe-Signature` 5-minute tolerance](https://stripe.com/docs/webhooks/signatures#replay-attacks) — same threat model, same chosen value. Anyone porting a Stripe verifier sees identical timing behaviour here.
+
+Run the staleness check **before** the HMAC compare. It's cheaper (one subtraction vs a constant-time hash compare), and it lets you surface "clock skew" as a different failure mode than "tampered or wrong secret" — the two need opposite remediation paths and collapsing them into a single "bad signature" branch sends customers chasing the wrong root cause. Spectrum's own internal `verifyPhotonWebhook` does this; see [Reusing our verifier](#reusing-our-verifier) below for the discriminated-union shape.
 
 ### 4. Get the hex casing and prefix right
 
@@ -293,26 +297,64 @@ This is the same scheme used by Stripe (`v1=`), Slack (`v0=`, identical to ours)
 
 ## Reusing our verifier
 
-Spectrum's own delivery worker uses an internal `verifyPhotonWebhook` function that mirrors the algorithm above. We round-trip our signer against this verifier in tests on every commit, so any bug in the algorithm would be caught before release. You can copy the same shape into your code:
+Spectrum's own delivery worker uses an internal `verifyPhotonWebhook` function that mirrors the algorithm above and bakes in the staleness check. We round-trip our signer against this verifier in tests on every commit, so any bug in the algorithm would be caught before release. You can copy the same shape into your code:
 
 ```ts
+export const DEFAULT_REPLAY_TOLERANCE_SECONDS = 300;
+
+export type VerifyResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: 'invalid_signature' | 'malformed_timestamp' | 'stale_timestamp';
+    };
+
 export const verifyPhotonWebhook = (
   rawBody: string,
   signingSecret: string,
   signature: string,
-  timestamp: string
-): boolean => {
+  timestamp: string,
+  now: number = Math.floor(Date.now() / 1000),
+  toleranceSeconds: number = DEFAULT_REPLAY_TOLERANCE_SECONDS,
+): VerifyResult => {
+  const parsedTs = Number.parseInt(timestamp, 10);
+  if (!Number.isFinite(parsedTs)) {
+    return { ok: false, reason: 'malformed_timestamp' };
+  }
+  if (Math.abs(now - parsedTs) > toleranceSeconds) {
+    return { ok: false, reason: 'stale_timestamp' };
+  }
   const expected =
     'v0=' +
     createHmac('sha256', signingSecret)
       .update(`v0:${timestamp}:${rawBody}`)
       .digest('hex');
-  if (expected.length !== signature.length) return false;
-  return timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+  if (expected.length !== signature.length) {
+    return { ok: false, reason: 'invalid_signature' };
+  }
+  const valid = timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+  return valid ? { ok: true } : { ok: false, reason: 'invalid_signature' };
 };
 ```
 
-Pair it with the staleness check and you have a complete verifier.
+A few details worth knowing about this shape:
+
+- **Replay window first.** Stale timestamps short-circuit before the constant-time HMAC compare. The check is cheaper (one subtraction vs a hash) and it surfaces clock skew as a distinct failure mode from tampering — see [Reject stale timestamps](#3-reject-stale-timestamps).
+- **Default tolerance: 300 seconds.** `DEFAULT_REPLAY_TOLERANCE_SECONDS` matches [Stripe's 5-minute window](https://stripe.com/docs/webhooks/signatures#replay-attacks). Override `toleranceSeconds` when you have a queue or batch ingestor that legitimately consumes deliveries with more than five minutes of lag — pin tighter (e.g. 60s) on a hot path, looser (e.g. 900s) for a deferred reconciliation pipeline. The tighter the better, all else equal.
+- **Discriminated union, not boolean.** `{ ok: true }` vs `{ ok: false; reason: ... }` keeps the diagnostic distinction between three remediation paths: a `malformed_timestamp` is your code or our serializer (file a bug), a `stale_timestamp` is clock skew or a deferred queue (fix NTP or widen tolerance), and `invalid_signature` is tampering or wrong secret (rotate, audit). Boolean returns lose that — every customer report ends up in the same triage bucket.
+- **Test-friendly `now` parameter.** Pass an explicit `now` to make replay-window assertions deterministic against fixed fixtures; production callers can omit it and let `Date.now()` win.
+
+Pair it with the constant-time compare your language exposes (`timingSafeEqual`, `hmac.compare_digest`, `hmac.Equal`, …) and you have a complete verifier matching what Spectrum runs in production. Use the `reason` field to log structured failure metrics — `stale_timestamp` rate going up is a clock-drift incident on either side; `invalid_signature` rate going up is either a key-rotation issue or active probing.
+
+```ts
+const result = verifyPhotonWebhook(rawBody, secret, signature, timestamp);
+if (!result.ok) {
+  log.warn('webhook verification failed', { reason: result.reason });
+  return new Response(result.reason === 'stale_timestamp' ? 'stale' : 'bad signature', {
+    status: result.reason === 'stale_timestamp' ? 400 : 401,
+  });
+}
+```
 
 ## Where to next
 
