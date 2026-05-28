@@ -185,127 +185,35 @@ type Content =
 
 Every arm of the `Content` union, post-projection. Hand-written rather than vellum-driven because the wire shapes deliberately diverge from the SDK shapes (function thunks dropped, server-internal fields suppressed, recursive targets reduced to slim refs).
 
-<AccordionGroup>
-  <Accordion title="text" description="A plain text message — the most common arm.">
-    | Field | Type | Description |
-    | --- | --- | --- |
-    | `type` | `"text"` | Discriminator. |
-    | `text` | `string` | The message body. |
-  </Accordion>
+| `type` | What it is | Wire fields (post-projection) |
+| --- | --- | --- |
+| `text` | A plain text message — the most common arm. | `text: string` |
+| `attachment` | A file attachment — photo, video, audio, or document. | `name: string`, `mimeType: string`, `size?: number` |
+| `voice` | A voice memo — duration-aware audio attachment. | `mimeType: string`, `name?: string`, `duration?: number`, `size?: number` |
+| `contact` | A vCard-style contact card with the provider-native blob in `raw`. | `user?: { id, platform }`, `name?`, `phones?`, `emails?`, `addresses?`, `org?`, `urls?`, `birthday?`, `note?`, `photo?: { mimeType }`, `raw?: unknown` |
+| `richlink` | A link preview — URL only on the wire; OG metadata is not pre-fetched. | `url: string` |
+| `reaction` | An emoji reaction targeting another message. | `emoji: string`, `target: MessageRef` |
+| `reply` | A reply that quotes another message. | `content: Content` (recursed), `target: MessageRef` |
+| `edit` | An edit replacing an earlier message's content. | `content: Content` (recursed), `target: MessageRef` |
+| `group` | An album or batch — multiple messages bundled by the provider. | `items: SerializedInboundMessage[]` (groups don't nest) |
+| `effect` | An iMessage-style effect wrapping inner content. | `effect: string`, `content: text \| attachment` |
+| `typing` | A typing-indicator state change. | `state: "start" \| "stop"` |
+| `custom` | A provider-specific event payload — `raw` is the entire payload by design. | `raw: unknown` (JSON-normalized: `Date` → ISO, functions stripped, cycles guarded) |
 
-  <Accordion title="attachment" description="A file attachment — photo, video, audio, or document.">
-    | Field | Type | Description |
-    | --- | --- | --- |
-    | `type` | `"attachment"` | Discriminator. |
-    | `name` | `string` | Original filename, e.g. `"IMG_4127.HEIC"`. |
-    | `mimeType` | `string` | IANA media type. |
-    | `size?` | `number` | Bytes — present when the provider knows the size. |
+A few cross-cutting points the table doesn't surface:
 
-    The SDK's `read()` / `stream()` byte accessors are stripped before delivery; the internal filesystem `path` is never on the wire.
-  </Accordion>
+- **Byte-bearing arms** (`attachment`, `voice`, `contact.photo`) ship metadata only — see the [warning above](#content-shapes). The SDK's `read()` / `stream()` thunks and the internal filesystem `path` are dropped before delivery.
+- **`target` on `reaction` / `reply` / `edit`** is the slim shape documented under [Target refs](#target-refs) below, not a full nested message.
+- **`richlink`** ships only `url` — OG fetches happen in your handler, since resolving them inline at delivery time would tie latency to the slowest target site.
 
-  <Accordion title="voice" description="A voice memo — duration-aware audio attachment.">
-    | Field | Type | Description |
-    | --- | --- | --- |
-    | `type` | `"voice"` | Discriminator. |
-    | `mimeType` | `string` | IANA media type, typically `audio/*`. |
-    | `name?` | `string` | Filename if the provider supplies one. |
-    | `duration?` | `number` | Seconds. |
-    | `size?` | `number` | Bytes. |
+**Forward-compat arms** — handled defensively until the SDK pin lands a hand-shaped projection. The dispatcher falls through generically rather than failing, so no webhook deploy is required when one of these later promotes to a published arm.
 
-    Same byte / `path` stripping as `attachment`.
-  </Accordion>
+| `type` | What it is | Wire fields (post-projection) |
+| --- | --- | --- |
+| `rename` | A chat title change. | `displayName: string` |
+| (any new arm) | A new arm the SDK ships before the worker has a hand-shaped projection. | `type: string`, plus every JSON-safe own field of the source arm (functions stripped, `Date` → ISO, cycles guarded). |
 
-  <Accordion title="contact" description="A vCard-style contact card — standard projection plus the provider-native blob in `raw`.">
-    | Field | Type | Description |
-    | --- | --- | --- |
-    | `type` | `"contact"` | Discriminator. |
-    | `user?` | `{ id, platform }` | The associated platform user, if the provider attached one. |
-    | `name?`, `phones?`, `emails?`, `addresses?`, `org?`, `urls?`, `birthday?`, `note?` | various | Standard vCard projection — same shape as the SDK's `Contact` interface. |
-    | `photo?` | `{ mimeType }` | Photo metadata only — the `read()` thunk is stripped. |
-    | `raw?` | `unknown` | Provider-native blob (raw vCard text, WhatsApp `nativeCard`, …) JSON-normalized for platform-fidelity consumers. |
-
-    `raw` is opt-in opaque pass-through — read it for vendor parity, ignore it otherwise.
-  </Accordion>
-
-  <Accordion title="richlink" description="A link preview — URL only on the wire.">
-    | Field | Type | Description |
-    | --- | --- | --- |
-    | `type` | `"richlink"` | Discriminator. |
-    | `url` | `string` | The original URL. |
-
-    The SDK exposes async OG accessors (`title()`, `summary()`, `cover()`) that fetch the target URL; resolving them inline at delivery time would put a single hostile URL on the critical path and tie delivery latency to the slowest target site. Fetch OG metadata yourself from `url` when you need it.
-  </Accordion>
-
-  <Accordion title="reaction" description="An emoji reaction targeting another message.">
-    | Field | Type | Description |
-    | --- | --- | --- |
-    | `type` | `"reaction"` | Discriminator. |
-    | `emoji` | `string` | The reaction emoji. |
-    | `target` | `SerializedMessageRef` | Slim reference to the message being reacted to — see [Target refs](#target-refs) below. |
-  </Accordion>
-
-  <Accordion title="reply" description="A reply that quotes another message.">
-    | Field | Type | Description |
-    | --- | --- | --- |
-    | `type` | `"reply"` | Discriminator. |
-    | `content` | `SerializedContent` | The reply's own content, recursed through this same projection. |
-    | `target` | `SerializedMessageRef` | Slim reference to the original message — see [Target refs](#target-refs) below. |
-  </Accordion>
-
-  <Accordion title="edit" description="An edit replacing an earlier message's content.">
-    | Field | Type | Description |
-    | --- | --- | --- |
-    | `type` | `"edit"` | Discriminator. |
-    | `content` | `SerializedContent` | The replacement content, recursed through this same projection. |
-    | `target` | `SerializedMessageRef` | Slim reference to the message being edited — see [Target refs](#target-refs) below. |
-  </Accordion>
-
-  <Accordion title="group" description="An album or batch — multiple messages bundled by the provider.">
-    | Field | Type | Description |
-    | --- | --- | --- |
-    | `type` | `"group"` | Discriminator. |
-    | `items` | `SerializedInboundMessage[]` | Each item is a full inbound-message projection (recursed). The SDK forbids nested groups. |
-  </Accordion>
-
-  <Accordion title="effect" description="An iMessage-style effect wrapping inner content.">
-    | Field | Type | Description |
-    | --- | --- | --- |
-    | `type` | `"effect"` | Discriminator. |
-    | `effect` | `string` | Effect name (e.g. `"slam"`, `"loud"`). |
-    | `content` | `SerializedText \| SerializedAttachment` | The wrapped content; the SDK constrains it to `text` or `attachment`. |
-  </Accordion>
-
-  <Accordion title="typing" description="A typing-indicator state change.">
-    | Field | Type | Description |
-    | --- | --- | --- |
-    | `type` | `"typing"` | Discriminator. |
-    | `state` | `"start" \| "stop"` | Whether typing started or stopped. |
-  </Accordion>
-
-  <Accordion title="custom" description="A provider-specific event payload — `raw` is the entire payload by design.">
-    | Field | Type | Description |
-    | --- | --- | --- |
-    | `type` | `"custom"` | Discriminator. |
-    | `raw` | `unknown` | The provider-native payload, JSON-normalized (`Date` → ISO, functions stripped, cycles guarded). |
-  </Accordion>
-
-  <Accordion title="rename" description="A chat title change. Forward-compat — handled defensively until the SDK pin lands it in the published `Content` union.">
-    | Field | Type | Description |
-    | --- | --- | --- |
-    | `type` | `"rename"` | Discriminator. |
-    | `displayName` | `string` | The new chat name. |
-  </Accordion>
-
-  <Accordion title="(unknown future arm)" description="A new arm the SDK ships before the worker has a hand-shaped projection.">
-    | Field | Type | Description |
-    | --- | --- | --- |
-    | `type` | `string` | The arm's discriminator string. |
-    | `...` | JSON-safe | Every JSON-safe own field of the source arm. Functions are stripped, `Date` becomes ISO, cycles are guarded; everything else passes through. |
-
-    The dispatcher falls through generically rather than failing, so a webhook deploy isn't required when the SDK ships a new arm. Always check `type` against the set above before pattern-matching.
-  </Accordion>
-</AccordionGroup>
+Always check `type` against the published set above before pattern-matching — a `default:` case in your switch that logs the unknown type and moves on is enough.
 
 ##### Target refs
 
