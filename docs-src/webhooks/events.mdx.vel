@@ -203,10 +203,10 @@ If your handler reads only the documented public fields (`name`, `mimeType`, `te
 | `voice` | A voice memo — duration-aware audio attachment. | `mimeType: string`, `name?: string`, `duration?: number`, `size?: number` |
 | `contact` | A vCard-style contact card with the provider-native blob in `raw`. | `user?: { id, platform }`, `name?`, `phones?`, `emails?`, `addresses?`, `org?`, `urls?`, `birthday?`, `note?`, `photo?: { mimeType }`, `raw?: unknown` |
 | `richlink` | A link preview — URL only on the wire; OG metadata is not pre-fetched. | `url: string` |
-| `reaction` | An emoji reaction targeting another message. | `emoji: string`, `target: MessageRef` |
-| `reply` | A reply that quotes another message. | `content: Content` (recursed), `target: MessageRef` |
-| `edit` | An edit replacing an earlier message's content. | `content: Content` (recursed), `target: MessageRef` |
-| `group` | An album or batch — multiple messages bundled by the provider. | `items: SerializedInboundMessage[]` (groups don't nest) |
+| `reaction` | An emoji reaction targeting another message. | `emoji: string`, `target: `[`MessageRef`](#target-refs) |
+| `reply` | A reply that quotes another message. | `content: `[`Content`](#content-shapes) (recursed), `target: `[`MessageRef`](#target-refs) |
+| `edit` | An edit replacing an earlier message's content. | `content: `[`Content`](#content-shapes) (recursed), `target: `[`MessageRef`](#target-refs) |
+| `group` | An album or batch — multiple messages bundled by the provider. | `items: `[`SerializedInboundMessage`](#message)`[]` (groups don't nest) |
 | `effect` | An iMessage-style effect wrapping inner content. | `effect: string`, `content: text \| attachment` |
 | `typing` | A typing-indicator state change. | `state: "start" \| "stop"` |
 | `custom` | A provider-specific event payload — `raw` is the entire payload by design. | `raw: unknown` (JSON-normalized: `Date` → ISO, functions stripped, cycles guarded) |
