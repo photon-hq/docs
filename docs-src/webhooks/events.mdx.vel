@@ -108,7 +108,7 @@ Every `space` object guarantees `id` and `platform`. Every other own enumerable 
     | Field | Type | Description |
     | --- | --- | --- |
     | `type` | `"dm" \| "group"` | Conversation kind. `"dm"` is a 1:1 chat with one phone number; `"group"` is a multi-recipient chat. |
-    | `phone` | `string` | The E.164 phone number this conversation was received on. Use it to disambiguate which of your project's registered iMessage numbers the message landed on. |
+    | `phone` | `string` | The iMessage line this conversation was received on. A **dedicated** line reports its E.164 number; a **shared** (pooled) line reports the literal `shared`. Treat it as an opaque label for which of your project's lines the message landed on. |
   </Accordion>
 </AccordionGroup>
 
@@ -195,17 +195,6 @@ Every arm of the `Content` union, post-projection. Hand-written rather than vell
   today (e.g. poll / poll_option / avatar) so a future SDK bump can't crash it
   — those are intentionally NOT listed here. Re-check on any SDK bump.
 #}
-
-<Note>
-**Wire format compatibility notes** — changed in the May 2026 release.
-
-If your handler reads only the documented public fields (`name`, `mimeType`, `text`, `emoji`, etc.), no changes are needed. The following fields were touched and may require small handler updates:
-
-- **`reaction.target` / `reply.target` / `edit.target`** are now slim references — `{ id, platform, timestamp, sender?, contentPreview? }` — instead of recursive full-message trees. To render "in reply to ..." UIs, read `target.contentPreview` (truncated to 80 chars). To look the parent message up in your own store, use `target.id`.
-- **`attachment.path` / `voice.path`** are no longer included. These carried server-internal filesystem paths and should never have been used by customer code.
-- **`__platform`** on nested `space` / `sender` / `user` objects is now normalized to **`platform`** (without the underscores).
-- **`contact.raw`** is now included on the wire — the provider-native vCard string for iMessage, the WhatsApp Business `nativeCard` for WhatsApp. Additive; opt in only if you need provider-specific fidelity beyond the projected `name` / `phones` / `emails` / etc. fields.
-</Note>
 
 | `type` | What it is | Wire fields (post-projection) |
 | --- | --- | --- |
