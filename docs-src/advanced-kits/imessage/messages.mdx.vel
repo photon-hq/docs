@@ -479,15 +479,15 @@ Returns `void`. To check Focus state before sending, use [`im.addresses.isFocusS
 
 ### Get One Message
 
-When you know `chat.guid` and `message.guid`, call `get(...)`:
+When you have a message GUID, call `get(...)`:
 
 ```ts
-const message = await im.messages.get(chat.guid, sent.guid);
+const message = await im.messages.get(sent.guid);
 
 console.log(message.content.text);
 ```
 
-Missing chats or messages throw `NotFoundError`.
+Missing messages throw `NotFoundError`.
 
 ### List Recent Messages
 
