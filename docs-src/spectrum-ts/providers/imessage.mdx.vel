@@ -217,6 +217,9 @@ const im = imessage(space);
 // Set from a file path — MIME type inferred from the extension
 await im.background("./wallpaper.jpg");
 
+// Set from a URL — fetched lazily over the network, bytes stay in memory
+await im.background(new URL("https://example.com/wallpaper.jpg"));
+
 // Set from a buffer — mimeType is required
 await im.background(buffer, { mimeType: "image/jpeg" });
 

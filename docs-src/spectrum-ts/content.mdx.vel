@@ -23,13 +23,16 @@ await space.send("Hello, world.");
 
 ## Attachments
 
-Pass a file path or a `Buffer`. MIME types are detected from the file extension; override with `options.mimeType` when you already have the bytes.
+Pass a file path, a `URL`, or a `Buffer`. MIME types are detected from the file extension (or URL pathname); override with `options.mimeType` when you already have the bytes.
 
 ```ts
 import { attachment } from "spectrum-ts";
 
 // From a file path — name and MIME type inferred
 await space.send(attachment("/path/to/photo.jpg"));
+
+// From a URL — fetched lazily over the network, bytes stay in memory
+await space.send(attachment(new URL("https://example.com/photo.jpg")));
 
 // From a buffer — provide name and MIME type
 await space.send(attachment(buffer, {
@@ -42,13 +45,16 @@ If the MIME type can't be inferred from the name and you didn't pass `options.mi
 
 ## Voice
 
-Send a voice note. Same input shape as `attachment` — a path or a `Buffer` plus optional metadata.
+Send a voice note. Same input shape as `attachment` — a path, a `URL`, or a `Buffer` plus optional metadata.
 
 ```ts
 import { voice } from "spectrum-ts";
 
 // From a file path
 await space.send(voice("/path/to/note.m4a"));
+
+// From a URL — fetched lazily over the network, bytes stay in memory
+await space.send(voice(new URL("https://example.com/note.m4a")));
 
 // From a buffer — duration in seconds is optional but useful for waveform UIs
 await space.send(voice(buffer, {
@@ -261,6 +267,9 @@ import { avatar } from "spectrum-ts";
 
 // Set from a file path — MIME type inferred from the extension
 await space.send(avatar("./icon.png"));
+
+// Set from a URL — fetched lazily over the network, bytes stay in memory
+await space.send(avatar(new URL("https://example.com/icon.png")));
 
 // Set from a buffer — mimeType is required
 await space.send(avatar(buffer, { mimeType: "image/jpeg" }));
