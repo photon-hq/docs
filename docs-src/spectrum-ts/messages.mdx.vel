@@ -115,7 +115,7 @@ for await (const [space, message] of app.messages) {
   | Type | Fields |
   |---|---|
   | `"text"` | `text: string` |
-  | `"attachment"` | `name: string`, `mimeType: string`, `size?: number`, `read()`, `stream()` |
+  | `"attachment"` | `id: string`, `name: string`, `mimeType: string`, `size?: number`, `read()`, `stream()` |
   | `"voice"` | `name?: string`, `mimeType: string`, `duration?: number`, `size?: number`, `read()`, `stream()` |
   | `"contact"` | `name?`, `phones?`, `emails?`, `addresses?`, `org?`, `urls?`, `birthday?`, `note?`, `photo?`, `user?` |
   | `"richlink"` | `url: string`, `title()`, `summary()`, `cover()` |
