@@ -3612,8 +3612,8 @@ snapshots:
 
   '@typescript-eslint/project-service@8.58.1(typescript@5.9.3)':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.58.1(typescript@5.9.3)
-      '@typescript-eslint/types': 8.58.1
+      '@typescript-eslint/tsconfig-utils': 8.58.2(typescript@5.9.3)
+      '@typescript-eslint/types': 8.58.2
       debug: 4.4.3
       typescript: 5.9.3
     transitivePeerDependencies:
@@ -5545,7 +5545,7 @@ snapshots:
 
   spectrum-ts@1.15.0(typescript@5.9.3):
     dependencies:
-      '@photon-ai/advanced-imessage': 0.10.0
+      '@photon-ai/advanced-imessage': 0.10.1
       '@photon-ai/imessage-kit': 3.0.0
       '@photon-ai/otel': 0.1.1(typescript@5.9.3)
       '@photon-ai/slack': 0.2.0
