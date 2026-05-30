@@ -40,6 +40,22 @@ await space.send(attachment(buffer, {
 
 If the MIME type can't be inferred from the name and you didn't pass `options.mimeType`, `attachment()` throws when the content is built.
 
+Every resolved attachment carries a stable `id`. When the attachment originates from a provider, the ID preserves the provider-native identifier (iMessage GUID, Slack file ID, WhatsApp media ID). For outbound attachments built with `attachment()`, a random UUID is assigned unless you pass `options.id`:
+
+```ts
+await space.send(attachment(buffer, {
+  id: "custom-id",
+  name: "report.pdf",
+  mimeType: "application/pdf",
+}));
+```
+
+The `Attachment` and `AttachmentInput` types are exported from the public API for use in your own type signatures:
+
+```ts
+import { type Attachment, type AttachmentInput } from "spectrum-ts";
+```
+
 ## Voice
 
 Send a voice note. Same input shape as `attachment` — a path or a `Buffer` plus optional metadata.

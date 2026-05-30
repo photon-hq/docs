@@ -99,7 +99,7 @@ All SDK errors include these fields:
 import { ErrorCode, NotFoundError } from "@photon-ai/advanced-imessage";
 
 try {
-  await im.messages.get(chat.guid, "missing-message-guid");
+  await im.messages.get("missing-message-guid");
 } catch (error) {
   if (error instanceof NotFoundError && error.code === ErrorCode.messageNotFound) {
     console.log("message no longer exists");
