@@ -96,12 +96,13 @@ export const myPlatform = definePlatform("my-platform", {
 | `space.resolve` | Yes | Resolves or creates a conversation. Receives an array of users plus optional params. |
 | `space.schema` | No | Optional Zod schema for the resolved space. |
 | `space.params` | No | Zod schema for additional space creation parameters — surfaces as the second arg to `platform(app).space()`. |
-| `space.actions` | No | A map of content-builder factories that become sugar methods on the resolved space. Each `space.<name>(...args)` delegates to `space.send(factory(...args))`. Names that collide with built-in `Space` methods (`send`, `edit`, `startTyping`, `stopTyping`, `responding`, `getMessage`) are skipped at runtime with a warning. |
+| `space.actions` | No | A map of content-builder factories that become sugar methods on the resolved space. Each `space.<name>(...args)` delegates to `space.send(factory(...args))`. Names that collide with built-in `Space` methods (`send`, `edit`, `startTyping`, `stopTyping`, `responding`, `getMessage`, `rename`, `avatar`) are skipped at runtime with a warning. |
 | `lifecycle.createClient` | Yes | Creates the platform client. Receives `config`, `projectId`, `projectSecret` (both may be `undefined`), and `store`. |
 | `lifecycle.destroyClient` | No | Tears down the client on shutdown. Omit if no cleanup is needed. |
 | `messages` | Yes | Async generator that yields incoming messages. |
 | `send` | Yes | Dispatches a content item to a space. All content types — text, attachments, reactions, replies, edits, typing indicators — flow through this single action. Return a `ProviderMessageRecord` for content that produces a message, or `undefined` for fire-and-forget signals (reactions, typing, edits). |
-| `actions.getMessage` | No | Fetches a message by ID from a space. Powers `space.getMessage(id)`. |
+| `actions.getMessage` | No | Fetches a message by ID from a space. Receives `(ctx, space, messageId)` where `ctx` is `{ client, config, store }`. Powers `space.getMessage(id)`. When omitted, `space.getMessage()` throws `UnsupportedError`. |
+| `actions.[custom]` | No | Platform-specific methods projected onto the platform instance. Each receives `(ctx, ...args)` where `ctx` is `{ client, config, store }`; the public signature drops `ctx`. Names that collide with reserved instance keys (`user`, `space`, `messages`, plus any event names) are skipped at runtime with a warning. |
 | `events.[custom]` | No | Additional async generators for platform-specific events — exposed on `app.[eventName]`. |
 | `message.schema` | No | Zod schema for extra properties on incoming messages. |
 | `static` | No | Constants attached to the platform object (e.g. tapback names). |
@@ -142,6 +143,37 @@ message: {
 ```
 
 Use <TypeTooltip name="SchemaMessage" type={`{{ schemaMsg.signature }}`} /> when you need the message shape in your own types.
+
+## Instance actions
+
+Methods declared in `actions` are projected onto the platform instance returned by `myPlatform(app)`. The framework injects `ctx = { client, config, store }` as the first argument, so callers only pass the trailing args.
+
+Two tiers share the `actions` slot:
+
+- **Platform-wise actions** (`getMessage`) — framework-recognized names. Always present on every platform instance. When omitted, the framework wires a default that throws `UnsupportedError`.
+- **Platform-specific actions** — free-form keys for platform ergonomics (e.g. iMessage's `getAttachment`). Only present when declared.
+
+```ts
+export const myPlatform = definePlatform("my-platform", {
+  // ...
+  actions: {
+    getMessage: async ({ client }, space, messageId) => {
+      return await client.fetchMessage(space.id, messageId);
+    },
+    lookupThread: async ({ client }, threadId: string) => {
+      return await client.getThread(threadId);
+    },
+  },
+});
+
+const mine = myPlatform(app);
+
+// Platform-wise — always available, throws UnsupportedError if not overridden
+const msg = await mine.getMessage(space, "msg-123");
+
+// Platform-specific — available because declared above
+const thread = await mine.lookupThread("thread-456");
+```
 
 ## Registering your platform
 
