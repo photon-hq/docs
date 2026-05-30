@@ -158,6 +158,7 @@ type Content =
   | { type: 'text'; text: string }
   | {
       type: 'attachment';
+      id: string;         // stable, provider-native id (iMessage GUID, Slack file id, WhatsApp media id) — pass to getAttachment() to fetch the bytes
       name: string;       // original filename, e.g. "IMG_4127.HEIC"
       mimeType: string;   // e.g. "image/heic", "audio/mp4", "application/pdf"
       size?: number;      // bytes — present when the provider knows the size (always for iMessage; may be absent for some custom providers)
@@ -177,8 +178,26 @@ type Content =
 | `application/*` | Document or file | `application/pdf`, `application/zip` |
 
 <Warning>
-**Byte-bearing arms ship metadata, not bytes.** `attachment` and `contact.photo` both carry `mimeType` / `size` / filename — never the raw bytes themselves and never a download URL. Fetching the actual content is a separate step.
+**Byte-bearing arms ship metadata, not bytes.** `attachment` and `contact.photo` both carry `mimeType` / `size` / filename — never the raw bytes themselves and never a download URL. The `attachment` arm carries an `id` you use to fetch the file out of band — see [Retrieving an attachment](#retrieving-an-attachment).
 </Warning>
+
+##### Retrieving an attachment
+
+The payload tells you a file *exists* and what it is — it never carries the bytes, and there's no HTTP endpoint to download them (the same constraint as [sending](#what-you-dont-get)). The `attachment` arm's `id` is a stable, provider-native identifier — an iMessage GUID here; a Slack file id or WhatsApp media id on those platforms. To pull the bytes, run a [`spectrum-ts`](/spectrum-ts/getting-started) instance — the same one you'd use to reply — and hand the `id` to the provider's `getAttachment`:
+
+```ts
+// `im` is the same iMessage instance you reply through: const im = imessage(app)
+// `content` is the attachment arm and `space` is the delivery's space — both from the payload.
+const file = await im.getAttachment(content.id, space.phone);
+
+if (file) {
+  const bytes = await file.read();    // the whole file, as a Buffer
+  // for large media, stream it instead of buffering:
+  // const stream = await file.stream();
+}
+```
+
+`getAttachment` resolves to the attachment with lazy byte accessors — `read()` buffers the whole file, `stream()` opens a byte stream — or `undefined` if the provider no longer has it. Pass `space.phone` so a pooled (shared) line resolves against the right account; on a dedicated line it's optional. Other providers expose their own retrieval keyed off the same `id` — see each [provider's guide](/spectrum-ts/providers).
 
 ##### Per-arm wire reference
 
@@ -187,7 +206,7 @@ The arms a current provider (iMessage, WhatsApp Business) delivers inbound today
 | `type` | What it is | Wire fields (post-projection) |
 | --- | --- | --- |
 | `text` | A plain text message — the most common arm. | `text: string` |
-| `attachment` | A file attachment — photo, video, audio, voice memo, or document. | `name: string`, `mimeType: string`, `size?: number` |
+| `attachment` | A file attachment — photo, video, audio, voice memo, or document. | `id: string`, `name: string`, `mimeType: string`, `size?: number` |
 | `contact` | A contact card — all fields optional. Full shape: [`Contact`](/spectrum-ts/content). | `name?: { formatted?, first?, last? }`, `phones?: [{ value, type? }]`, `photo?: { mimeType }`, `raw?` |
 | `richlink` | A link preview — URL only on the wire; OG metadata is not pre-fetched. | `url: string` |
 | `reaction` | An emoji reaction targeting another message. | `emoji: string`, [`target: MessageRef`](#target-refs) |
@@ -211,7 +230,7 @@ A `group` (album) nests each attachment as a full inbound message in `items` —
       "platform": "iMessage",
       "sender": { "id": "+15550100", "platform": "iMessage" },
       "timestamp": "2026-05-14T19:06:32.000Z",
-      "content": { "type": "attachment", "name": "IMG_4351.HEIC", "mimeType": "image/heic", "size": 1365240 }
+      "content": { "type": "attachment", "id": "1A2B3C4D-0001-4ABC-9DEF-000000000001", "name": "IMG_4351.HEIC", "mimeType": "image/heic", "size": 1365240 }
     },
     {
       "id": "p:1/spc-msg-00000000-0000-4000-8000-000000000001",
@@ -219,7 +238,7 @@ A `group` (album) nests each attachment as a full inbound message in `items` —
       "platform": "iMessage",
       "sender": { "id": "+15550100", "platform": "iMessage" },
       "timestamp": "2026-05-14T19:06:32.000Z",
-      "content": { "type": "attachment", "name": "IMG_4354.HEIC", "mimeType": "image/heic", "size": 1888241 }
+      "content": { "type": "attachment", "id": "1A2B3C4D-0002-4ABC-9DEF-000000000002", "name": "IMG_4354.HEIC", "mimeType": "image/heic", "size": 1888241 }
     }
   ]
 }
