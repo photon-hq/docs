@@ -28,7 +28,7 @@
     "eslint-plugin-format": "^2.0.1",
     "husky": "^9.1.7",
     "oxfmt": "^0.44.0",
-    "spectrum-ts": "1.11.3",
+    "spectrum-ts": "1.15.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
