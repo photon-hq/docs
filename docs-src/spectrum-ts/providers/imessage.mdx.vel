@@ -258,6 +258,18 @@ Background UI may not appear in these cases:
   The string `"clear"` is a reserved sentinel. If you have a file literally named `clear` with no extension, pass `"./clear"` or load it as a `Buffer`.
 </Note>
 
+## Automatic contact card sharing
+
+In cloud or dedicated mode, Spectrum can automatically share the bot's contact card after an inbound message when the project profile has `imessageSynced` enabled. This lets new contacts save the bot's name and photo without a manual share.
+
+The share is deduped per chat for 24 hours — active conversations are not spammed. If a share fails, the next inbound message in that chat retries automatically.
+
+Enable this in your project's profile settings on the [dashboard](https://app.photon.codes/).
+
+<Note>
+  Contact card sharing requires cloud or dedicated mode and a project profile with `imessageSynced` enabled. Local mode does not support contact sharing.
+</Note>
+
 ## Fetching attachments
 
 Retrieve an attachment by its iMessage GUID using `getAttachment` on the narrowed platform instance. The returned `Attachment` is lazy — `.read()` and `.stream()` each trigger an independent download, so cache `.read()` if you need the bytes more than once.

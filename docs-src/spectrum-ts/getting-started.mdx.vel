@@ -88,10 +88,13 @@ const app = await Spectrum({
 
 ```ts
 app.messages                 // AsyncIterable<[Space, Message]>
+app.config                   // project metadata from Spectrum Cloud
 await app.send(space, ...)   // send into a space
 await app.responding(space, fn)  // run fn with a typing indicator
 await app.stop()             // graceful shutdown
 ```
+
+When `projectId` and `projectSecret` are provided, `app.config` contains the project metadata fetched from Spectrum Cloud at startup — including the project's `profile` settings. Without credentials, `app.config` is `undefined`.
 
 Custom events emitted by providers are exposed as flat async iterables on the same object — see [Custom events and lifecycle](/spectrum-ts/custom-events-and-lifecycle).
 

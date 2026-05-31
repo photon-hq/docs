@@ -109,13 +109,15 @@ export const myPlatform = definePlatform("my-platform", {
 
 ## Event producers
 
-Every event generator receives `{ client, config, store }` and returns an `AsyncIterable`. The signature is <TypeTooltip name="EventProducer" type={`{{ ep.signature }}`} />.
+Every event generator receives `{ client, config, projectConfig, store }` and returns an `AsyncIterable`. The signature is <TypeTooltip name="EventProducer" type={`{{ ep.signature }}`} />.
+
+`projectConfig` is the Spectrum Cloud project metadata (fetched once at startup). It is `undefined` when the instance was created without `projectId`/`projectSecret`.
 
 The core `messages` stream lives at the top level of the definition. Optional custom event streams (presence, read receipts, etc.) live inside `events`:
 
 ```ts
 // Top-level — required
-async *messages({ client }) { /* ... */ },
+async *messages({ client, projectConfig }) { /* ... */ },
 
 // Optional custom events
 events: {
@@ -128,6 +130,10 @@ events: {
 ```
 
 Custom events are auto-wired as flat properties on both the Spectrum instance (`app.presence`) and the narrowed platform instance (`myPlatform(app).presence`).
+
+<Note>
+  The name `config` is reserved and cannot be used as a custom event name — `app.config` exposes the project metadata instead. Other reserved names: `stop`, `send`, `__internal`, `__providers`.
+</Note>
 
 ## Message extras
 
