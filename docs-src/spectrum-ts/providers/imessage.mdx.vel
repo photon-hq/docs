@@ -258,6 +258,60 @@ Background UI may not appear in these cases:
   The string `"clear"` is a reserved sentinel. If you have a file literally named `clear` with no extension, pass `"./clear"` or load it as a `Buffer`.
 </Note>
 
+## Mini-app cards
+
+Send a customized iMessage mini-app card — a remote-only rich bubble that shows app metadata, a deep link, and a visual layout. Import `customizedMiniApp` from the iMessage provider:
+
+```ts
+import { customizedMiniApp } from "spectrum-ts/providers/imessage";
+
+const sent = await space.send(customizedMiniApp({
+  appName: "My App",
+  extensionBundleId: "com.example.myapp.imessage",
+  teamId: "ABCDE12345",
+  url: "https://example.com/deep-link",
+  layout: {
+    caption: "Check this out",
+    subcaption: "Tap to open",
+  },
+}));
+```
+
+`space.send(customizedMiniApp(...))` returns the sent message record — unlike `background` and `read`, mini-app cards are real outbound messages.
+
+`appStoreId` is optional. Omit it to send a card whose extension isn't published on the App Store; when set, recipients without the extension are directed to its App Store entry.
+
+<AccordionGroup>
+  <Accordion title="CustomizedMiniAppInput" description="Fields for building a mini-app card.">
+    | Field | Type | Description |
+    |---|---|---|
+    | `appName` | `string` | Display name of the owning app, shown by Messages fallback UI. |
+    | `appStoreId` | `number` (optional) | Apple App Store numeric ID. Omit for unpublished extensions. |
+    | `extensionBundleId` | `string` | Bundle identifier of the iMessage extension target. |
+    | `layout` | `CustomizedMiniAppLayout` | Visible card layout — see below. |
+    | `teamId` | `string` | 10-character uppercase alphanumeric Apple Team ID. |
+    | `url` | `string` | Absolute URL delivered to the installed extension on tap. |
+  </Accordion>
+  <Accordion title="CustomizedMiniAppLayout" description="Visible layout of a mini-app card. Mirrors Apple's MSMessageTemplateLayout.">
+    | Field | Type | Description |
+    |---|---|---|
+    | `caption` | `string` (optional) | Primary caption text. |
+    | `subcaption` | `string` (optional) | Secondary caption text. |
+    | `trailingCaption` | `string` (optional) | Right-aligned primary text. |
+    | `trailingSubcaption` | `string` (optional) | Right-aligned secondary text. |
+    | `image` | `Uint8Array` (optional) | Image data for the card. Must be set with `imageTitle`. |
+    | `imageTitle` | `string` (optional) | Title for the image. Must be set with `image`. |
+    | `imageSubtitle` | `string` (optional) | Subtitle for the image. Requires `image`. |
+    | `summary` | `string` (optional) | Fallback text for surfaces that can't render the card (notifications, lock screen). |
+
+    At least one of `caption`, `subcaption`, `trailingCaption`, `trailingSubcaption`, or `image` must be set.
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  Mini-app cards require cloud or dedicated mode. In local mode, `customizedMiniApp()` throws an `UnsupportedError`.
+</Note>
+
 ## Fetching attachments
 
 Retrieve an attachment by its iMessage GUID using `getAttachment` on the narrowed platform instance. The returned `Attachment` is lazy — `.read()` and `.stream()` each trigger an independent download, so cache `.read()` if you need the bytes more than once.
