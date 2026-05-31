@@ -188,7 +188,7 @@ await im.messages.sendAttachment(chat.guid, audio.attachment.guid, {
 
 `sendCustomizedMiniApp(...)` sends a card that, when tapped, opens your iMessage extension and hands it `url`. Use it to launch your own app with a structured payload; for plain link previews, just put the URL in `sendText(...)`.
 
-You need a published iMessage extension on the App Store before you can call this. `appName`, `appStoreId`, `teamId`, and `extensionBundleId` identify that extension so Messages.app can route the tap to it on the recipient's device.
+You need a published iMessage extension on the App Store before you can call this. `appName`, `teamId`, and `extensionBundleId` identify that extension so Messages.app can route the tap to it on the recipient's device. `appStoreId` is optional — when set, recipients without the extension installed see an App Store install prompt.
 
 For most cards we recommend an image preview with an overlaid title:
 
@@ -211,7 +211,7 @@ console.log(sent.guid);
 | Field | Meaning |
 |---|---|
 | `appName` | Display name of your app. Recipients without your extension installed see this on an App Store install prompt. |
-| `appStoreId` | Numeric App Store id, e.g. `1234567890` from `apps.apple.com/app/id1234567890`. Positive integer. |
+| `appStoreId` | Optional numeric App Store id, e.g. `1234567890` from `apps.apple.com/app/id1234567890`. When set, must be a positive integer. |
 | `teamId` | 10-character uppercase alphanumeric Apple Team ID. Find it in App Store Connect → Membership. |
 | `extensionBundleId` | Bundle identifier of the iMessage extension target inside your app. |
 | `url` | Absolute URL delivered to your extension when the recipient taps the card. |
