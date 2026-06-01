@@ -12,8 +12,8 @@ importers:
         specifier: ^4.19.0
         version: 4.19.0(@typescript-eslint/rule-tester@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(@typescript-eslint/typescript-estree@8.58.2(typescript@5.9.3))(@typescript-eslint/utils@8.58.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(@vue/compiler-sfc@3.5.32)(eslint-plugin-format@2.0.1(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
       '@photon-ai/advanced-imessage':
-        specifier: ^0.11.0
-        version: 0.11.0
+        specifier: ^0.11.1
+        version: 0.11.1
       '@photon-ai/advanced-imessage-kit':
         specifier: ^1.14.3
         version: 1.14.3(typescript@5.9.3)
@@ -927,8 +927,8 @@ packages:
     peerDependencies:
       typescript: ^5.9.3
 
-  '@photon-ai/advanced-imessage@0.11.0':
-    resolution: {integrity: sha512-lUeWq802EI1e0LKBfHpg1w84OQOKFvpS8s7vlUGQ221iC0hI5rBtZq+9bKfks0iskFTciFrBGvsjqdpnueafiw==}
+  '@photon-ai/advanced-imessage@0.11.1':
+    resolution: {integrity: sha512-hEeTvQkm4AjMhdCpw56vPoWxi5oZN2MolTJhirw5w+sbBSaRP9YK7KMtTBBpbAhjJE2K5QWyhmfFEz9cQifsZQ==}
     engines: {node: '>=18.17'}
 
   '@photon-ai/imessage-kit@2.1.2':
@@ -3462,7 +3462,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@photon-ai/advanced-imessage@0.11.0':
+  '@photon-ai/advanced-imessage@0.11.1':
     dependencies:
       '@bufbuild/protobuf': 2.12.0
       '@grpc/grpc-js': 1.14.4
@@ -3628,8 +3628,8 @@ snapshots:
 
   '@typescript-eslint/project-service@8.58.1(typescript@5.9.3)':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.58.2(typescript@5.9.3)
-      '@typescript-eslint/types': 8.58.2
+      '@typescript-eslint/tsconfig-utils': 8.58.1(typescript@5.9.3)
+      '@typescript-eslint/types': 8.58.1
       debug: 4.4.3
       typescript: 5.9.3
     transitivePeerDependencies:
@@ -5563,7 +5563,7 @@ snapshots:
 
   spectrum-ts@1.18.0(typescript@5.9.3):
     dependencies:
-      '@photon-ai/advanced-imessage': 0.11.0
+      '@photon-ai/advanced-imessage': 0.11.1
       '@photon-ai/imessage-kit': 3.0.0
       '@photon-ai/otel': 0.1.1(typescript@5.9.3)
       '@photon-ai/proto': 0.2.4
