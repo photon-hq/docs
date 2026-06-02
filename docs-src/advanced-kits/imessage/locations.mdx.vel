@@ -36,7 +36,7 @@ Send a visible Find My request card in an existing direct or group chat:
 ```ts
 const receipt = await im.locations.request(chat.guid, "alice@example.com");
 
-console.log(receipt.requestStatus, receipt.messageGuid);
+console.log(receipt.status, receipt.messageGuid);
 ```
 
 Inputs:
@@ -56,8 +56,7 @@ The returned receipt includes:
 | Field | Meaning |
 |---|---|
 | `address` | The normalized email address or E.164 phone number that was requested |
-| `requested` | Whether the server sent or accepted a request operation |
-| `requestStatus` | Server status for the request operation |
+| `status` | Server status for the request operation |
 | `reason` | Optional reason when the request was not sent or needs explanation |
 | `messageGuid` | Message GUID for the request card, when a card was created |
 
