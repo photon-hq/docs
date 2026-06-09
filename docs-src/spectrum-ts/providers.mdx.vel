@@ -17,6 +17,9 @@ Providers plug into Spectrum's type system and runtime. Each one exports a calla
   <Card title="WhatsApp Business" icon="whatsapp" href="/spectrum-ts/providers/whatsapp-business">
     Official WhatsApp Business Cloud API. Native reactions and replies, 1:1 conversations only.
   </Card>
+  <Card title="Telegram" icon="paper-plane" href="/spectrum-ts/providers/telegram">
+    Telegram Bot API with Fusor webhooks. Text, media, reactions, replies, typing, and edits.
+  </Card>
 </CardGroup>
 
 ## Combining providers

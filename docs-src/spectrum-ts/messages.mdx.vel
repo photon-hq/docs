@@ -126,6 +126,7 @@ for await (const [space, message] of app.messages) {
   | `"reply"` | `content: Content`, `target: Message` — threaded reply wrapping inner content |
   | `"edit"` | `content: Content`, `target: Message` — rewrite of a previously-sent message |
   | `"typing"` | `state: "start" \| "stop"` — typing indicator signal |
+  | `"streamText"` | `stream: () => AsyncIterable<string>` — streaming text content |
   | `"custom"` | `raw: unknown` — platform-specific structured data |
 </Accordion>
 
