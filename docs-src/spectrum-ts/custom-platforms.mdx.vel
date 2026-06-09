@@ -175,6 +175,54 @@ const msg = await mine.getMessage(space, "msg-123");
 const thread = await mine.lookupThread("thread-456");
 ```
 
+## Fusor-backed providers
+
+When your platform receives inbound messages through webhooks (rather than a persistent connection), use `fusor(...)` as the client in `lifecycle.createClient`. A Fusor client handles webhook signature verification and delivers parsed payloads to your `messages` handler:
+
+```ts
+import { definePlatform, fusor, fusorEvent } from "spectrum-ts";
+import z from "zod";
+
+export const myWebhookPlatform = definePlatform("my-webhook-platform", {
+  config: z.object({
+    webhookSecret: z.string(),
+  }),
+
+  lifecycle: {
+    createClient: async ({ config }) =>
+      fusor("my-webhook-platform", (req) => {
+        verifySignature(req.rawBody, req.headers, config.webhookSecret);
+        return JSON.parse(new TextDecoder().decode(req.rawBody));
+      }),
+  },
+
+  messages: async function* ({ payload, config, respond }) {
+    respond({ status: 200 });
+    yield {
+      id: payload.id,
+      content: { type: "text", text: payload.text },
+      sender: { id: payload.userId },
+      space: { id: payload.chatId },
+      timestamp: new Date(payload.ts),
+    };
+  },
+
+  send: async ({ space, content, config }) => {
+    // dispatch outbound messages
+  },
+
+  user: {
+    resolve: async ({ input }) => ({ id: input.userID }),
+  },
+
+  space: {
+    resolve: async ({ input }) => ({ id: input.users[0].id }),
+  },
+});
+```
+
+The Fusor overload of `definePlatform` replaces the top-level `messages` async generator with a per-webhook-delivery handler that receives `{ payload, config, respond }`. Call `respond()` to set the HTTP response sent back to the webhook caller.
+
 ## Registering your platform
 
 Exported platforms work like the built-ins — register with `.config()` and use narrowing for the typed surface:

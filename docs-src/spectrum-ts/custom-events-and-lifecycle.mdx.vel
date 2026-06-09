@@ -34,6 +34,18 @@ for await (const event of im.typing) {
 
 Use the flat form on `app` when you want a merged feed across platforms; use the narrowed form when you only care about one.
 
+### Fusor custom events
+
+Fusor-backed providers can emit non-message events (presence, read receipts, delivery status) into typed event streams using `fusorEvent`. Inside a Fusor `messages` handler, yield a `fusorEvent(name, data)` alongside regular messages to push events into `app.<name>` streams:
+
+```ts
+import { fusorEvent } from "spectrum-ts";
+
+yield fusorEvent("presence", { userId: update.userId, online: true });
+```
+
+Events emitted this way are available as `app.presence` (merged across providers) or `narrowedInstance.presence` (scoped to the emitting provider). The event name and data shape are fully typed based on the provider's event declarations.
+
 ## Lifecycle
 
 ### Graceful shutdown

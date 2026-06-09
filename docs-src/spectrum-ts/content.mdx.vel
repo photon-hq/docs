@@ -8,7 +8,7 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 {% set ci = symbol("ts:spectrum-ts#ContentInput") %}
 {% set cb = symbol("ts:spectrum-ts#ContentBuilder") %}
 
-Spectrum exposes a family of content builders — `text`, `attachment`, `voice`, `contact`, `richlink`, `poll`, `group`, `custom`, `reaction`, `reply`, `edit`, `typing`, `rename`, and `avatar` — plus a string shortcut that's equivalent to `text()`. Any API that takes a <TypeTooltip name="ContentInput" type={`{{ ci.signature }}`} /> accepts a plain string or a <TypeTooltip name="ContentBuilder" type={`{{ cb.signature }}`} />.
+Spectrum exposes a family of content builders — `text`, `streamText`, `attachment`, `voice`, `contact`, `richlink`, `poll`, `group`, `custom`, `reaction`, `reply`, `edit`, `typing`, `rename`, and `avatar` — plus a string shortcut that's equivalent to `text()`. Any API that takes a <TypeTooltip name="ContentInput" type={`{{ ci.signature }}`} /> accepts a plain string or a <TypeTooltip name="ContentBuilder" type={`{{ cb.signature }}`} />.
 
 ## Text
 
@@ -20,6 +20,53 @@ await space.send(text("Hello, world."));
 // Plain strings are equivalent:
 await space.send("Hello, world.");
 ```
+
+## Streaming text
+
+Send streaming LLM output as Spectrum content. The `streamText` builder wraps an async stream of text deltas so it can be sent like any other content item. On platforms that support it (iMessage in remote mode), the first chunk is sent immediately as a real message and then edited in place as more text arrives.
+
+```ts
+import { streamText } from "spectrum-ts";
+```
+
+`streamText` accepts whatever the popular LLM SDKs return — the Vercel AI SDK `streamText()` result, a raw `AsyncIterable` of chunks, or a `ReadableStream`:
+
+<Tabs>
+  <Tab title="Vercel AI SDK">
+    ```ts
+    import { streamText } from "spectrum-ts";
+    import { streamText as aiStreamText } from "ai";
+
+    const result = aiStreamText({ model, prompt: message.content.text });
+    await space.send(streamText(result));
+    ```
+  </Tab>
+  <Tab title="AsyncIterable">
+    ```ts
+    import { streamText } from "spectrum-ts";
+
+    async function* generate() {
+      yield "Hello, ";
+      yield "world!";
+    }
+
+    await space.send(streamText(generate()));
+    ```
+  </Tab>
+  <Tab title="Custom extractor">
+    ```ts
+    import { streamText } from "spectrum-ts";
+
+    await space.send(
+      streamText(customStream, {
+        extract: (chunk) => chunk.delta?.text ?? null,
+      }),
+    );
+    ```
+  </Tab>
+</Tabs>
+
+Platforms that cannot stream silently skip the send with a warning.
 
 ## Attachments
 

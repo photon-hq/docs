@@ -7,7 +7,7 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 
 {% set pi = symbol("ts:spectrum-ts#PlatformInstance") %}
 
-Every platform provider exports a callable — `imessage`, `terminal`, `whatsappBusiness` — that **narrows** generic Spectrum types into platform-specific ones. The same function handles three different inputs.
+Every platform provider exports a callable — `imessage`, `terminal`, `whatsappBusiness`, `telegram` — that **narrows** generic Spectrum types into platform-specific ones. The same function handles three different inputs.
 
 ## Narrowing the app
 
@@ -41,7 +41,7 @@ for await (const [space, message] of app.messages) {
 }
 ```
 
-Narrowing a space from the wrong platform throws at runtime. Always gate on `message.platform` (or a similar signal) first.
+Narrowing a space from the wrong platform logs a structured warning at runtime. Always gate on `message.platform` (or a similar signal) first to avoid unexpected behavior.
 
 ## Narrowing a message
 

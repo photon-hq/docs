@@ -57,8 +57,8 @@ importers:
         specifier: ^0.44.0
         version: 0.44.0
       spectrum-ts:
-        specifier: 1.18.0
-        version: 1.18.0(typescript@5.9.3)
+        specifier: 2.0.0
+        version: 2.0.0(typescript@5.9.3)
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -950,6 +950,10 @@ packages:
 
   '@photon-ai/slack@0.2.0':
     resolution: {integrity: sha512-k3XzGKIVS1EsjrPz9pbWvrvScmiy/iqKdA2npS5xu1CtCoycBkdFsqJKyB6iIyDR02Q3/38kQh7MvKsCzUyo3Q==}
+    engines: {node: '>=18'}
+
+  '@photon-ai/telegram-ts@10.0.0':
+    resolution: {integrity: sha512-kYGj/ieKOCG+OxoD1R69xHoT7zHl9dboF52LMPUl4FnorbwA8b2pid0uFoDYF55WIfoeo+VSqwlmY84GgpSedg==}
     engines: {node: '>=18'}
 
   '@photon-ai/whatsapp-business@0.1.1':
@@ -2546,8 +2550,8 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  semver@7.8.1:
-    resolution: {integrity: sha512-rkVq3IXh+4FDGch+KwzX3aV9W3kO54GyEgpvBzSyctDA6Xtd7RJQV1xmXbeQp5v7+VzLOfVqiutSE6GICgPFvg==}
+  semver@7.8.3:
+    resolution: {integrity: sha512-wnilbGyMxzbY7dNOl7jpKbLSjcfeweJWU5j4+u5qW+6/wuGD9KzIGOyZnQVSBM9E7DtWaaH3CyHkppYrKYoxwg==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -2593,8 +2597,8 @@ packages:
   spdx-license-ids@3.0.23:
     resolution: {integrity: sha512-CWLcCCH7VLu13TgOH+r8p1O/Znwhqv/dbb6lqWy67G+pT1kHmeD/+V36AVb/vq8QMIQwVShJ6Ssl5FPh0fuSdw==}
 
-  spectrum-ts@1.18.0:
-    resolution: {integrity: sha512-xgqGSCY4ltA737mJ2Yb2wniJDOYzZRby3YxeT9mv0iOvyWlsG2ptSp72LcXZBgkD4ejVSXAkzg7iLmSlf02buA==}
+  spectrum-ts@2.0.0:
+    resolution: {integrity: sha512-MCaPzO28cT8UMrTumCEE/qEVx8D7u7U6qmicm3PXQfG4TgRodcuD+My9UfvkkCvwO0aDaVu7WrjYhbfhXaRZTg==}
     peerDependencies:
       ffmpeg-static: ^5
       typescript: ^5 || ^6.0.0
@@ -3505,6 +3509,10 @@ snapshots:
       nice-grpc: 2.1.16
       nice-grpc-common: 2.0.3
 
+  '@photon-ai/telegram-ts@10.0.0':
+    dependencies:
+      zod: 4.4.3
+
   '@photon-ai/whatsapp-business@0.1.1':
     dependencies:
       '@grpc/grpc-js': 1.14.3
@@ -3628,8 +3636,8 @@ snapshots:
 
   '@typescript-eslint/project-service@8.58.1(typescript@5.9.3)':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.58.1(typescript@5.9.3)
-      '@typescript-eslint/types': 8.58.1
+      '@typescript-eslint/tsconfig-utils': 8.58.2(typescript@5.9.3)
+      '@typescript-eslint/types': 8.58.2
       debug: 4.4.3
       typescript: 5.9.3
     transitivePeerDependencies:
@@ -3653,7 +3661,7 @@ snapshots:
       eslint: 9.39.4(jiti@2.6.1)
       json-stable-stringify-without-jsonify: 1.0.1
       lodash.merge: 4.6.2
-      semver: 7.8.1
+      semver: 7.8.3
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -3700,7 +3708,7 @@ snapshots:
       '@typescript-eslint/visitor-keys': 8.58.1
       debug: 4.4.3
       minimatch: 10.2.5
-      semver: 7.8.1
+      semver: 7.8.3
       tinyglobby: 0.2.17
       ts-api-utils: 2.5.0(typescript@5.9.3)
       typescript: 5.9.3
@@ -5481,7 +5489,7 @@ snapshots:
 
   semver@7.7.4: {}
 
-  semver@7.8.1: {}
+  semver@7.8.3: {}
 
   sharp@0.34.5:
     dependencies:
@@ -5561,13 +5569,14 @@ snapshots:
 
   spdx-license-ids@3.0.23: {}
 
-  spectrum-ts@1.18.0(typescript@5.9.3):
+  spectrum-ts@2.0.0(typescript@5.9.3):
     dependencies:
       '@photon-ai/advanced-imessage': 0.11.2
       '@photon-ai/imessage-kit': 3.0.0
       '@photon-ai/otel': 0.1.1(typescript@5.9.3)
       '@photon-ai/proto': 0.2.4
       '@photon-ai/slack': 0.2.0
+      '@photon-ai/telegram-ts': 10.0.0
       '@photon-ai/whatsapp-business': 0.1.1
       '@repeaterjs/repeater': 3.0.6
       better-grpc: 0.3.2(typescript@5.9.3)
