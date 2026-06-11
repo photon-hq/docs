@@ -1,6 +1,6 @@
 ---
 title: "Content"
-description: "Build text, attachments, voice, contacts, polls, rich links, groups, replies, edits, typing indicators, rename, avatar, and platform-specific content for outgoing messages"
+description: "Build text, markdown, attachments, voice, contacts, polls, rich links, groups, replies, edits, unsends, typing indicators, rename, avatar, and platform-specific content for outgoing messages"
 ---
 
 import { TypeTooltip } from "/snippets/type-tooltip.mdx";
@@ -8,7 +8,7 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 {% set ci = symbol("ts:spectrum-ts#ContentInput") %}
 {% set cb = symbol("ts:spectrum-ts#ContentBuilder") %}
 
-Spectrum exposes a family of content builders — `text`, `streamText`, `attachment`, `voice`, `contact`, `richlink`, `poll`, `group`, `custom`, `reaction`, `reply`, `edit`, `typing`, `rename`, and `avatar` — plus a string shortcut that's equivalent to `text()`. Any API that takes a <TypeTooltip name="ContentInput" type={`{{ ci.signature }}`} /> accepts a plain string or a <TypeTooltip name="ContentBuilder" type={`{{ cb.signature }}`} />.
+Spectrum exposes a family of content builders — `text`, `markdown`, `attachment`, `voice`, `contact`, `richlink`, `poll`, `group`, `custom`, `reaction`, `reply`, `edit`, `unsend`, `typing`, `rename`, and `avatar` — plus a string shortcut that's equivalent to `text()`. Any API that takes a <TypeTooltip name="ContentInput" type={`{{ ci.signature }}`} /> accepts a plain string or a <TypeTooltip name="ContentBuilder" type={`{{ cb.signature }}`} />.
 
 ## Text
 
@@ -23,42 +23,36 @@ await space.send("Hello, world.");
 
 ## Streaming text
 
-Send streaming LLM output as Spectrum content. The `streamText` builder wraps an async stream of text deltas so it can be sent like any other content item. On platforms that support it (iMessage in remote mode), the first chunk is sent immediately as a real message and then edited in place as more text arrives.
-
-```ts
-import { streamText } from "spectrum-ts";
-```
-
-`streamText` accepts whatever the popular LLM SDKs return — the Vercel AI SDK `streamText()` result, a raw `AsyncIterable` of chunks, or a `ReadableStream`:
+Both `text()` and `markdown()` accept a streaming source — an AI SDK result, an `AsyncIterable`, or a `ReadableStream` — in addition to a plain string. On platforms that support it, text streams live: iMessage (remote) sends the first chunk as a real message and edits in place as more text arrives; Telegram (private chats) animates a native draft preview. Platforms without streaming support wait for the stream to finish and send the full text as one message.
 
 <Tabs>
   <Tab title="Vercel AI SDK">
     ```ts
-    import { streamText } from "spectrum-ts";
+    import { text } from "spectrum-ts";
     import { streamText as aiStreamText } from "ai";
 
     const result = aiStreamText({ model, prompt: message.content.text });
-    await space.send(streamText(result));
+    await space.send(text(result));
     ```
   </Tab>
   <Tab title="AsyncIterable">
     ```ts
-    import { streamText } from "spectrum-ts";
+    import { text } from "spectrum-ts";
 
     async function* generate() {
       yield "Hello, ";
       yield "world!";
     }
 
-    await space.send(streamText(generate()));
+    await space.send(text(generate()));
     ```
   </Tab>
   <Tab title="Custom extractor">
     ```ts
-    import { streamText } from "spectrum-ts";
+    import { text } from "spectrum-ts";
 
     await space.send(
-      streamText(customStream, {
+      text(customStream, {
         extract: (chunk) => chunk.delta?.text ?? null,
       }),
     );
@@ -66,7 +60,29 @@ import { streamText } from "spectrum-ts";
   </Tab>
 </Tabs>
 
-Platforms that cannot stream silently skip the send with a warning.
+A stream can only be sent once. Pass `options.extract` for any chunk shape the built-in auto-detection doesn't recognize.
+
+## Markdown
+
+Send styled text written in standard markdown (CommonMark plus GFM tables and strikethrough). Each platform renders markdown to its native format — Telegram uses `parse_mode: "HTML"`, iMessage (remote) uses UTF-16 styled text formatting ranges. Platforms without native markdown support receive readable plain text via the send pipeline's automatic fallback.
+
+```ts
+import { markdown } from "spectrum-ts";
+
+await space.send(markdown("**Bold** and _italic_ text."));
+```
+
+`markdown()` also accepts a stream source, just like `text()`. Markdown streams render progressively on platforms with native support; everywhere else the accumulated text falls back through the markdown pipeline instead of surfacing raw `**` markers:
+
+```ts
+import { markdown } from "spectrum-ts";
+import { streamText as aiStreamText } from "ai";
+
+const result = aiStreamText({ model, prompt: message.content.text });
+await space.send(markdown(result));
+```
+
+Markdown is outbound-only by design — inbound messages always surface as `text` content regardless of platform formatting.
 
 ## Attachments
 
@@ -275,7 +291,7 @@ import { reply, text } from "spectrum-ts";
 await space.send(reply(text("Got it"), message));
 ```
 
-`reply()` cannot wrap `reply`, `edit`, `reaction`, `group`, `typing`, `rename`, or `avatar` content.
+`reply()` cannot wrap `reply`, `edit`, `reaction`, `group`, `typing`, `rename`, `avatar`, or `unsend` content.
 
 ## Edits
 
@@ -288,7 +304,20 @@ const sent = await space.send("Draft");
 await space.send(edit(text("Final version"), sent));
 ```
 
-`edit()` cannot wrap `edit`, `reply`, `reaction`, `group`, `typing`, `rename`, or `avatar` content.
+`edit()` cannot wrap `edit`, `reply`, `reaction`, `group`, `typing`, `rename`, `avatar`, or `unsend` content.
+
+## Unsend
+
+Retract a previously-sent outbound message. Unsends are fire-and-forget — `space.send(unsend(...))` resolves to `undefined`.
+
+```ts
+import { unsend } from "spectrum-ts";
+
+const sent = await space.send("Oops");
+await space.send(unsend(sent));
+```
+
+`message.unsend()` and `space.unsend(message)` are sugar for `space.send(unsend(message))`. Only outbound messages can be unsent — the builder throws at build time for inbound targets. Platform constraints (e.g. iMessage enforces Apple's ~2-minute unsend window for regular messages) surface from the provider at send time.
 
 ## Typing indicators
 

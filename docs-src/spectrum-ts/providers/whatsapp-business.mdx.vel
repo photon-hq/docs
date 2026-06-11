@@ -10,7 +10,7 @@ import { whatsappBusiness } from "spectrum-ts/providers/whatsapp-business";
 The WhatsApp Business provider wraps the official WhatsApp Business Cloud API. Reactions and threaded replies map to native WhatsApp features.
 
 <Note>
-  WhatsApp Business supports **1:1 conversations only**. The API does not expose group management for business accounts — calling `space(userA, userB)` throws.
+  WhatsApp Business supports **1:1 conversations only**. The API does not expose group management for business accounts — calling `space.create([userA, userB])` throws.
 </Note>
 
 ## Config
@@ -61,9 +61,9 @@ Resolve a user by their WhatsApp phone number (international format, digits only
 ```ts
 const wa = whatsappBusiness(app);
 const customer = await wa.user("15551234567");
-const space = await wa.space(customer);
+const space = await wa.space.create(customer);
 
 await space.send("Thanks for reaching out.");
 ```
 
-Passing more than one user to `space()` throws — the provider rejects group creation explicitly.
+Passing more than one user to `space.create()` throws — the provider rejects group creation explicitly.

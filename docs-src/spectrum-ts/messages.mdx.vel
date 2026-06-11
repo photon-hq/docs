@@ -58,11 +58,19 @@ Every message conforms to <TypeTooltip name="Message" type={`{{ message.signatur
     </tr>
     <tr>
       <td><code>react(reaction)</code></td>
-      <td>React to this message. No-op on platforms that don't support reactions.</td>
+      <td>React to this message. Returns the reaction <code>Message</code> — keep it as the handle to <code>unsend()</code> later. No-op on platforms that don't support reactions.</td>
     </tr>
     <tr>
       <td><code>reply(...content)</code></td>
       <td>Reply threaded to this message. Falls back silently on platforms without thread support.</td>
+    </tr>
+    <tr>
+      <td><code>edit(newContent)</code></td>
+      <td>Rewrite the content of this outbound message. Fire-and-forget.</td>
+    </tr>
+    <tr>
+      <td><code>unsend()</code></td>
+      <td>Retract this outbound message. Fire-and-forget.</td>
     </tr>
   </tbody>
 </table>
@@ -115,6 +123,7 @@ for await (const [space, message] of app.messages) {
   | Type | Fields |
   |---|---|
   | `"text"` | `text: string` |
+  | `"markdown"` | `markdown: string` — outbound-only styled text |
   | `"attachment"` | `id: string`, `name: string`, `mimeType: string`, `size?: number`, `read()`, `stream()` |
   | `"voice"` | `name?: string`, `mimeType: string`, `duration?: number`, `size?: number`, `read()`, `stream()` |
   | `"contact"` | `name?`, `phones?`, `emails?`, `addresses?`, `org?`, `urls?`, `birthday?`, `note?`, `photo?`, `user?` |
@@ -125,6 +134,7 @@ for await (const [space, message] of app.messages) {
   | `"group"` | `items: Message[]` — bundled multi-message unit |
   | `"reply"` | `content: Content`, `target: Message` — threaded reply wrapping inner content |
   | `"edit"` | `content: Content`, `target: Message` — rewrite of a previously-sent message |
+  | `"unsend"` | `target: Message` — retraction of a previously-sent message |
   | `"typing"` | `state: "start" \| "stop"` — typing indicator signal |
   | `"streamText"` | `stream: () => AsyncIterable<string>` — streaming text content |
   | `"custom"` | `raw: unknown` — platform-specific structured data |

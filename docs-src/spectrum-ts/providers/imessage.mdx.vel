@@ -101,7 +101,7 @@ for await (const [space, message] of app.messages) {
 
 ## Creating conversations
 
-Resolve users by phone number or email, then pass them to `space()`:
+Resolve users by phone number or email, then create a space with `space.create(...)`:
 
 ```ts
 const im = imessage(app);
@@ -109,25 +109,31 @@ const alice = await im.user("+15551111111");
 const bob = await im.user("+15552222222");
 
 // DM
-const dm = await im.space(alice);
+const dm = await im.space.create(alice);
 await dm.send("Hi Alice");
 
 // Group
-const group = await im.space(alice, bob);
+const group = await im.space.create([alice, bob]);
 await group.send("Welcome to the group.");
 ```
 
-Space creation requires cloud or dedicated mode. In local mode `space()` throws — the local Messages database doesn't expose chat creation.
+To look up an existing conversation by its chat GUID, use `space.get(id)`:
+
+```ts
+const existing = await im.space.get("any;-;+15551111111");
+```
+
+Space creation requires cloud or dedicated mode. In local mode `space.create()` throws — the local Messages database doesn't expose chat creation. Shared mode cannot create group chats — use a dedicated number, or `space.get(chatGuid)` for an existing group.
 
 ### Per-phone routing
 
 If your account has multiple dedicated phone numbers, you can pin a conversation to a specific line by passing `phone` as a space parameter:
 
 ```ts
-const dm = await im.space(alice, { phone: "+15559999999" });
+const dm = await im.space.create(alice, { phone: "+15559999999" });
 ```
 
-When omitted, Spectrum picks a phone at random from the available dedicated lines. All subsequent actions on that space — sending, typing, replies, edits, reactions, and lookups — route through the chosen number.
+When omitted, Spectrum picks a phone at random from the available dedicated lines. All subsequent actions on that space — sending, typing, replies, edits, reactions, unsends, and lookups — route through the chosen number.
 
 <Note>
   Per-phone routing applies to dedicated lines (Business plan) only. On shared-pool plans the `phone` parameter is ignored — all conversations route through the shared pool automatically.
@@ -144,7 +150,7 @@ await space.send(effect("Happy birthday!", imessage.effect.message.celebration))
 await space.send(effect(attachment("/path/to/photo.jpg"), imessage.effect.message.confetti));
 ```
 
-The wrapped content can be a string or any `attachment(...)`. Effects only apply on iMessage — other platforms see the inner content unchanged.
+The wrapped content can be a string, `markdown(...)`, or any `attachment(...)`. Effects only apply on iMessage — other platforms see the inner content unchanged.
 
 <AccordionGroup>
   <Accordion title="Bubble effects" description="Animate the sent message bubble.">

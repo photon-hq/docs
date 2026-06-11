@@ -75,11 +75,11 @@ By default the TUI starts on `chat-1`; new chats opened with `Ctrl+N` get `chat-
 import { terminal } from "spectrum-ts/providers/terminal";
 
 const t = terminal(app);
-const debug = await t.space({ id: "debug" });
+const debug = await t.space.get("debug");
 await debug.send("agent online");
 ```
 
-Calling `space()` ensures the chat exists in the sidebar — useful for kicking off a conversation before any user input.
+Calling `space.get()` ensures the chat exists in the sidebar — useful for kicking off a conversation before any user input.
 
 ## Reactions and replies
 

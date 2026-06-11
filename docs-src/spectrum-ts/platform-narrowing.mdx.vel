@@ -11,7 +11,7 @@ Every platform provider exports a callable — `imessage`, `terminal`, `whatsapp
 
 ## Narrowing the app
 
-Pass a `Spectrum` instance to get a <TypeTooltip name="PlatformInstance" type={`{{ pi.signature }}`} /> for that platform. The instance gives you `user()` and `space()` resolvers, plus access to any custom events the provider emits.
+Pass a `Spectrum` instance to get a <TypeTooltip name="PlatformInstance" type={`{{ pi.signature }}`} /> for that platform. The instance gives you `user()` and `space.create()` / `space.get()` resolvers, plus access to any custom events the provider emits.
 
 ```ts
 import { imessage } from "spectrum-ts/providers/imessage";
@@ -19,7 +19,7 @@ import { imessage } from "spectrum-ts/providers/imessage";
 const im = imessage(app);
 
 const user = await im.user("+15551234567");
-const space = await im.space(user);
+const space = await im.space.create(user);
 
 await space.send("Hello from a new conversation.");
 ```
@@ -57,14 +57,14 @@ for await (const [space, message] of app.messages) {
 
 ## Creating group conversations
 
-The `space()` method accepts multiple users. On iMessage:
+`space.create(...)` accepts a single user or an array of users. On iMessage:
 
 ```ts
 const im = imessage(app);
 const alice = await im.user("+15551111111");
 const bob = await im.user("+15552222222");
 
-const group = await im.space(alice, bob);
+const group = await im.space.create([alice, bob]);
 await group.send("Welcome to the group.");
 ```
 

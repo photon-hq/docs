@@ -37,9 +37,9 @@ export const myPlatform = definePlatform("my-platform", {
     }),
   },
 
-  // Resolve or create a conversation
+  // Create a conversation from participants
   space: {
-    resolve: async ({ input, client }) => ({
+    create: async ({ input, client }) => ({
       id: await client.findOrCreateConversation(input.users.map(u => u.id)),
     }),
   },
@@ -69,8 +69,7 @@ export const myPlatform = definePlatform("my-platform", {
       case "text":
         return await client.send(space.id, content.text);
       case "reaction":
-        await client.react(space.id, content.target.id, content.emoji);
-        return;
+        return await client.react(space.id, content.target.id, content.emoji);
       case "reply":
         return await client.reply(space.id, content.target.id, content.content);
       case "typing":
@@ -93,14 +92,15 @@ export const myPlatform = definePlatform("my-platform", {
 | `config` | Yes | A Zod schema that validates the object passed to `platform.config()`. If every field is optional, `platform.config()` can be called with no arguments. |
 | `user.resolve` | Yes | Resolves a user from a string ID. Returns at minimum `{ id: string }`. |
 | `user.schema` | No | Optional Zod schema for extra user properties. |
-| `space.resolve` | Yes | Resolves or creates a conversation. Receives an array of users plus optional params. |
+| `space.create` | Yes | Creates a conversation from participants. Receives an array of users plus optional params. |
+| `space.get` | No | Hydrates a space from a known platform space ID. When omitted, the framework builds `{ id }` and validates it against `space.schema`. Providers whose schema requires more fields must implement this. |
 | `space.schema` | No | Optional Zod schema for the resolved space. |
-| `space.params` | No | Zod schema for additional space creation parameters — surfaces as the second arg to `platform(app).space()`. |
-| `space.actions` | No | A map of content-builder factories that become sugar methods on the resolved space. Each `space.<name>(...args)` delegates to `space.send(factory(...args))`. Names that collide with built-in `Space` methods (`send`, `edit`, `startTyping`, `stopTyping`, `responding`, `getMessage`, `rename`, `avatar`) are skipped at runtime with a warning. |
+| `space.params` | No | Zod schema for additional space parameters — surfaces as the second arg to `platform(app).space.create()` and `platform(app).space.get()`. |
+| `space.actions` | No | A map of content-builder factories that become sugar methods on the resolved space. Each `space.<name>(...args)` delegates to `space.send(factory(...args))`. Names that collide with built-in `Space` methods (`send`, `edit`, `unsend`, `startTyping`, `stopTyping`, `responding`, `getMessage`, `rename`, `avatar`) are skipped at runtime with a warning. |
 | `lifecycle.createClient` | Yes | Creates the platform client. Receives `config`, `projectId`, `projectSecret` (both may be `undefined`), and `store`. |
 | `lifecycle.destroyClient` | No | Tears down the client on shutdown. Omit if no cleanup is needed. |
 | `messages` | Yes | Async generator that yields incoming messages. |
-| `send` | Yes | Dispatches a content item to a space. All content types — text, attachments, reactions, replies, edits, typing indicators — flow through this single action. Return a `ProviderMessageRecord` for content that produces a message, or `undefined` for fire-and-forget signals (reactions, typing, edits). |
+| `send` | Yes | Dispatches a content item to a space. All content types — text, markdown, attachments, reactions, replies, edits, unsends, typing indicators — flow through this single action. Return a `ProviderMessageRecord` for content that produces a message (including reactions — the record is the unsend handle), or `undefined` for fire-and-forget signals (typing, edits, unsends). |
 | `actions.getMessage` | No | Fetches a message by ID from a space. Receives `(ctx, space, messageId)` where `ctx` is `{ client, config, store }`. Powers `space.getMessage(id)`. When omitted, `space.getMessage()` throws `UnsupportedError`. |
 | `actions.[custom]` | No | Platform-specific methods projected onto the platform instance. Each receives `(ctx, ...args)` where `ctx` is `{ client, config, store }`; the public signature drops `ctx`. Names that collide with reserved instance keys (`user`, `space`, `messages`, plus any event names) are skipped at runtime with a warning. |
 | `events.[custom]` | No | Additional async generators for platform-specific events — exposed on `app.[eventName]`. |
@@ -216,7 +216,7 @@ export const myWebhookPlatform = definePlatform("my-webhook-platform", {
   },
 
   space: {
-    resolve: async ({ input }) => ({ id: input.users[0].id }),
+    create: async ({ input }) => ({ id: input.users[0].id }),
   },
 });
 ```
@@ -236,7 +236,7 @@ const app = await Spectrum({
 
 const mine = myPlatform(app);
 const user = await mine.user("user-123");
-const space = await mine.space(user);
+const space = await mine.space.create(user);
 
 await space.send("Hello from my custom platform.");
 ```
