@@ -107,6 +107,30 @@ export const myPlatform = definePlatform("my-platform", {
 | `message.schema` | No | Zod schema for extra properties on incoming messages. |
 | `static` | No | Constants attached to the platform object (e.g. tapback names). |
 
+## Message direction
+
+Records yielded from `messages` are wrapped as inbound, and records returned from `send` are wrapped as outbound. When a provider knows the actual direction of a record, it can set `direction` on the raw record and Spectrum will use it instead of the wrapping context:
+
+```ts
+yield {
+  id: reactionEvent.id,
+  content: {
+    type: "reaction",
+    emoji: reactionEvent.emoji,
+    target: {
+      id: reactionEvent.targetId,
+      content: { type: "text", text: reactionEvent.targetText },
+      direction: "outbound",
+      space: { id: reactionEvent.channelId },
+    },
+  },
+  sender: { id: reactionEvent.userId },
+  space: { id: reactionEvent.channelId },
+};
+```
+
+This matters for nested records like reaction targets: the outer reaction is inbound (someone reacted) but the target may be outbound (they reacted to a message you sent). Without `direction`, nested targets default to the outer record's direction.
+
 ## Event producers
 
 Every event generator receives `{ client, config, store }` and returns an `AsyncIterable`. The signature is <TypeTooltip name="EventProducer" type={`{{ ep.signature }}`} />.
