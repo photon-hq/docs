@@ -29,6 +29,8 @@ bun add spectrum-ts
 
 Requires TypeScript 5 or later (TypeScript 6 is also supported).
 
+Streaming providers (iMessage cloud and dedicated modes) connect over WebSocket and need a runtime with a global `WebSocket` — Node 22+, Bun, browsers, or edge workers. Webhook-only apps are not affected.
+
 ## Core concepts
 
 Spectrum is built around four primitives:

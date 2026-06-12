@@ -13,7 +13,7 @@ The iMessage provider supports three connection modes — local, cloud, and dedi
 
 <Tabs>
   <Tab title="Cloud (default)">
-    Authenticates with Spectrum Cloud and connects to managed iMessage infrastructure via gRPC. Full feature set: send, receive, typing, reactions, replies, and group creation.
+    Authenticates with Spectrum Cloud and connects to managed iMessage infrastructure via WebSocket. Full feature set: send, receive, typing, reactions, replies, and group creation.
 
     ```ts
     imessage.config();
@@ -41,7 +41,7 @@ The iMessage provider supports three connection modes — local, cloud, and dedi
     </Note>
   </Tab>
   <Tab title="Dedicated">
-    Connect directly to one or more iMessage gRPC endpoints with your own tokens — use this when you're running your own iMessage relay and want to skip cloud auth. Each entry must include the `phone` number the instance serves, so Spectrum can route messages through the right number:
+    Connect directly to one or more iMessage WebSocket endpoints with your own tokens — use this when you're running your own iMessage relay and want to skip cloud auth. Each entry must include the `phone` number the instance serves, so Spectrum can route messages through the right number:
 
     ```ts
     imessage.config({
