@@ -79,7 +79,7 @@ The retry schedule is operator-configurable. The Photon team can adjust these kn
 
 | Knob | Default | Effect |
 | --- | --- | --- |
-| Per-attempt timeout | 30 seconds | How long a single attempt waits for your endpoint to respond before aborting and scheduling a retry — the `>30s` ceiling from the section above. A shorter deployed value means a slow endpoint times out (and gets retried) sooner. |
+| Per-attempt timeout | 30 seconds | How long a single attempt waits for your endpoint to respond before aborting and scheduling a retry. A shorter deployed value means a slow endpoint times out (and gets retried) sooner. |
 | Initial delay | 200ms | The `i = 0` term — delay before the first retry. |
 | Growth factor | 5× | Multiplier applied per retry index (`200ms → 1s → 5s → ...`). |
 | Per-attempt cap | 10 seconds | Ceiling applied to every computed delay before jitter, so the curve can't run away. |
