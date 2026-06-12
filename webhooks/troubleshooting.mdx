@@ -136,7 +136,7 @@ A 24-48 hour TTL is plenty — our retry budget is bounded to a few minutes at m
 
 ## "Deliveries time out"
 
-If you're seeing your endpoint logged as "took >30s," it triggers a retry on our side and a likely duplicate processing on yours.
+If you're seeing your endpoint logged as "took >15s," it triggers a retry on our side and a likely duplicate processing on yours.
 
 ### Diagnosis
 
@@ -151,7 +151,7 @@ app.post('/spectrum-webhook', async (c) => {
 });
 ```
 
-Anything network-dependent in the request path can blow past 30s.
+Anything network-dependent in the request path can blow past 15s.
 
 ### Fix
 
