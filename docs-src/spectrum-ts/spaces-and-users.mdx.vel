@@ -19,6 +19,7 @@ Every <TypeTooltip name="Space" type={`{{ space.signature }}`} /> exposes the sa
 | `send(...content)` | Send one or more content items into the conversation. |
 | `edit(message, newContent)` | Rewrite a previously-sent message. Sugar for `send(edit(newContent, message))`. |
 | `unsend(message)` | Retract a previously-sent message. Sugar for `send(unsend(message))`. |
+| `read(message)` | Mark the conversation as read up to `message`. Sugar for `send(read(message))`. Silently no-ops on platforms without read receipts. |
 | `startTyping()` | Show a typing indicator. No-op if the platform doesn't support it. |
 | `stopTyping()` | Hide the typing indicator. |
 | `responding(fn)` | Start a typing indicator, run `fn`, and stop the indicator when it completes — even if `fn` throws. |

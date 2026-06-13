@@ -5,7 +5,7 @@ description: "React to incoming messages and send threaded replies"
 
 Both `react` and `reply` live directly on an incoming message. They no-op silently on platforms that don't support the feature — no `try/catch` required.
 
-Spectrum also exports first-class `reaction()`, `reply()`, and `unsend()` content builders that you can pass directly to `space.send(...)` — the sugar methods on `message` delegate through the same `send` pipeline.
+Spectrum also exports first-class `reaction()`, `reply()`, `unsend()`, and `read()` content builders that you can pass directly to `space.send(...)` — the sugar methods on `message` delegate through the same `send` pipeline.
 
 ## Reactions
 
@@ -75,7 +75,7 @@ Both forms are equivalent — `message.reply(content)` wraps each content item i
 
 On platforms with thread support (iMessage, WhatsApp Business), this sends a threaded reply. On platforms without, the call resolves as a no-op — **the reply is not downgraded to a regular send**. If you need guaranteed delivery, use `space.send(...)` instead.
 
-`reply()` cannot wrap `reply`, `edit`, `reaction`, `group`, `typing`, `rename`, `avatar`, or `unsend` content — the builder throws at construction time.
+`reply()` cannot wrap `reply`, `edit`, `reaction`, `group`, `typing`, `rename`, `avatar`, `unsend`, or `read` content — the builder throws at construction time.
 
 ## Editing messages
 
@@ -98,7 +98,7 @@ On platforms with thread support (iMessage, WhatsApp Business), this sends a thr
 
 `edit()` takes new content and the outbound message to rewrite. Edits are fire-and-forget — `space.send(edit(...))` resolves to `undefined`.
 
-`edit()` cannot wrap `edit`, `reply`, `reaction`, `group`, `typing`, `rename`, `avatar`, or `unsend` content.
+`edit()` cannot wrap `edit`, `reply`, `reaction`, `group`, `typing`, `rename`, `avatar`, `unsend`, or `read` content.
 
 ## Unsending messages
 
@@ -134,6 +134,32 @@ const reaction = await message.react("love");
 await reaction?.unsend();
 ```
 
+## Read receipts
+
+<Tabs>
+  <Tab title="Sugar (message.read)">
+    ```ts
+    await message.read();
+    ```
+  </Tab>
+  <Tab title="Sugar (space.read)">
+    ```ts
+    await space.read(message);
+    ```
+  </Tab>
+  <Tab title="Canonical (space.send)">
+    ```ts
+    import { read } from "spectrum-ts";
+
+    await space.send(read(message));
+    ```
+  </Tab>
+</Tabs>
+
+Read receipts mark the conversation as read up to the target message. Fire-and-forget — the result is always `undefined`. Only inbound messages can be marked read; the builder throws at build time for outbound targets.
+
+Granularity is per-platform: WhatsApp Business issues a per-message receipt (blue ticks); iMessage marks the whole chat read. Platforms without read receipts for bot conversations (Telegram, Slack) silently no-op — same best-effort contract as typing indicators.
+
 ## When to use what
 
 | Want to | Use |
@@ -143,5 +169,6 @@ await reaction?.unsend();
 | React to a specific message | `message.react(emoji)` or `space.send(reaction(emoji, message))` |
 | Rewrite a sent message | `message.edit(content)` or `space.send(edit(content, message))` |
 | Retract a sent message | `message.unsend()` or `space.unsend(message)` or `space.send(unsend(message))` |
+| Mark a message as read | `message.read()` or `space.read(message)` or `space.send(read(message))` |
 
-`space.send` is the safe default — it works on every platform. The sugar methods (`message.reply`, `message.react`, `message.edit`, `message.unsend`) and the canonical content builders (`reply()`, `reaction()`, `edit()`, `unsend()`) are interchangeable — they both route through the same `send` pipeline.
+`space.send` is the safe default — it works on every platform. The sugar methods (`message.reply`, `message.react`, `message.edit`, `message.unsend`, `message.read`) and the canonical content builders (`reply()`, `reaction()`, `edit()`, `unsend()`, `read()`) are interchangeable — they both route through the same `send` pipeline.

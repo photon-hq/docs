@@ -72,6 +72,10 @@ Every message conforms to <TypeTooltip name="Message" type={`{{ message.signatur
       <td><code>unsend()</code></td>
       <td>Retract this outbound message. Fire-and-forget.</td>
     </tr>
+    <tr>
+      <td><code>read()</code></td>
+      <td>Mark this inbound message as read. Fire-and-forget. Silently no-ops on platforms without read receipts.</td>
+    </tr>
   </tbody>
 </table>
 
@@ -135,6 +139,7 @@ for await (const [space, message] of app.messages) {
   | `"reply"` | `content: Content`, `target: Message` — threaded reply wrapping inner content |
   | `"edit"` | `content: Content`, `target: Message` — rewrite of a previously-sent message |
   | `"unsend"` | `target: Message` — retraction of a previously-sent message |
+  | `"read"` | `target: Message` — marks conversation read up to this message |
   | `"typing"` | `state: "start" \| "stop"` — typing indicator signal |
   | `"streamText"` | `stream: () => AsyncIterable<string>` — streaming text content |
   | `"custom"` | `raw: unknown` — platform-specific structured data |

@@ -1,6 +1,6 @@
 ---
 title: "Content"
-description: "Build text, markdown, attachments, voice, contacts, polls, rich links, groups, replies, edits, unsends, typing indicators, rename, avatar, and platform-specific content for outgoing messages"
+description: "Build text, markdown, attachments, voice, contacts, polls, rich links, groups, replies, edits, unsends, read receipts, typing indicators, rename, avatar, and platform-specific content for outgoing messages"
 ---
 
 import { TypeTooltip } from "/snippets/type-tooltip.mdx";
@@ -8,7 +8,7 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 {% set ci = symbol("ts:spectrum-ts#ContentInput") %}
 {% set cb = symbol("ts:spectrum-ts#ContentBuilder") %}
 
-Spectrum exposes a family of content builders — `text`, `markdown`, `attachment`, `voice`, `contact`, `richlink`, `poll`, `group`, `custom`, `reaction`, `reply`, `edit`, `unsend`, `typing`, `rename`, and `avatar` — plus a string shortcut that's equivalent to `text()`. Any API that takes a <TypeTooltip name="ContentInput" type={`{{ ci.signature }}`} /> accepts a plain string or a <TypeTooltip name="ContentBuilder" type={`{{ cb.signature }}`} />.
+Spectrum exposes a family of content builders — `text`, `markdown`, `attachment`, `voice`, `contact`, `richlink`, `poll`, `group`, `custom`, `reaction`, `reply`, `edit`, `unsend`, `read`, `typing`, `rename`, and `avatar` — plus a string shortcut that's equivalent to `text()`. Any API that takes a <TypeTooltip name="ContentInput" type={`{{ ci.signature }}`} /> accepts a plain string or a <TypeTooltip name="ContentBuilder" type={`{{ cb.signature }}`} />.
 
 ## Text
 
@@ -291,7 +291,7 @@ import { reply, text } from "spectrum-ts";
 await space.send(reply(text("Got it"), message));
 ```
 
-`reply()` cannot wrap `reply`, `edit`, `reaction`, `group`, `typing`, `rename`, `avatar`, or `unsend` content.
+`reply()` cannot wrap `reply`, `edit`, `reaction`, `group`, `typing`, `rename`, `avatar`, `unsend`, or `read` content.
 
 ## Edits
 
@@ -304,7 +304,7 @@ const sent = await space.send("Draft");
 await space.send(edit(text("Final version"), sent));
 ```
 
-`edit()` cannot wrap `edit`, `reply`, `reaction`, `group`, `typing`, `rename`, `avatar`, or `unsend` content.
+`edit()` cannot wrap `edit`, `reply`, `reaction`, `group`, `typing`, `rename`, `avatar`, `unsend`, or `read` content.
 
 ## Unsend
 
@@ -318,6 +318,20 @@ await space.send(unsend(sent));
 ```
 
 `message.unsend()` and `space.unsend(message)` are sugar for `space.send(unsend(message))`. Only outbound messages can be unsent — the builder throws at build time for inbound targets. Platform constraints (e.g. iMessage enforces Apple's ~2-minute unsend window for regular messages) surface from the provider at send time.
+
+## Read receipts
+
+Mark the conversation as read up to a specific inbound message. Reads are fire-and-forget — `space.send(read(...))` resolves to `undefined`.
+
+```ts
+import { read } from "spectrum-ts";
+
+await space.send(read(message));
+```
+
+`message.read()` and `space.read(message)` are sugar for `space.send(read(message))`. Only inbound messages can be marked read — the builder throws at build time for outbound targets.
+
+Granularity is per-platform: WhatsApp Business issues a per-message receipt (blue ticks for the sender); iMessage marks the whole chat read. Platforms without a read-receipt concept for bot conversations (Telegram, Slack) silently no-op, so the signal is best-effort everywhere — same contract as `typing`.
 
 ## Typing indicators
 
