@@ -35,6 +35,7 @@
               "spectrum-ts/spaces-and-users",
               "spectrum-ts/reactions-and-replies",
               "spectrum-ts/platform-narrowing",
+              "spectrum-ts/webhooks",
               {
                 "group": "Providers",
                 "pages": [
