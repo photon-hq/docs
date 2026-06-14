@@ -90,10 +90,13 @@ const app = await Spectrum({
 app.messages                 // AsyncIterable<[Space, Message]>
 await app.send(space, ...)   // send into a space
 await app.responding(space, fn)  // run fn with a typing indicator
+await app.webhook(req, handler)  // handle an inbound webhook delivery
 await app.stop()             // graceful shutdown
 ```
 
 Custom events emitted by providers are exposed as flat async iterables on the same object — see [Custom events and lifecycle](/spectrum-ts/custom-events-and-lifecycle).
+
+`app.webhook()` handles both native Spectrum webhooks and Fusor webhooks through the same method. See [Webhooks](/spectrum-ts/webhooks) for setup and framework adapters.
 
 ## Multi-platform in three lines
 
