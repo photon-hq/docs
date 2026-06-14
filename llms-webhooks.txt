@@ -1,0 +1,1771 @@
+# Photon — Webhooks
+
+> Receive messaging events at your own URL — Spectrum signs each delivery so you know it's real
+
+## Getting Started
+
+### Webhooks
+
+Source: https://photon.codes/docs/webhooks/overview
+
+#### What is a webhook?
+
+A webhook is the inverse of a normal API call.
+
+In a normal API call, your code reaches out and asks a service for data — you poll, you wait, you parse the response. In a *web*hook, the service reaches out to *you*: a message arrives, an event fires, and the service `POST`s the details to a URL you've published. You're not asking anymore; you're being told.
+
+For Spectrum, that means you write a regular HTTP *handler* — a function in your server that runs whenever a request comes in — and register its URL with us once. From then on, every inbound message across every enabled platform is delivered to that URL as a signed JSON `POST`. No long-lived process to babysit, no platform credentials in your runtime, no reconnect logic.
+
+```ts
+const app = await Spectrum({ projectId, projectSecret, providers: [imessage.config()] });
+// Without webhooks, you'd run this loop yourself, forever.
+for await (const [space, message] of app.messages) { /* ... */ }
+```
+
+```http
+# With webhooks, Spectrum runs the loop and POSTs each message to you.
+POST https://your-app.com/spectrum-webhook
+X-Spectrum-Event: messages
+X-Spectrum-Signature: v0=<hmac>
+X-Spectrum-Timestamp: 1747242392
+
+{"event":"messages","space":{...},"message":{...}}
+```
+
+Spectrum handles staying connected to every [supported platform](/spectrum-ts/providers), batching, reconnects, and signing. You handle the HTTP request that lands at your door.
+
+#### What's in a delivery (and what isn't)
+
+The webhook tells you **what happened** and **enough about it to decide what to do next** — nothing more. It is not a vehicle for raw bytes, lazy-loaded SDK fields, or anything that requires a live `Spectrum()` instance to materialize.
+
+**What every delivery carries:**
+
+- **Routing context.** `space.id` (the conversation), `message.id` (the event), `sender` (who triggered it), and platform identifiers you can use to look things up in your own systems.
+- **Content metadata.** The `content` field's `type` discriminator plus every JSON-safe field the SDK exposes — text, filenames, MIME types, sizes, URLs.
+- **Provenance.** Signed `X-Spectrum-Signature` / `X-Spectrum-Timestamp` headers, plus an `X-Spectrum-Webhook-Id` header for dedupe and replay protection.
+
+**What every delivery deliberately omits:**
+
+- **Bytes for binary content.** Attachments, voice memos, and contact photos ship `mimeType` / `size` / filename — never the raw bytes themselves and never a download URL. Fetching the actual content is a separate step.
+- **Resolved link previews.** The `richlink` arm ships the `url` only. To render an OG-style title, summary, or cover image, fetch the URL yourself and parse the tags — the worker doesn't do that on your behalf, both to keep delivery latency bounded and to avoid making the worker an attack surface for hostile URLs.
+- **Recursive message trees.** A reaction ships a slim *reference* to the message it targets (`id`, `platform`, `timestamp`, an 80-char `contentPreview`) — not the full target. Look it up in your own store using `target.id`. See [Events → Target refs](/webhooks/events#target-refs) for the exact shape.
+
+This is the same shape Twilio, Stripe, and most other webhook providers use: **the webhook is the doorbell, not the package.** Use it to know an event happened and to route into your own handling; pull heavyweight payloads on demand when you actually need them.
+
+#### How this guide flows
+
+The next six pages build on each other. Skim straight to the topic you need, or read top-to-bottom in about fifteen minutes for the complete model.
+
+1. **[Quickstart](/webhooks/quickstart)** — register a URL, verify a signature, and receive your first real delivery in five minutes.
+2. **[Events](/webhooks/events)** — the exact wire format, every header and every field, with real examples.
+3. **[Verifying signatures](/webhooks/verifying-signatures)** — why the verifier looks the way it does, with copy-paste code in four languages.
+4. **[Delivery and retries](/webhooks/delivery)** — what happens when your endpoint is slow, down, or returns an unexpected status code.
+5. **[Managing webhooks](/webhooks/managing-webhooks)** — operate at scale: register, list, delete, and rotate signing secrets via the API or the dashboard.
+6. **[Troubleshooting](/webhooks/troubleshooting)** — common symptoms, root causes, and fixes when something goes wrong.
+
+#### Three ways to manage webhooks
+
+Three surfaces expose the same three operations (register, list, delete):
+
+- **[Dashboard](https://app.photon.codes/dashboard).** UI under the **Webhook** tab of your workspace. No terminal or auth headers required — appropriate for non-technical teammates.
+- **[API reference](/api-reference/introduction).** OpenAPI schemas for `List webhooks`, `Register webhook`, and `Delete webhook`. Mintlify also renders the page as a runnable browser playground for live testing.
+- **`curl` or any HTTP client.** The terminal flow used in the [Quickstart](/webhooks/quickstart) and the rest of this guide. Scriptable and CI-friendly — the right surface for code generation and automation.
+
+#### When to use webhooks
+
+Reach for webhooks when any of these are true:
+
+- **Your service is HTTP-shaped already.** A Node/Bun/Python/Go backend with an inbound endpoint is a one-line addition for webhooks; running a long-lived `Spectrum()` loop is more friction.
+- **You don't want to host the SDK.** No `Spectrum()` process, no platform credentials in your runtime, no reconnect logic.
+- **You want to fan out one message to multiple services.** Register multiple webhook URLs per project — each one receives every event, independently.
+- **You're integrating from a serverless platform** (Vercel, Cloudflare Workers, Lambda) where a long-lived process isn't an option.
+
+Stick with the [`spectrum-ts` SDK loop](/spectrum-ts/getting-started) when you need outbound message control inside the same process that consumes inbound, or when you're iterating fast in dev without a deployable URL.
+
+#### How it works
+
+```mermaid
+flowchart LR
+  In([Inbound message]) --> SDK[spectrum-ts SDK]
+  SDK --> WK[Spectrum webhook worker]
+  WK -->|HTTPS POST| URL1[your-app.com/webhook]
+  WK -->|HTTPS POST| URL2[other-service.com/hook]
+  URL1 -->|2xx| Done([Delivered])
+  URL2 -->|5xx / timeout| Retry[Retry up to 5x]
+  Retry --> URL2
+```
+
+When a message arrives on any enabled platform for a project that has webhooks registered:
+
+1. Our worker receives the message from the platform.
+2. It serializes the event to JSON.
+3. For every URL registered on that project, it computes an HMAC-SHA256 signature and POSTs the body.
+4. Your server verifies the signature, returns `2xx`, and processes the event.
+
+Failed deliveries are retried with exponential backoff and jitter — up to 6 attempts spanning tens of seconds of backoff (longer if your endpoint hangs) — then dropped. There is no persistent retry queue or dead-letter destination — see [Delivery and retries](/webhooks/delivery) for the precise policy.
+
+Your webhook URL must be a public **HTTPS** endpoint. The worker won't deliver to plain `http://`, to private/internal addresses (`localhost`, `10.x`, cloud-metadata IPs), or through a redirect — see [Delivery → Where we won't deliver](/webhooks/delivery#where-we-wont-deliver).
+
+#### The mental model
+
+Four ideas cover everything else in these docs:
+
+| Concept | What it means |
+| --- | --- |
+| **Per-project, per-URL** | Webhooks are owned by a project. A project can have many URLs; each URL is independent. |
+| **Per-URL signing secret** | Every webhook gets its own 64-character signing secret, returned exactly once at registration time. Different URLs, different secrets. |
+| **Every URL gets every event** | There is no per-webhook event subscription today. You branch on the `event` field (or `X-Spectrum-Event` header) in your handler. |
+| **At-least-once delivery, in-order per project** | A delivery may arrive twice on retry. Dedupe on `webhookId + message.id`. There is no `Exactly-Once` guarantee. |
+
+#### Currently emitted events
+
+Today there is one event: **`messages`**. Each delivery carries `X-Spectrum-Event: messages` and a body of shape `{ event, space, message }` — see [Events](/webhooks/events) for every field.
+
+Reactions aren't a separate event — they already arrive today *inside* a `messages` payload, distinguished by `message.content.type` (you branch on `content.type`, not `event`). The set of top-level events may still grow later; new event types are additive, so handlers that ignore unknown values keep working without changes.
+
+#### Security in one paragraph
+
+Each delivery includes an `X-Spectrum-Signature` header containing an HMAC-SHA256 of the request body, keyed by your per-webhook signing secret. Anyone can `POST` to your URL — only Spectrum can compute a signature that verifies. Recompute it on your side and reject anything that doesn't match. The full walkthrough, with copy-pasteable code in four languages, is on [Verifying signatures](/webhooks/verifying-signatures).
+
+Your signing secret is returned exactly once, in the response of `POST /webhooks/`. There is no "show me my secret" endpoint. Store it in your secret manager immediately. If you lose it, delete the webhook and re-register the URL — you'll get a new id and a new secret.
+
+#### Where to next
+
+- [**Quickstart**](https://photon.codes/docs/webhooks/quickstart) — Wire up a URL, verify a signature, and receive a real message end-to-end in roughly five minutes.
+- [**How it works**](#how-it-works) — The mechanics of delivery — useful as a mental model before reading the implementation pages.
+
+
+### Quickstart
+
+Source: https://photon.codes/docs/webhooks/quickstart
+
+The [Overview](/webhooks/overview) introduced the model — a service POSTing signed JSON to a URL you publish. This page makes it real. We'll go from "I have a Spectrum project" to "my server processed a real message" in about five minutes, using Bun + Hono on the server side and [ngrok](https://ngrok.com/) to expose your local machine to the internet so you can test before deploying.
+
+If you already have a deployed HTTPS URL, skip the ngrok step.
+
+#### Prerequisites
+
+- A Spectrum project with at least one platform enabled. See [Providers](/spectrum-ts/providers) for the current list, or [Getting Started with Spectrum](/spectrum-ts/getting-started) if you don't have a project yet.
+- Your project id and project secret, from the [dashboard](https://app.photon.codes/dashboard) or `photon projects show`.
+- A reachable, public HTTPS URL — ngrok works for local development. The worker won't deliver to plain `http://` or to a private/internal address like `localhost`, so point it at the ngrok `https://` URL, not the local port directly.
+
+**Stand up a local endpoint**
+
+Create `server.ts`. We'll fill in the verification logic in the next step.
+
+```ts server.ts
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+app.post('/spectrum-webhook', async (c) => {
+  const body = await c.req.text();
+  console.log('received', body.slice(0, 200));
+  return c.text('ok', 200);
+});
+
+export default { port: 3000, fetch: app.fetch };
+```
+
+```sh
+bun add hono
+bun --hot server.ts
+```
+
+In another terminal, expose port 3000:
+
+```sh
+ngrok http 3000
+```
+
+Copy the `https://...ngrok-free.app` URL it prints. That's your webhook destination.
+
+**Register the URL**
+
+Use `curl` (or any HTTP client) to register the URL with your project credentials:
+
+```sh
+curl -X POST "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/" \
+  -u "$PROJECT_ID:$PROJECT_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"webhookUrl":"https://abcd1234.ngrok-free.app/spectrum-webhook"}'
+```
+
+The response contains the `signingSecret` — **save it now**. This is the only time you will ever see it.
+
+```json
+{
+  "succeed": true,
+  "data": {
+    "id": "6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b",
+    "webhookUrl": "https://abcd1234.ngrok-free.app/spectrum-webhook",
+    "signingSecret": "a3f8e29b...5c7e9b2d",
+    "createdAt": "2026-05-14T19:00:00Z",
+    "updatedAt": "2026-05-14T19:00:00Z"
+  }
+}
+```
+
+Export the secret so the server can use it:
+
+```sh
+export SPECTRUM_SIGNING_SECRET=a3f8e29b...5c7e9b2d
+```
+
+Restart `bun --hot server.ts` after exporting so the variable is in scope.
+
+**Add signature verification**
+
+Replace `server.ts` with a version that verifies the signature before processing the body:
+
+```ts server.ts
+import { Hono } from 'hono';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
+const app = new Hono();
+const SECRET = process.env.SPECTRUM_SIGNING_SECRET!;
+const TOLERANCE_SEC = 5 * 60;
+
+app.post('/spectrum-webhook', async (c) => {
+  const rawBody = await c.req.text();
+  const event = c.req.header('X-Spectrum-Event');
+  const timestamp = c.req.header('X-Spectrum-Timestamp');
+  const signature = c.req.header('X-Spectrum-Signature');
+
+  if (!event || !timestamp || !signature) {
+    return c.text('missing headers', 400);
+  }
+
+  const age = Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp));
+  if (!Number.isFinite(age) || age > TOLERANCE_SEC) {
+    return c.text('stale timestamp', 400);
+  }
+
+  const expected =
+    'v0=' +
+    createHmac('sha256', SECRET)
+      .update(`v0:${timestamp}:${rawBody}`)
+      .digest('hex');
+
+  const a = Buffer.from(expected);
+  const b = Buffer.from(signature);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+    return c.text('bad signature', 401);
+  }
+
+  const payload = JSON.parse(rawBody);
+  if (event === 'messages') {
+    console.log('message from', payload.message.sender.id, ':', payload.message.content);
+  }
+
+  return c.text('ok', 200);
+});
+
+export default { port: 3000, fetch: app.fetch };
+```
+
+Three things to notice:
+
+- We read the body as **raw text** (`c.req.text()`), not parsed JSON. The signature is computed over the exact bytes that arrived; any reformatting breaks verification.
+- We reject timestamps older than 5 minutes for replay protection.
+- We compare with `timingSafeEqual` to avoid leaking information about the secret through response timing.
+
+See [Verifying signatures](/webhooks/verifying-signatures) for the same logic in Express, FastAPI, and others.
+
+**Send a real message**
+
+Send a real message to your project from any of its enabled platforms — an iMessage to the assigned number, a WhatsApp message, whatever you've configured. Within a second or two, your terminal should print:
+
+```text
+message from +15550100 : { type: 'text', text: 'hi' }
+```
+
+If you see `bad signature`, double-check that you exported `SPECTRUM_SIGNING_SECRET` correctly and re-started the server.
+
+If you see `missing headers`, the request didn't come from Spectrum — check your ngrok URL and that the registered `webhookUrl` matches.
+
+**Reply from your handler (optional)**
+
+The webhook delivery only carries inbound messages — there is no public HTTP "send a message" endpoint today. To reply, run the [`spectrum-ts`](/spectrum-ts/getting-started) SDK in a separate process (or alongside your handler) and call `space.send(...)` there. The webhook tells your service *what* arrived; the SDK is what puts a message back on the wire.
+
+A common split:
+
+```ts
+// sender.ts — long-lived process holding an outbound SDK instance
+import { Spectrum, text } from "spectrum-ts";
+import { imessage } from "spectrum-ts/providers/imessage";
+
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [imessage.config()],
+});
+const im = imessage(app);
+
+// call this from your webhook handler (e.g. via a queue / RPC).
+// There is no "get space by id" API — rebuild the DM from the sender's
+// address (the webhook's `message.sender.id`, an E.164 number for iMessage).
+export const reply = async (senderId: string, body: string) => {
+  const user = await im.user(senderId);
+  const space = await im.space(user);
+  await space.send(text(body));
+};
+```
+
+Inside the webhook handler, acknowledge with `2xx` first (the worker treats a slow response as a timeout and retries) and enqueue the reply job:
+
+```ts
+app.post('/spectrum-webhook', async (c) => {
+  if (!verify(c)) return c.text('bad signature', 401);
+  const payload = JSON.parse(await c.req.text());
+  if (payload.event === 'messages' && payload.message.content.type === 'text') {
+    void enqueueReply(payload.message.sender.id, `echo: ${payload.message.content.text}`);
+  }
+  return c.text('ok', 200);
+});
+```
+
+An HTTP send-message API is on the roadmap; until then, the SDK is the supported path.
+
+#### What you just built
+
+You have an end-to-end pipeline:
+
+```text
+user's device → platform → Spectrum → POST /spectrum-webhook → your code
+```
+
+You verified each delivery is genuine (not spoofed), recent (not a replay), and unmodified (not tampered with).
+
+#### What's next
+
+You wired up one URL, one verifier, and one delivery. The next chapters of the guide expand each piece — what's *in* the delivery, *why* the verifier looks the way it does, and what happens when things fail.
+
+- [**Events**](https://photon.codes/docs/webhooks/events) — Open the envelope — every header and every field in the payload, with examples for each content type.
+- [**Verifying signatures**](https://photon.codes/docs/webhooks/verifying-signatures) — The *why* behind the verifier, plus copy-paste implementations for Node, Bun, Python, and Go.
+- [**Delivery and retries**](https://photon.codes/docs/webhooks/delivery) — What the worker does when your endpoint is slow, down, or returns an unexpected status code.
+- [**Managing webhooks**](https://photon.codes/docs/webhooks/managing-webhooks) — List, delete, and rotate signing secrets via the API — full schemas in the [API reference](/api-reference/introduction).
+
+
+### Events
+
+Source: https://photon.codes/docs/webhooks/events
+
+In the [Quickstart](/webhooks/quickstart), a real delivery flew past in `console.log`. This page is the spec — every header and every field your handler will see on every request, slowed down and labelled.
+
+The body's `space`, `message`, `sender`, and `content` fields are the same shapes you'd see from the [`spectrum-ts` SDK](/spectrum-ts/messages) — with one important difference: function-typed properties (`.read()`, `.stream()`, `.reply()`, `.react()`, etc.) are stripped before serialization, since functions can't survive `JSON.stringify`. Every other own enumerable field declared by the platform's `Space` schema (e.g. iMessage's `phone` and `type`) is forwarded unchanged.
+
+#### Anatomy of a delivery
+
+```http
+POST /your-webhook-path HTTP/1.1
+Host: your-app.com
+Content-Type: application/json
+User-Agent: spectrum-webhook/0.1.0
+X-Spectrum-Event: messages
+X-Spectrum-Webhook-Id: 60d6d04f-f9fa-4a7b-9c97-37c9c90ce91c
+X-Spectrum-Timestamp: 1747242392
+X-Spectrum-Signature: v0=fc9bf49ef3ba4122ba4be6e289f88ac692f5ce8e13f0415cb38d59428eae8a8c
+
+{
+  "event": "messages",
+  "space": {
+    "id": "any;-;+15550100",
+    "platform": "iMessage",
+    "type": "dm",
+    "phone": "+15551234567"
+  },
+  "message": {
+    "id": "spc-msg-00000000-0000-4000-8000-000000000001",
+    "platform": "iMessage",
+    "direction": "inbound",
+    "timestamp": "2026-05-14T19:06:32.000Z",
+    "sender": {
+      "id": "+15550100",
+      "platform": "iMessage"
+    },
+    "space": {
+      "id": "any;-;+15550100",
+      "platform": "iMessage",
+      "type": "dm",
+      "phone": "+15551234567"
+    },
+    "content": {
+      "type": "text",
+      "text": "hey, what time is dinner?"
+    }
+  }
+}
+```
+
+The exact ID formats and the `platform` value are decided by each provider — not by Spectrum. The example above is an iMessage delivery; WhatsApp Business and other platforms use their own conventions. Don't pattern-match on these strings; use them as opaque identifiers.
+
+#### Headers
+
+| Header | Value | Notes |
+| --- | --- | --- |
+| `Content-Type` | `application/json` | Always. The body is UTF-8 JSON. |
+| `User-Agent` | `spectrum-webhook/<version>` | Identifies the worker. Useful for IP/UA allow-listing. |
+| `X-Spectrum-Event` | Event type, e.g. `messages` | Mirrors the `event` field in the body. Lets you route without parsing the body first. |
+| `X-Spectrum-Webhook-Id` | UUID of the registered webhook | Identifies *which* of your URLs this delivery is for. Useful with multiple registrations and required for idempotency keys. |
+| `X-Spectrum-Timestamp` | UNIX epoch seconds at signing time | Required to verify the signature. Also reject deliveries older than ~5 minutes for replay protection. |
+| `X-Spectrum-Signature` | `v0=<64-char hex>` | HMAC-SHA256 of `v0:{timestamp}:{rawBody}` keyed by the webhook's signing secret. See [Verifying signatures](/webhooks/verifying-signatures). |
+
+HTTP headers are case-insensitive. Most frameworks normalize to lowercase (`x-spectrum-event`); use whichever your framework returns.
+
+#### Body shape
+
+The body is a JSON object. The `event` field is a discriminator — every other field's shape depends on which event you're handling.
+
+```ts
+type WebhookEventPayload =
+  | { event: 'messages'; space: SerializedSpace; message: SerializedInboundMessage };
+  // 'messages' is the only event today; new top-level events would extend this union
+```
+
+##### `event: "messages"` payload
+
+This is the only event currently emitted. It fires once per inbound message that lands for your project. A reaction is **not** a separate event — it arrives inside this `messages` payload as a `message.content.type` arm (see [Content shapes](#content-shapes)). Branch on `content.type`, not `event`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `event` | `"messages"` | Discriminator. Always `"messages"` for this payload. |
+| `space` | `object` | The conversation context. Always carries `id` + `platform`; additional fields depend on the platform — see [Space](#space) below. |
+| `message` | `object` | The inbound message. See [Message](#message) below. |
+
+###### Space
+
+Every `space` object guarantees `id` and `platform`. Every other own enumerable field declared by the platform's [`Space`](/spectrum-ts/spaces-and-users) schema is forwarded inline — function-typed SDK methods (`send`, `edit`, `getMessage`, etc.) are the only thing stripped. The current per-platform fields are:
+
+**Common fields** — Always present on every space, regardless of platform.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Opaque, stable identifier for the conversation. Format varies by platform and space type — treat it as a string you store and pass back unchanged. For iMessage DMs, looks like `any;-;+<E.164>`; for groups, a chat GUID. |
+| `platform` | `string` | The platform that owns this space. See [Providers](/spectrum-ts/providers) for the current set of values; new platforms add new values without breaking existing payloads. |
+
+**iMessage-specific fields** — Forwarded from the iMessage space schema (`type`, `phone`).
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `type` | `"dm" \| "group"` | Conversation kind. `"dm"` is a 1:1 chat with one phone number; `"group"` is a multi-recipient chat. |
+| `phone` | `string` | The iMessage line this conversation was received on. A **dedicated** line reports its E.164 number; a **shared** (pooled) line reports the literal `shared`. Treat it as an opaque label for which of your project's lines the message landed on. |
+
+**Forward-compatible.** New platform schema fields are forwarded automatically without a webhook deploy. Read the fields you care about; ignore the rest.
+
+The `space.id` matches the `space.id` you'd see from the [`spectrum-ts` SDK](/spectrum-ts/spaces-and-users). There is no public HTTP send-message endpoint, and no "get space by id" call — to reply, run a separate SDK instance and either use the live `Space` yielded by its `messages` stream or rebuild the conversation from the sender (`imessage(app).space(await im.user(sender.id))`), then call `space.send(...)`.
+
+###### Message
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Stable opaque identifier — **treat it as opaque, don't parse it**. A plain message is `spc-msg-<uuid>`; a derived event carries a composite id (a reaction is `spc-msg-<uuid>:reaction:<seq>:<idx>`). Dedupe on it as-is. |
+| `platform` | `string` | The platform that sourced the message. Same value as `space.platform`. |
+| `direction` | `"inbound"` | Always `"inbound"` — outbound messages are not delivered as webhooks. |
+| `timestamp` | `string` | ISO 8601 UTC timestamp from the platform (when the user sent it). |
+| `sender` | `{ id, platform }` | The user who sent the message. The `id` format is platform-defined (for iMessage it's the E.164 phone number `+15551234567`; for WhatsApp Business it's the WA contact id). |
+| `space` | `object` | A copy of the top-level `space` field, denormalized for convenience. Same shape — see [Space](#space) above. |
+| `content` | object | The message content. Shape depends on the message type — see [Content shapes](#content-shapes) below. |
+
+###### Idempotency: the `message.id` rule
+
+A single inbound message **always carries the same `message.id` across every delivery it produces**, no matter how many webhook URLs you have registered. If you have two URLs registered for one project and a message arrives, both URLs receive a `POST` in parallel — and both bodies have the same `message.id`. If a delivery is retried (after a 5xx or timeout on your side), the retry also carries the same `message.id`.
+
+That makes `message.id` the right dedup key when one downstream consumer handles every webhook for the project:
+
+```ts
+const dedupeKey = payload.message.id;
+if (await store.exists(dedupeKey)) return new Response('ok', { status: 200 });
+await processOnce(payload);
+await store.set(dedupeKey, true, { ttl: 48 * 60 * 60 });
+```
+
+If different services consume different webhook URLs and each one needs its own dedup table, scope the key with the webhook id so the same message processed by service A doesn't suppress service B:
+
+```ts
+const dedupeKey = `${webhookId}:${payload.message.id}`;
+```
+
+###### Content shapes
+
+`content` is a discriminated union tagged by `type`. The `Content` tooltip shows the SDK's *in-process* type — it carries method thunks (`read()`, `stream()`) and full nested `Message` targets. The wire is a projection of it: thunks and server-internal fields are dropped, and message targets are slimmed to a [ref](#target-refs). The `Content` union covers everything you can *send*; only a subset is delivered *inbound*. The two you'll see on the vast majority of deliveries are `text` and `attachment`:
+
+```ts
+type Content =
+  | { type: 'text'; text: string }
+  | {
+      type: 'attachment';
+      id: string;         // stable, provider-native id (iMessage GUID, Slack file id, WhatsApp media id) — pass to getAttachment() to fetch the bytes
+      name: string;       // original filename, e.g. "IMG_4127.HEIC"
+      mimeType: string;   // e.g. "image/heic", "audio/mp4", "application/pdf"
+      size?: number;      // bytes — present when the provider knows the size (always for iMessage; may be absent for some custom providers)
+    };
+  // more content arms — see the per-arm reference below
+```
+
+**Text** is what you'll see for the vast majority of inbound messages.
+
+**Attachment** is what you'll see for any non-text content from iMessage — photos, voice memos, audio files, videos, documents. The `mimeType` field is the discriminator for *what kind* of attachment it is:
+
+| `mimeType` prefix | Kind | Example values |
+| --- | --- | --- |
+| `image/*` | Photo or image attachment | `image/heic`, `image/jpeg`, `image/png` |
+| `audio/*` | Voice memo or audio file | `audio/mp4`, `audio/x-m4a` |
+| `video/*` | Video clip | `video/mp4`, `video/quicktime` |
+| `application/*` | Document or file | `application/pdf`, `application/zip` |
+
+**Byte-bearing arms ship metadata, not bytes.** `attachment` and `contact.photo` both carry `mimeType` / `size` / filename — never the raw bytes themselves and never a download URL. The `attachment` arm carries an `id` you use to fetch the file out of band — see [Retrieving an attachment](#retrieving-an-attachment).
+
+###### Retrieving an attachment
+
+The payload tells you a file *exists* and what it is — it never carries the bytes, and there's no HTTP endpoint to download them (the same constraint as [sending](#what-you-dont-get)). The `attachment` arm's `id` is a stable, provider-native identifier — an iMessage GUID here; a Slack file id or WhatsApp media id on those platforms. To pull the bytes, run a [`spectrum-ts`](/spectrum-ts/getting-started) instance — the same one you'd use to reply — and hand the `id` to the provider's `getAttachment`:
+
+```ts
+// `im` is the same iMessage instance you reply through: const im = imessage(app)
+// `content` is the attachment arm and `space` is the delivery's space — both from the payload.
+const file = await im.getAttachment(content.id, space.phone);
+
+if (file) {
+  const bytes = await file.read();    // the whole file, as a Buffer
+  // for large media, stream it instead of buffering:
+  // const stream = await file.stream();
+}
+```
+
+`getAttachment` resolves to the attachment with lazy byte accessors — `read()` buffers the whole file, `stream()` opens a byte stream — or `undefined` if the provider no longer has it. Pass `space.phone` so a pooled (shared) line resolves against the right account; on a dedicated line it's optional. Other providers expose their own retrieval keyed off the same `id` — see each [provider's guide](/spectrum-ts/providers).
+
+###### Per-arm wire reference
+
+The arms a current provider (iMessage, WhatsApp Business) delivers inbound today, with their post-projection wire fields:
+
+| `type` | What it is | Wire fields (post-projection) |
+| --- | --- | --- |
+| `text` | A plain text message — the most common arm. | `text: string` |
+| `attachment` | A file attachment — photo, video, audio, voice memo, or document. | `id: string`, `name: string`, `mimeType: string`, `size?: number` |
+| `contact` | A contact card — all fields optional. Full shape: [`Contact`](/spectrum-ts/content). | `name?: { formatted?, first?, last? }`, `phones?: [{ value, type? }]`, `photo?: { mimeType }`, `raw?` |
+| `richlink` | A link preview — URL only on the wire; OG metadata is not pre-fetched. | `url: string` |
+| `reaction` | An emoji reaction targeting another message. | `emoji: string`, [`target: MessageRef`](#target-refs) |
+| `group` | An **album** — multiple attachments (e.g. several photos) sent as one message. | [`items`](#message)`: SerializedInboundMessage[]` — each entry is a full inbound message with its own `content` (typically `attachment`), `id`, `sender`, `timestamp`. Albums don't nest. See example below. |
+
+A few cross-cutting points the table doesn't surface:
+
+- **Byte-bearing arms** (`attachment`, `contact.photo`) ship metadata only — see the [warning above](#content-shapes). The SDK's `read()` / `stream()` thunks and the internal filesystem `path` are dropped before delivery. iMessage voice memos arrive as `attachment` with an `audio/*` `mimeType`, not as a distinct arm.
+- **`target` on `reaction`** is the slim shape documented under [Target refs](#target-refs) below, not a full nested message.
+- **`richlink`** ships only `url` — OG fetches happen in your handler, since resolving them inline at delivery time would tie latency to the slowest target site.
+
+A `group` (album) nests each attachment as a full inbound message in `items` — here, two photos sent together:
+
+```json
+"content": {
+  "type": "group",
+  "items": [
+    {
+      "id": "p:0/spc-msg-00000000-0000-4000-8000-000000000001",
+      "direction": "inbound",
+      "platform": "iMessage",
+      "sender": { "id": "+15550100", "platform": "iMessage" },
+      "timestamp": "2026-05-14T19:06:32.000Z",
+      "content": { "type": "attachment", "id": "1A2B3C4D-0001-4ABC-9DEF-000000000001", "name": "IMG_4351.HEIC", "mimeType": "image/heic", "size": 1365240 }
+    },
+    {
+      "id": "p:1/spc-msg-00000000-0000-4000-8000-000000000001",
+      "direction": "inbound",
+      "platform": "iMessage",
+      "sender": { "id": "+15550100", "platform": "iMessage" },
+      "timestamp": "2026-05-14T19:06:32.000Z",
+      "content": { "type": "attachment", "id": "1A2B3C4D-0002-4ABC-9DEF-000000000002", "name": "IMG_4354.HEIC", "mimeType": "image/heic", "size": 1888241 }
+    }
+  ]
+}
+```
+
+Each item has the same shape as the top-level [`message`](#message) and carries its own `content`; for an album they're `attachment`s, and item ids are child ids (`p:<n>/spc-msg-<uuid>`).
+
+###### Arms you won't receive inbound
+
+Two arms you might expect arrive as something else: inbound **replies come as plain `text`** (there's no `reply` arm on the wire — the thread link isn't surfaced), and **voice memos come as `attachment`** (`audio/*`). Anything else in the SDK's [`Content`](/spectrum-ts/content) union is send-only or a rare provider-specific case — don't build on receiving it inbound.
+
+Don't branch on arms you can't receive — but always keep a `default:` case, so an arm a future SDK/provider bump starts delivering (forwarded generically as `type: string` plus its JSON-safe fields) can't break your handler.
+
+###### Target refs
+
+The `target` field on `reaction` — and on `reply` / `edit` if a future provider ever emits them inbound — doesn't recurse into the full referenced message. A reaction on a multi-KB photo would otherwise balloon a 200-byte ack into the entire ancestor tree. The wire ships a slim reference instead:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Stable opaque identifier of the referenced message. |
+| `platform` | `string` | Source platform — same value as the parent message's `platform`. |
+| `timestamp` | `string` | ISO 8601 UTC timestamp of the referenced message. |
+| `sender?` | `{ id, platform }` | The user who sent the referenced message, when known. |
+| `contentPreview?` | `string` | First 80 characters of the referenced message's text, with an ellipsis if truncated. Populated only when the target's content is `text`. |
+
+Look the target up in your own message store (keyed off `id`) when you need its full body; `contentPreview` is enough for "👍 on «hello»" UI strings without a second round-trip.
+
+A received reaction is just a `content` arm on a normal `messages` delivery — here, a ❤️ on the message from [Anatomy of a delivery](#anatomy-of-a-delivery):
+
+```json
+"content": {
+  "type": "reaction",
+  "emoji": "❤️",
+  "target": {
+    "id": "spc-msg-00000000-0000-4000-8000-000000000001",
+    "platform": "iMessage",
+    "timestamp": "2026-05-14T19:06:32.000Z",
+    "sender": { "id": "+15550100", "platform": "iMessage" },
+    "contentPreview": "hey, what time is dinner?"
+  }
+}
+```
+
+On a reaction delivery, `message.sender` is **who reacted**; `content.target.sender` is who sent the message they reacted to.
+
+Always handle unknown `content.type` values gracefully — new content arms may be added without a breaking version bump, and the worker forwards them through the generic projection above. A `default:` arm in your switch that logs and moves on is enough.
+
+```ts
+switch (content.type) {
+  case 'text':
+    handleText(content.text);
+    break;
+  case 'attachment':
+    if (content.mimeType.startsWith('image/')) handleImage(content);
+    else if (content.mimeType.startsWith('audio/')) handleAudio(content);
+    else handleGenericAttachment(content);
+    break;
+  case 'reaction':
+    handleReaction(content.emoji, content.target.id);
+    break;
+  default:
+    console.warn('unknown content type:', content.type);
+    break;
+}
+```
+
+#### What you don't get
+
+A few things that may be in the SDK's `Message` type but are intentionally **not** in the webhook payload:
+
+- **Methods like `.reply()` or `.react()`.** They depend on a live SDK connection. To respond, run [`spectrum-ts`](/spectrum-ts/getting-started) in a separate process and reply through a live `Space` (from its `messages` stream, or rebuilt from the sender). There is no HTTP send endpoint, and no "get space by id" call, yet.
+- **Internal provider state.** Things like raw protocol headers, retry hints, and message acknowledgements are stripped before serialization.
+- **Outbound messages.** Webhooks deliver inbound only. A message you sent does not echo back as a webhook.
+
+#### Forward compatibility
+
+The set of events will grow. To stay forward-compatible:
+
+1. **Branch on `event` defensively.** Use a `switch` with a `default` arm that returns `2xx` and logs the unknown event. Never crash on unknown values.
+
+   ```ts
+switch (payload.event) {
+  case 'messages':
+    handleMessage(payload);
+    break;
+  default:
+    console.warn('unknown webhook event', payload.event);
+    break;
+}
+return new Response('ok', { status: 200 });
+```
+
+2. **Treat extra fields as unknown but tolerable.** New optional fields may appear in existing payload shapes. They'll never repurpose existing fields.
+
+3. **Don't subscribe to specific event types.** Today every URL receives every event. If a `subscriptions` field lands in the future, the default will continue to be "all events" so existing webhooks keep working.
+
+## Quick reference card
+
+```text
+Required to verify a delivery
+   X-Spectrum-Timestamp + X-Spectrum-Signature + raw body bytes + your signingSecret
+
+Required to route a delivery
+   X-Spectrum-Event   (or body.event)
+
+Required for idempotency
+   X-Spectrum-Webhook-Id + body.message.id (for messages event)
+
+Always returns 2xx fast
+   Process asynchronously after acknowledging — see /webhooks/delivery
+```
+
+#### Where to next
+
+You now know exactly what arrives at your URL. The next two chapters cover *trusting* it and *handling failures* when something goes wrong.
+
+- [**Verifying signatures**](https://photon.codes/docs/webhooks/verifying-signatures) — The four details every verifier has to get exactly right, with copy-paste implementations in four languages.
+- [**Delivery and retries**](https://photon.codes/docs/webhooks/delivery) — Retry policy, timeouts, idempotency, and what HTTP status codes mean to the worker.
+
+
+## Implementation
+
+### Verifying signatures
+
+Source: https://photon.codes/docs/webhooks/verifying-signatures
+
+You saw the verifier as a copy-paste in the [Quickstart](/webhooks/quickstart), and you saw the `X-Spectrum-Signature` header itself in [Events](/webhooks/events). This page is the *why* — what each line of that verifier is doing and how to port it to a different stack.
+
+Anyone on the internet can `POST` to your webhook URL. The signature is what tells you a request actually came from Spectrum and wasn't tampered with in transit. Skip this page only if you trust your network perimeter to do that for you — most production systems shouldn't.
+
+The recipe is small, but four details have to be exactly right or every legitimate request will be rejected. We cover each below.
+
+#### The recipe
+
+For every incoming request:
+
+1. **Capture the raw body bytes** before any JSON parser touches them.
+2. **Reject the timestamp** if it's more than 5 minutes from your current clock.
+3. **Recompute the HMAC** locally: `HMAC-SHA256(signingSecret, "v0:" + timestamp + ":" + rawBody)`.
+4. **Compare in constant time** against the `X-Spectrum-Signature` header.
+
+If any check fails, return `401 Unauthorized` and stop processing.
+
+```text
+sig = 'v0=' + hmacSha256Hex(signingSecret, 'v0:' + timestamp + ':' + rawBody)
+```
+
+#### Working examples
+
+Pick the stack that matches your server. Each example is complete and copy-pasteable. Replace `SPECTRUM_SIGNING_SECRET` with the secret you saved when registering the webhook.
+
+```ts Bun + Hono
+import { Hono } from 'hono';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
+const app = new Hono();
+const SECRET = process.env.SPECTRUM_SIGNING_SECRET!;
+const TOLERANCE_SEC = 5 * 60;
+
+app.post('/spectrum-webhook', async (c) => {
+  const rawBody = await c.req.text();
+  const timestamp = c.req.header('X-Spectrum-Timestamp');
+  const signature = c.req.header('X-Spectrum-Signature');
+
+  if (!timestamp || !signature) return c.text('missing headers', 400);
+
+  const age = Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp));
+  if (!Number.isFinite(age) || age > TOLERANCE_SEC) {
+    return c.text('stale timestamp', 400);
+  }
+
+  const expected =
+    'v0=' +
+    createHmac('sha256', SECRET)
+      .update(`v0:${timestamp}:${rawBody}`)
+      .digest('hex');
+
+  const a = Buffer.from(expected);
+  const b = Buffer.from(signature);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+    return c.text('bad signature', 401);
+  }
+
+  const payload = JSON.parse(rawBody);
+  await handleEvent(c.req.header('X-Spectrum-Event'), payload);
+  return c.text('ok', 200);
+});
+
+export default { port: 3000, fetch: app.fetch };
+```
+
+```js Node + Express
+import express from 'express';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
+const app = express();
+const SECRET = process.env.SPECTRUM_SIGNING_SECRET;
+const TOLERANCE_SEC = 5 * 60;
+
+app.post(
+  '/spectrum-webhook',
+  express.raw({ type: 'application/json' }),
+  (req, res) => {
+    const rawBody = req.body.toString('utf8');
+    const timestamp = req.header('X-Spectrum-Timestamp');
+    const signature = req.header('X-Spectrum-Signature');
+
+    if (!timestamp || !signature) return res.status(400).send('missing headers');
+
+    const age = Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp));
+    if (!Number.isFinite(age) || age > TOLERANCE_SEC) {
+      return res.status(400).send('stale timestamp');
+    }
+
+    const expected =
+      'v0=' +
+      createHmac('sha256', SECRET)
+        .update(`v0:${timestamp}:${rawBody}`)
+        .digest('hex');
+
+    const a = Buffer.from(expected);
+    const b = Buffer.from(signature);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      return res.status(401).send('bad signature');
+    }
+
+    const payload = JSON.parse(rawBody);
+    handleEvent(req.header('X-Spectrum-Event'), payload);
+    return res.status(200).send('ok');
+  },
+);
+
+app.listen(3000);
+```
+
+```py Python + FastAPI
+import hashlib, hmac, json, os, time
+from fastapi import FastAPI, Header, HTTPException, Request
+
+app = FastAPI()
+SECRET = os.environ["SPECTRUM_SIGNING_SECRET"].encode()
+TOLERANCE_SEC = 5 * 60
+
+@app.post("/spectrum-webhook")
+async def spectrum_webhook(
+    request: Request,
+    x_spectrum_event: str = Header(None),
+    x_spectrum_timestamp: str = Header(None),
+    x_spectrum_signature: str = Header(None),
+):
+    raw_body = await request.body()
+
+    if not x_spectrum_timestamp or not x_spectrum_signature:
+        raise HTTPException(400, "missing headers")
+
+    try:
+        age = abs(int(time.time()) - int(x_spectrum_timestamp))
+    except ValueError:
+        raise HTTPException(400, "invalid timestamp")
+    if age > TOLERANCE_SEC:
+        raise HTTPException(400, "stale timestamp")
+
+    base = f"v0:{x_spectrum_timestamp}:{raw_body.decode('utf-8')}".encode()
+    expected = "v0=" + hmac.new(SECRET, base, hashlib.sha256).hexdigest()
+
+    if not hmac.compare_digest(expected, x_spectrum_signature):
+        raise HTTPException(401, "bad signature")
+
+    handle_event(x_spectrum_event, json.loads(raw_body))
+    return {"ok": True}
+```
+
+```go Go + net/http
+package main
+
+import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
+	"net/http"
+	"os"
+	"strconv"
+	"time"
+)
+
+var secret = []byte(os.Getenv("SPECTRUM_SIGNING_SECRET"))
+
+const toleranceSec = 5 * 60
+
+func handleWebhook(w http.ResponseWriter, r *http.Request) {
+	rawBody, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "read failed", 400)
+		return
+	}
+
+	timestamp := r.Header.Get("X-Spectrum-Timestamp")
+	signature := r.Header.Get("X-Spectrum-Signature")
+	if timestamp == "" || signature == "" {
+		http.Error(w, "missing headers", 400)
+		return
+	}
+
+	ts, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid timestamp", 400)
+		return
+	}
+	if abs(time.Now().Unix()-ts) > toleranceSec {
+		http.Error(w, "stale timestamp", 400)
+		return
+	}
+
+	mac := hmac.New(sha256.New, secret)
+	mac.Write([]byte("v0:" + timestamp + ":" + string(rawBody)))
+	expected := "v0=" + hex.EncodeToString(mac.Sum(nil))
+
+	if !hmac.Equal([]byte(expected), []byte(signature)) {
+		http.Error(w, "bad signature", 401)
+		return
+	}
+
+	w.WriteHeader(200)
+	w.Write([]byte("ok"))
+}
+
+func abs(x int64) int64 { if x < 0 { return -x }; return x }
+```
+
+#### The four details that have to be exact
+
+##### 1. Use the raw body bytes, not the parsed JSON
+
+The signature was computed over the **exact bytes** that travel on the wire. If you let your framework parse the body to JSON and then re-stringify it before hashing, the bytes change — different key order, different whitespace, different unicode escaping — and verification fails.
+
+| Framework | What to call |
+| --- | --- |
+| Express | `express.raw({ type: 'application/json' })` middleware |
+| Hono | `await c.req.text()` (call this *before* `c.req.json()`) |
+| FastAPI | `await request.body()` (don't type the parameter as a Pydantic model) |
+| Bun.serve | `await req.text()` |
+| Cloudflare Workers | `await request.text()` |
+
+Calling `request.json()` first and `request.text()` second gives you an empty body — most frameworks consume the underlying stream once. Always read raw text first.
+
+##### 2. Compare in constant time
+
+A simple `===` comparison leaks information about how many leading bytes match through response timing. Over many requests, that's enough to recover the secret. Use the constant-time comparison built into your language:
+
+| Language | Function |
+| --- | --- |
+| Node / Bun | `crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b))` |
+| Python | `hmac.compare_digest(a, b)` |
+| Go | `hmac.Equal(a, b)` |
+| Ruby | `Rack::Utils.secure_compare(a, b)` (or `OpenSSL.fixed_length_secure_compare`) |
+| PHP | `hash_equals($a, $b)` |
+
+`timingSafeEqual` requires both buffers to be the same length, otherwise it throws. Compare lengths first and return `false` if they differ — same outcome (reject), no exception.
+
+##### 3. Reject stale timestamps
+
+Even with valid signatures, an attacker who captures a delivery from your logs (or a misconfigured proxy) could replay it forever. Bound that window:
+
+```ts
+const age = Math.abs(now - timestamp);
+if (age > 5 * 60) reject();
+```
+
+5 minutes is the recommended tolerance — generous enough to absorb clock drift between our worker and your server, tight enough to make captured-and-replayed attacks impractical. Tighten or loosen it based on your threat model.
+
+##### 4. Get the hex casing and prefix right
+
+The signature header is **lowercase hex** prefixed with `v0=`. Three subtle ways to break this:
+
+- Output uppercase hex (`A1B2...`) and compare against the lowercase header → never matches.
+- Forget the `v0=` prefix → length differs by 3, never matches.
+- Sign `${timestamp}:${body}` (without the `v0:` prefix in the input) → completely different HMAC.
+
+The `v0=` versions both the header *prefix* and the *signing input prefix*. They're the same `v0` for a reason — when we ever roll out a new scheme, both will bump together to `v1`, and old verifiers can detect "this signature is in a format I don't understand" by checking the prefix.
+
+#### Why this is enough — the security model
+
+The signing secret is the only piece that doesn't travel on each request. It was returned exactly once when you registered the webhook, and it lives in your secrets manager.
+
+When you compute `HMAC(secret, body)` and compare to what arrived, you're proving:
+
+- **Authenticity.** Only someone with the secret can produce a signature that matches. That's Spectrum (and you).
+- **Integrity.** Any byte changed in transit changes the HMAC completely. A modified body never matches the original signature.
+- **Header integrity.** The timestamp is part of the signed input, so it can't be modified either.
+
+Combined with the staleness check, you also get:
+
+- **Freshness.** Captured deliveries can't be replayed beyond the 5-minute window.
+
+This is the same scheme used by Stripe (`v1=`), Slack (`v0=`, identical to ours), GitHub (`sha256=`), and most webhook providers. The construction is well-studied and survives [Kerckhoffs's principle](https://en.wikipedia.org/wiki/Kerckhoffs%27s_principle): even if every detail of the formula is public (it is — you're reading it now), the scheme is secure as long as the secret stays secret.
+
+#### Common verification failures
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Every request returns `bad signature` | Body was parsed and re-serialized before hashing | Capture the raw body bytes first |
+| Sporadic `bad signature` | Server clock skew | Confirm NTP is running; loosen the tolerance window if you're on a constrained host |
+| `bad signature` only in production | Secret loaded from the wrong env var | Log `SECRET.length === 64` (it should always be true) |
+| `timingSafeEqual` throws | Buffers have different lengths | Compare `length` first, return `false` if mismatched |
+| `missing headers` from real requests | Reverse proxy stripping `X-Spectrum-*` | Add to your proxy's header allow-list |
+
+#### Reusing our verifier
+
+Spectrum's own delivery worker uses an internal `verifyPhotonWebhook` function that mirrors the algorithm above. We round-trip our signer against this verifier in tests on every commit, so any bug in the algorithm would be caught before release. You can copy the same shape into your code:
+
+```ts
+export const verifyPhotonWebhook = (
+  rawBody: string,
+  signingSecret: string,
+  signature: string,
+  timestamp: string
+): boolean => {
+  const expected =
+    'v0=' +
+    createHmac('sha256', signingSecret)
+      .update(`v0:${timestamp}:${rawBody}`)
+      .digest('hex');
+  if (expected.length !== signature.length) return false;
+  return timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+};
+```
+
+Pair it with the staleness check and you have a complete verifier.
+
+#### Where to next
+
+A verified delivery is half the job. The other half is what your handler does with it — and what happens when your handler is slow, down, or buggy. That's the next chapter.
+
+- [**Delivery and retries**](https://photon.codes/docs/webhooks/delivery) — Retry policy, timeouts, idempotency, and what every HTTP status code means to the worker.
+- [**Managing webhooks**](https://photon.codes/docs/webhooks/managing-webhooks) — Operate at scale — register, list, delete, and rotate signing secrets (also testable in the [API reference](/api-reference/introduction)).
+
+
+### Delivery and retries
+
+Source: https://photon.codes/docs/webhooks/delivery
+
+You know what arrives ([Events](/webhooks/events)) and how to prove it's real ([Verifying signatures](/webhooks/verifying-signatures)). This page picks up the moment *after* the worker computes a signature and starts the `POST` to your URL — what it does when your server is fast, slow, broken, or unreachable. The contract is simple but worth knowing exactly, because it determines how fault-tolerant you need to be on your end.
+
+#### The contract at a glance
+
+- **Strong retry behaviour.** Up to 6 attempts per event by default, with exponential backoff plus jitter on `5xx`, `408`, `429`, network errors, and worker-side timeouts. The vast majority of deliveries land on attempt 1; the retries are there for the occasional bad minute on your side.
+- **Fast acknowledgement.** Any `2xx` ends it — the worker stops as soon as your server says ok.
+- **Fast permanent failure.** Other `4xx` codes (`400`/`401`/`404`/etc.) are treated as fatal — we don't waste your retry budget when the request will never succeed.
+- **Bounded budget.** 30-second per-attempt timeout, with up to ~39 seconds of backoff sleeps between attempts (jittered). If your server is still down after the final attempt, the event is logged and the worker moves on — there is no dead-letter queue today.
+- **At-least-once delivery.** A retry after your server timed out can re-deliver an event you already processed — always dedupe in your handler (see [Be idempotent](#be-idempotent) below).
+- **URL guard, fail-closed.** Before every attempt the worker validates the target URL: it must be `https://`, must resolve to a public address, and must not redirect. A URL that fails the check is dropped immediately — fatal, no retry — see [Where we won't deliver](#where-we-wont-deliver) below.
+
+This is a bounded-retry contract, not zero-loss delivery. If your use case requires *every* event regardless of downtime (financial audit, transactional state machines), pair webhooks with periodic reconciliation against the [Spectrum API](/api-reference/introduction) — covered later on this page.
+
+#### What the worker does on each attempt
+
+```mermaid
+sequenceDiagram
+  participant W as Spectrum worker
+  participant Y as Your endpoint
+
+  W->>Y: POST (signed) — attempt 1
+  Y-->>W: 200 OK
+  Note over W: ✓ delivered, stop
+```
+
+If the first attempt fails, the worker waits and tries again:
+
+```mermaid
+sequenceDiagram
+  participant W as Spectrum worker
+  participant Y as Your endpoint
+
+  W->>Y: POST — attempt 1
+  Y-->>W: 503
+  W->>W: wait ~200ms (±50%)
+  W->>Y: POST — attempt 2
+  Y-->>W: 503
+  W->>W: wait ~1s (±50%)
+  W->>Y: POST — attempt 3
+  Y-->>W: 200 OK
+  Note over W: ✓ delivered after retry
+```
+
+The backoff *sleeps* sum to ~26.2 seconds in the average case (200ms + 1s + 5s + 10s + 10s) and ~39.3 seconds in the worst case (jitter ceiling). Wall-clock time also includes per-attempt network time, bounded by the 30-second per-attempt timeout: a healthy delivery finishes in milliseconds, while a worst case where every attempt hangs to the timeout can run up to ~3.5 minutes before the worker gives up. It stops as soon as it gets a 2xx or determines further retries are pointless.
+
+#### Retry policy
+
+Retries follow an exponential-backoff schedule with ±50% jitter applied to every delay. The formula is the canonical [full-jitter pattern](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/) — the *expected* delay is the value in the table below, while the *actual* delay is drawn uniformly from the jitter window so coordinated retries don't pile onto your endpoint at the same instant after a recovery.
+
+| Attempt | Expected delay before this attempt | Actual jittered range |
+| --- | --- | --- |
+| 1 | none — fires immediately | — |
+| 2 | 200ms after attempt 1 ends | `[100ms, 300ms)` |
+| 3 | 1 second after attempt 2 ends | `[500ms, 1500ms)` |
+| 4 | 5 seconds after attempt 3 ends | `[2.5s, 7.5s)` |
+| 5 | 10 seconds after attempt 4 ends (clamped from a formula value of 25s by the per-attempt cap) | `[5s, 15s)` |
+| 6 | 10 seconds after attempt 5 ends (clamped from a formula value of 125s by the per-attempt cap) | `[5s, 15s)` |
+
+Per-attempt timeout: **30 seconds**. Treat it as a hard ceiling, not a target — acknowledge in well under a second and push slow work off the response path (see [Acknowledge fast](#acknowledge-fast-process-asynchronously) below).
+
+After attempt 6 fails, the event is logged and dropped. There is no persistent queue and no dead-letter destination — both are out of scope for v1.
+
+Multiple registered URLs receive the same event in parallel via `Promise.allSettled`. One slow or failing URL never delays delivery to the others.
+
+##### Why jitter matters
+
+A naive deterministic schedule (`200ms, 1s, 5s, 10s, 10s` to the millisecond) means that when *every* project's deliveries flap at once — a rolling deploy on your side, a regional DB failover, a noisy upstream — every retry across every project queues at exactly the same offsets and lands on your first healthy moment as a coordinated herd. Jitter spreads each scheduled delay across a window twice as wide as the expected value, so the retry volume smears out and your connection pool / WAF / autoscaler get room to absorb the load gracefully.
+
+##### Tunable on our side
+
+The retry schedule is operator-configurable. The Photon team can adjust these knobs per environment to trade latency for durability — useful, for example, if a regulated workload needs to tolerate a longer outage than the default ~30s budget covers. The full set:
+
+| Knob | Default | Effect |
+| --- | --- | --- |
+| Initial delay | 200ms | The `i = 0` term — delay before the first retry. |
+| Growth factor | 5× | Multiplier applied per retry index (`200ms → 1s → 5s → ...`). |
+| Per-attempt cap | 10 seconds | Ceiling applied to every computed delay before jitter, so the curve can't run away. |
+| Total attempts | 6 (initial + 5 retries) | Higher values trade wall-clock latency for more retries against a flaky endpoint. |
+
+These are *internal* env vars on the spectrum-webhook worker — customers can't set them per-webhook today. If you have a use case that needs different retry behaviour (more retries, longer ceiling), reach out and we'll discuss tuning the deployment-wide defaults or adding a per-project override. Open an issue on the [docs repo](https://github.com/photon-hq/docs) or message us in the [Discord](https://discord.gg/4c3VJzDfNA).
+
+If you're seeing duplicates after long handler waits — say, attempt 1 takes 28 seconds and succeeds on your side, but our retry layer doesn't see the response in time — that's the per-attempt timeout, not the retry schedule. Tighten your handler (acknowledge first, process later) before asking us to widen our budget.
+
+#### What your status codes mean to us
+
+| Status code(s) | Worker treats as | Result |
+| --- | --- | --- |
+| `2xx` | Success | Delivery complete. Stop. |
+| `3xx` (redirect) | Fatal | We send with `redirect: "manual"` and never follow. Register the endpoint's final URL directly. See [Where we won't deliver](#where-we-wont-deliver). |
+| `5xx` | Retriable | Wait, retry up to 5 more times. |
+| `408 Request Timeout` | Retriable | Wait, retry. |
+| `429 Too Many Requests` | Retriable | Wait, retry. We don't honor `Retry-After` yet — use any 5xx/429 to backpressure. |
+| Any other `4xx` (e.g. `400`, `401`, `403`, `404`, `422`) | Fatal | Don't retry. The assumption is that the request will never succeed (auth bug, schema mismatch, missing route). |
+| Connection refused / TCP reset (after the URL guard passes) | Retriable | Wait, retry. |
+| Hostname doesn't resolve (DNS failure) | Fatal | Caught by the URL guard *before* the request — fail-closed, no retry. |
+| Per-attempt timeout (>30s) | Retriable | Wait, retry. |
+
+**Return `4xx` deliberately.** Returning `400` or `401` from a real bug (e.g. signature verification failure) is correct — it tells us "stop retrying, this request will never work." Returning `500` for the same bug wastes our retry budget and your CPU cycles.
+
+#### Where we won't deliver
+
+Before each attempt the worker validates the destination URL and **fails closed** — if a URL can't be confirmed safe, the delivery is dropped (fatal, no retry) rather than sent. Three rules:
+
+- **HTTPS only.** Plain `http://` URLs are rejected. Deliveries carry message content and a signature; we won't put either on the wire in plaintext.
+- **Public addresses only.** The hostname must resolve to a public IP. URLs that resolve to loopback (`localhost`, `127.0.0.1`), private networks (`10.x`, `172.16–31.x`, `192.168.x`), or link-local / cloud-metadata addresses (`169.254.169.254` and friends) are blocked. This is SSRF protection — it stops a registered webhook from being turned into a probe against internal services. IPv6 loopback, link-local, and unique-local ranges are blocked the same way.
+- **No redirects.** The worker sends with `redirect: "manual"` and never follows a `3xx`. An endpoint that 301/302s — a trailing-slash redirect, an `http`→`https` bounce, a load-balancer redirect — is treated as a fatal misconfiguration. Register the final URL directly.
+
+A malformed URL or a DNS lookup that fails counts as "can't confirm safe" and is dropped the same way.
+
+These checks run at **delivery** time, not registration. A URL that violates them still registers successfully — registration only validates URL *syntax* — but then **silently drops every event**, logged as a fatal delivery on our side and invisible on yours. If a freshly-registered webhook never fires, this is the first thing to check: see [Troubleshooting → Every delivery is dropped immediately](/webhooks/troubleshooting#every-delivery-is-dropped-immediately).
+
+#### What you should do on your end
+
+##### Acknowledge fast, process asynchronously
+
+Return `2xx` as soon as you've **verified the signature and queued the work**. Do not block the response on slow downstream operations (LLM calls, third-party APIs, large database writes).
+
+```ts
+app.post('/spectrum-webhook', async (c) => {
+  if (!verify(c)) return c.text('bad signature', 401);
+
+  const payload = JSON.parse(await c.req.text());
+  void enqueueForProcessing(payload);
+
+  return c.text('ok', 200);
+});
+```
+
+If your handler takes >30 seconds, the worker will time out the connection, mark it retriable, and `POST` again. Now you'll process the same event twice.
+
+##### Be idempotent
+
+At-least-once delivery means the same event can arrive more than once if your server hung after processing but before responding. Dedupe in your handler using a composite of the `X-Spectrum-Webhook-Id` header (the webhook config ID) and an event-scoped identifier from the payload — e.g. `payload.message.id` for the `messages` event:
+
+```ts
+const dedupeKey = `${webhookId}:${payload.message.id}`;
+
+if (await alreadyProcessed(dedupeKey)) {
+  return c.text('ok', 200);
+}
+
+await processOnce(payload);
+await markProcessed(dedupeKey);
+```
+
+A short TTL (24-48 hours) on the dedupe table is enough — the retry budget is bounded to a few minutes even with jitter and per-attempt timeouts, so anything we'd re-deliver lands well inside that window.
+
+##### Handle bursts
+
+A noisy chat (group thread, mass DM) can produce many events per second. Make sure your handler can either:
+
+- Process events at the rate they arrive, or
+- Queue them durably (BullMQ, SQS, Postgres-backed queue, anything) and return `2xx` immediately.
+
+Returning `503` on overload is fine — we'll back off and retry. But it eats into your retry budget; queueing is preferable.
+
+#### Failure modes and what they cost you
+
+| Scenario | Outcome |
+| --- | --- |
+| Endpoint returns `2xx` on first try | Best case. One delivery, one process. |
+| Endpoint returns `503`, recovers within ~30s | Retried, eventually delivered. One process (assuming no `2xx` on the failed attempt). |
+| Endpoint times out after 30s, then succeeds | Retried, eventually delivered. **Possibly processed twice** — your handler ran during the timeout and again on retry. Dedupe required. |
+| Endpoint returns `400` (signature bug, etc.) | Dropped immediately, no retry. Event lost. Logged on our side. |
+| Webhook URL is `http://` (not HTTPS) | Dropped immediately by the URL guard, no retry. Every event lost until you re-register an `https://` URL. |
+| Webhook URL resolves to a private/internal IP | Dropped immediately, no retry (SSRF guard). Logged. |
+| Endpoint responds with a `3xx` redirect | Dropped immediately, no retry. Register the final URL instead. |
+| Endpoint down for the full retry window (~30s default, more if you've requested tuning) | Dropped after the final attempt. Event lost — no DLQ today. |
+| Spectrum worker crashes mid-delivery | Event lost — no durable queue. Subsequent events resume after restart. |
+
+The "event lost" rows are why this is **at-least-once, with bounded retries**, not "guaranteed delivery." If your use case requires zero loss (financial transactions, audit logging), pair webhooks with periodic reconciliation against the [Spectrum API](/api-reference/introduction) — list messages on the space and backfill anything you missed.
+
+#### Order and parallelism
+
+- **No global ordering guarantee.** Events from different projects, different spaces, or different platforms can arrive in any order.
+- **No per-space ordering guarantee.** A late retry for an earlier message can land after a successfully-delivered later message.
+- **Parallel deliveries to multiple URLs.** If you have multiple webhooks registered, they receive each event in parallel and may finish in any order.
+
+If your handler depends on order, sort by `message.timestamp` (which is the platform's send time, not the delivery time) and rely on dedupe to handle late arrivals.
+
+#### What we *don't* deliver
+
+- **Outbound messages.** A message you send via the API does not echo back as a webhook.
+- **Standalone reaction events.** Reactions arrive *today* as a `content.type` arm inside the `messages` payload, not as a separate top-level event — branch on `content.type`. Typing indicators, edits, poll votes, and read receipts aren't delivered in any form yet.
+- **Acknowledgements that you processed correctly.** Returning `2xx` only tells us the delivery succeeded; we don't track downstream state.
+
+#### When to use the SDK loop instead
+
+If you find yourself working hard to compensate for delivery loss, consider running [`spectrum-ts`](/spectrum-ts/getting-started) directly instead of (or in addition to) webhooks. The SDK's `instance.messages` async iterable is a long-lived stream — slower events can't be lost to a delivery timeout because there is no delivery, just a `for await` loop running in your process.
+
+A common pattern: webhooks for low-latency push, and a periodic reconciliation worker that uses the SDK or API to backfill anything the webhook layer missed.
+
+#### Where to next
+
+With the contract clear, the remaining pages are operational. The next chapter is the day-to-day: managing the webhooks themselves.
+
+- [**Managing webhooks**](https://photon.codes/docs/webhooks/managing-webhooks) — Register, list, delete, and rotate signing secrets — each one available in the [API reference](/api-reference/introduction).
+- [**Troubleshooting**](https://photon.codes/docs/webhooks/troubleshooting) — Common signature errors, missed deliveries, duplicates, and how to debug them.
+
+
+### Managing webhooks
+
+Source: https://photon.codes/docs/webhooks/managing-webhooks
+
+By now you can receive deliveries, verify them, and survive retries. This page is the operational layer — how you actually create the webhook records, list them, take one offline, or rotate a leaked secret.
+
+There are three HTTP endpoints, all under `https://spectrum.photon.codes/projects/{projectId}/webhooks/`. Every example below uses `curl`. The same operations are also available through the **Webhook** tab of the [Spectrum dashboard](https://app.photon.codes/dashboard), the [API reference](/api-reference/introduction), and any HTTP client (Postman, Insomnia, a language SDK, etc.) — see [Three ways to manage webhooks](/webhooks/overview#three-ways-to-manage-webhooks) on the overview for details.
+
+#### Authentication
+
+Every request uses HTTP Basic auth where the username is your `projectId` and the password is your `projectSecret`. The `projectId` also appears in the URL path — both are required.
+
+```sh
+curl -u "$PROJECT_ID:$PROJECT_SECRET" \
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/"
+```
+
+Project credentials are scoped to a single project. They never expire — rotate them via `photon projects regenerate-secret <id>` (see the [CLI projects docs](/cli/projects#rotate-the-spectrum-api-secret)) if they leak.
+
+#### Register a webhook
+
+```sh curl
+curl -X POST "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/" \
+  -u "$PROJECT_ID:$PROJECT_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"webhookUrl":"https://your-app.com/spectrum-webhook"}'
+```
+
+```ts JavaScript
+const auth = Buffer.from(`${PROJECT_ID}:${PROJECT_SECRET}`).toString('base64');
+
+const res = await fetch(
+  `https://spectrum.photon.codes/projects/${PROJECT_ID}/webhooks/`,
+  {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${auth}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ webhookUrl: 'https://your-app.com/spectrum-webhook' }),
+  }
+);
+
+const { data } = await res.json();
+console.log('signingSecret:', data.signingSecret); // save this — only shown once
+```
+
+```py Python
+import httpx, os
+
+res = httpx.post(
+    f"https://spectrum.photon.codes/projects/{os.environ['PROJECT_ID']}/webhooks/",
+    auth=(os.environ['PROJECT_ID'], os.environ['PROJECT_SECRET']),
+    json={"webhookUrl": "https://your-app.com/spectrum-webhook"},
+)
+
+data = res.json()["data"]
+print("signingSecret:", data["signingSecret"])  # save this — only shown once
+```
+
+Response (`200 OK`):
+
+```json
+{
+  "succeed": true,
+  "data": {
+    "id": "6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b",
+    "webhookUrl": "https://your-app.com/spectrum-webhook",
+    "signingSecret": "a3f8e29b...5c7e9b2d",
+    "createdAt": "2026-05-14T19:00:00Z",
+    "updatedAt": "2026-05-14T19:00:00Z"
+  }
+}
+```
+
+The `signingSecret` is **only returned in this response**. There is no `GET` endpoint that returns it, by design — once it's gone, it's gone. Save it to your secrets manager before doing anything else.
+
+##### Errors
+
+| Status | When it happens | What to do |
+| --- | --- | --- |
+| `422` | `webhookUrl` fails schema validation (empty, malformed, etc.) | Send a syntactically valid URL string |
+| `409` | The same URL is already registered for this project | List existing webhooks, or delete the old one and re-register |
+| `401` | Bad project credentials | Rotate via the CLI and try again |
+
+##### URL requirements
+
+Registration only validates that `webhookUrl` is a syntactically valid URL — a malformed string gets a `422`. The real requirements are enforced at **delivery** time by the URL guard, so a URL can register successfully and still drop every event if it violates them:
+
+- **Must be `https://`.** Plain `http://` URLs register but are rejected at delivery (fatal, no retry) — we won't put signed message payloads on the wire in plaintext.
+- **Must resolve to a public address.** URLs pointing at `localhost`, private networks (`10.x` / `172.16–31.x` / `192.168.x`), or link-local / cloud-metadata addresses are blocked as SSRF. The IPv6 equivalents are blocked too.
+- **Must not redirect.** A `3xx` response is treated as a fatal misconfiguration — register the endpoint's final URL directly.
+- **Path component is yours to choose;** we POST to it as-is.
+
+See [Delivery → Where we won't deliver](/webhooks/delivery#where-we-wont-deliver) for the full contract, and [Troubleshooting → Every delivery is dropped immediately](/webhooks/troubleshooting#every-delivery-is-dropped-immediately) if a registered URL never fires.
+
+#### List registered webhooks
+
+```sh curl
+curl -u "$PROJECT_ID:$PROJECT_SECRET" \
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/"
+```
+
+```ts JavaScript
+const auth = Buffer.from(`${PROJECT_ID}:${PROJECT_SECRET}`).toString('base64');
+
+const res = await fetch(
+  `https://spectrum.photon.codes/projects/${PROJECT_ID}/webhooks/`,
+  { headers: { Authorization: `Basic ${auth}` } }
+);
+
+const { data } = await res.json();
+console.log(data); // array of { id, webhookUrl, createdAt, updatedAt }
+```
+
+```py Python
+import httpx, os
+
+res = httpx.get(
+    f"https://spectrum.photon.codes/projects/{os.environ['PROJECT_ID']}/webhooks/",
+    auth=(os.environ['PROJECT_ID'], os.environ['PROJECT_SECRET']),
+)
+
+print(res.json()["data"])  # list of { id, webhookUrl, createdAt, updatedAt }
+```
+
+Response:
+
+```json
+{
+  "succeed": true,
+  "data": [
+    {
+      "id": "6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b",
+      "webhookUrl": "https://your-app.com/spectrum-webhook",
+      "createdAt": "2026-05-14T19:00:00Z",
+      "updatedAt": "2026-05-14T19:00:00Z"
+    },
+    {
+      "id": "9f1e3d4b-2c8a-4f5d-b7e6-1a2b3c4d5e6f",
+      "webhookUrl": "https://staging.your-app.com/spectrum-webhook",
+      "createdAt": "2026-05-15T09:30:00Z",
+      "updatedAt": "2026-05-15T09:30:00Z"
+    }
+  ]
+}
+```
+
+Webhooks are returned in creation order, oldest first. Soft-deleted webhooks are not included.
+
+The list response **does not include `signingSecret`**. It's only ever returned at creation time. Treat the secret like a password — if you need it back, rotate by deleting and re-registering.
+
+#### Delete a webhook
+
+```sh curl
+curl -X DELETE \
+  -u "$PROJECT_ID:$PROJECT_SECRET" \
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b/"
+```
+
+```ts JavaScript
+const auth = Buffer.from(`${PROJECT_ID}:${PROJECT_SECRET}`).toString('base64');
+
+await fetch(
+  `https://spectrum.photon.codes/projects/${PROJECT_ID}/webhooks/${webhookId}/`,
+  { method: 'DELETE', headers: { Authorization: `Basic ${auth}` } }
+);
+```
+
+```py Python
+import httpx, os
+
+httpx.delete(
+    f"https://spectrum.photon.codes/projects/{os.environ['PROJECT_ID']}/webhooks/{webhook_id}/",
+    auth=(os.environ['PROJECT_ID'], os.environ['PROJECT_SECRET']),
+)
+```
+
+Response:
+
+```json
+{ "succeed": true, "data": { "id": "6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b" } }
+```
+
+After this returns `200`, **no further events are delivered to that URL**. A delivery already in flight at the moment of deletion may still complete (the worker won't abort an in-progress `POST`).
+
+The delete is logical — the row is soft-deleted with a `deletedAt` timestamp on our side. The `id` and `signingSecret` are gone forever; re-registering the same URL produces a brand-new webhook with a new `id` and a new secret.
+
+##### Errors
+
+| Status | When it happens |
+| --- | --- |
+| `404` | The id doesn't exist or has already been deleted |
+
+#### Rotating the signing secret
+
+There is no dedicated rotation endpoint. To rotate, **delete and re-register**:
+
+```sh
+# 1. Capture the old id
+OLD_ID=6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b
+
+# 2. Register the same URL — get a new secret
+curl -X POST "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/" \
+  -u "$PROJECT_ID:$PROJECT_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"webhookUrl":"https://your-app.com/spectrum-webhook"}'
+# Save the new signingSecret immediately
+
+# 3. Update your server's SPECTRUM_SIGNING_SECRET env var and redeploy
+
+# 4. Delete the old webhook
+curl -X DELETE -u "$PROJECT_ID:$PROJECT_SECRET" \
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/$OLD_ID/"
+```
+
+For a graceful zero-downtime rotation, run your verifier against **both** the old and new secret for a brief overlap window between steps 2 and 4. Treat a request as valid if either secret verifies it.
+
+```ts
+const verifyEither = (rawBody, timestamp, signature) =>
+  verify(rawBody, timestamp, signature, OLD_SECRET) ||
+  verify(rawBody, timestamp, signature, NEW_SECRET);
+```
+
+Step 4 (deleting the old webhook) is what actually cuts off the old secret — until that point we'll keep signing with whichever record still exists.
+
+#### Multiple webhooks per project
+
+You can register as many URLs as you need. Each one:
+
+- Has its own `id`.
+- Has its own `signingSecret`.
+- Receives every event for the project (no per-URL filtering yet).
+- Is delivered in parallel with the others — one failing URL doesn't delay the others.
+
+Common patterns:
+
+| Pattern | Setup |
+| --- | --- |
+| **Prod + staging mirror** | Register both URLs. Staging receives a copy of every prod event for testing. |
+| **Multi-service fan-out** | Register one URL per consumer service. Each gets its own copy. |
+| **Backup endpoint** | Register a logging service in addition to your main handler. If your main handler is down, the logger still gets it for replay later. |
+
+There is no built-in fan-out filter. If you only want some events on a particular URL, branch in your handler and `2xx` the rest.
+
+#### Working with the CLI
+
+A first-class `photon webhooks` CLI is on the roadmap. Until then, wrap the curl commands above in a shell function or use `photon projects show --json` to find your credentials and pipe them in.
+
+```sh
+# A small helper to list webhooks for the active project
+list_webhooks() {
+  local row creds id
+  row=$(photon projects show --json)
+  id=$(echo "$row" | jq -r '.id')
+  creds=$(echo "$row" | jq -r '"\(.id):\(.secret)"')
+  curl -s -u "$creds" "https://spectrum.photon.codes/projects/$id/webhooks/"
+}
+```
+
+#### Working with the dashboard
+
+The same operations are available as a UI in the [Spectrum dashboard](https://app.photon.codes/dashboard) under the **Webhook** tab of a workspace (alongside *Platforms*, *Users*, *Lines*, and *Settings*).
+
+The tab contains:
+
+- A list of every registered webhook — endpoint URL and registration date.
+- An **+ Add webhook** button. The signing secret is shown once in a modal after registration; it cannot be retrieved later.
+- A **Remove** button on each row. Same effect as the `DELETE` endpoint: delivery stops immediately and the signing secret is invalidated.
+
+#### Common workflows
+
+##### "I lost my secret"
+
+1. List webhooks, find the one you've lost the secret for.
+2. Delete it.
+3. Re-register the same URL — store the new secret immediately.
+4. Update your server.
+
+##### "I'm changing my URL"
+
+1. Register the new URL (you'll get a new secret).
+2. Update your DNS / ingress so the new URL points at your server.
+3. Once you've confirmed events are arriving on the new URL, delete the old one.
+
+This avoids any window where events go nowhere because the old URL has been deleted but the new one isn't live yet.
+
+##### "I'm rotating credentials after a leak"
+
+1. Rotate the project secret first via `photon projects regenerate-secret <id>`. This invalidates Basic auth on management endpoints, so an attacker can't make further changes.
+2. Rotate every webhook signing secret using the delete-and-recreate flow above.
+
+The signing secret being leaked doesn't grant the attacker the ability to send messages on your behalf — only to forge inbound deliveries to your webhook URL. But in either case, rotating quickly is the right move.
+
+#### Where to next
+
+You can register, list, delete, and rotate. If you're hitting a snag along the way — a verify that won't pass, a webhook that registers but never delivers, a duplicate that won't go away — the next chapter is the triage guide.
+
+- [**Troubleshooting**](https://photon.codes/docs/webhooks/troubleshooting) — Common signature errors, missed deliveries, duplicates, ngrok issues, and how to debug them.
+- [**API reference**](https://photon.codes/docs/api-reference/introduction) — Schema and live request playground for every endpoint on this page.
+
+
+### Troubleshooting
+
+Source: https://photon.codes/docs/webhooks/troubleshooting
+
+If you've followed the rest of this guide and something still isn't working, this is the page. It's organized by symptom — find what you're seeing in the headings below, follow the fix. Each section is self-contained, so you can land here from a search result and still get what you need.
+
+If your symptom isn't listed, jump to [Still stuck?](#still-stuck) at the bottom for what to send us so we can trace it on our side.
+
+#### "Every request fails signature verification"
+
+By far the most common issue, and almost always the same root cause: the body you hash isn't the body we hashed.
+
+##### Diagnosis
+
+Add a temporary log on your server:
+
+```ts
+console.log({
+  rawBodyLength: rawBody.length,
+  rawBodyFirst80: rawBody.slice(0, 80),
+  timestamp,
+  signatureLen: signature.length,
+});
+```
+
+Then trigger a delivery and inspect.
+
+| Observation | Likely cause |
+| --- | --- |
+| `rawBodyLength === 0` | You called `req.json()` first, which consumed the stream. Read the raw body first. |
+| `rawBodyFirst80` starts with `{ "event":` (with extra spaces) | Your framework parsed and re-serialized. Capture raw bytes, not a parsed object. |
+| `signatureLen !== 67` | Header truncated or a proxy is mangling it. Should be `v0=` + 64 hex chars. |
+| `timestamp === undefined` | Reverse proxy is stripping `X-Spectrum-*` headers. Add them to your allow-list. |
+
+##### Fix by framework
+
+| Framework | Trick |
+| --- | --- |
+| Express | Use `express.raw({ type: 'application/json' })` instead of `express.json()` |
+| FastAPI | `await request.body()` and don't type the parameter as a Pydantic model |
+| Hono | `await c.req.text()` *before* `c.req.json()` |
+| Next.js Route Handler | `await req.text()` and parse with `JSON.parse(text)` |
+| Cloudflare Workers | `await request.text()` |
+
+#### "Most requests verify but some sporadically fail"
+
+Two likely culprits:
+
+1. **Server clock skew.** If your server's clock drifts more than ~5 minutes from real UTC, every delivery looks "stale" and your timestamp check rejects it. Run `ntpd` / `chronyd` and confirm with `date -u`.
+2. **You're loading the wrong secret in some environments.** Log `SECRET.length === 64` on startup — if it's ever false, you've loaded an env var from the wrong source.
+
+If it's neither, check whether the failing requests are particularly large bodies — some load balancers buffer large requests through a path that subtly transforms bytes (e.g. converting line endings).
+
+#### "I never receive anything"
+
+Walk through this checklist in order:
+
+**Confirm the webhook is registered**
+
+```sh
+curl -u "$PROJECT_ID:$PROJECT_SECRET" \
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/"
+```
+
+The URL you expect should appear in the list. If not, register it.
+
+**Confirm the URL is reachable from the public internet**
+
+```sh
+curl -X POST https://your-app.com/spectrum-webhook -d '{}' -i
+```
+
+If this hangs, times out, or returns DNS errors from outside your network, our worker can't reach you either. Check firewalls, security groups, and DNS.
+
+Also confirm the URL is `https://`, resolves to a public address, and doesn't redirect — otherwise the URL guard drops every delivery before it leaves our worker. See ["Every delivery is dropped immediately"](#every-delivery-is-dropped-immediately) below.
+
+**Confirm the platform is enabled and connected**
+
+```sh
+photon spectrum platforms ls
+```
+
+A platform that's enabled in the dashboard but not actually connected — an unpaired iMessage line, an expired WhatsApp token, a custom provider whose lifecycle handler is throwing — produces zero inbound events. Webhooks deliver what the SDK receives, so if the SDK is silent for a platform, that platform's webhooks are silent too. Check the SDK side first.
+
+**Confirm the message is actually inbound to your project**
+
+Send the test message from a phone number that isn't your own to the line attached to the project.
+
+**Look at our delivery attempts**
+
+We can confirm whether deliveries left our worker via support — include the webhook id, the approximate timestamp, and the URL. We log every delivery attempt with structured fields.
+
+#### "Every delivery is dropped immediately"
+
+The webhook is registered and the platform is sending events, but nothing reaches your server — and our logs show the delivery never left the worker. This is almost always the **URL guard**: we validate the destination before every attempt and fail closed, so a URL that doesn't meet the delivery requirements drops every event without a single `POST`. Registration doesn't catch this — it only checks URL syntax — so the webhook looks healthy in the list.
+
+Check the registered URL against each rule:
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| URL starts with `http://` | HTTPS is required; plaintext is rejected | Re-register with an `https://` URL |
+| URL is `localhost` / `127.0.0.1` / a private or internal address | Blocked as SSRF — must resolve to a public IP | Expose the endpoint publicly (ngrok in dev, a real host in prod) |
+| URL 301/302-redirects (trailing slash, `http`→`https` bounce, LB redirect) | We send `redirect: "manual"` and never follow a `3xx` | Register the final URL the redirect points to |
+| Hostname doesn't resolve | DNS lookup fails; the guard fails closed | Fix DNS, or register a resolvable host |
+
+All of these drop the event as **fatal** — no retry. There's no update endpoint, so fix the URL by deleting and re-registering (see [Managing webhooks](/webhooks/managing-webhooks#delete-a-webhook)); the next event will deliver. Full contract: [Delivery → Where we won't deliver](/webhooks/delivery#where-we-wont-deliver).
+
+#### "I receive duplicates"
+
+This is expected behavior under at-least-once delivery. The two scenarios that cause it:
+
+1. **Your handler succeeded but timed out before responding.** We retried, you processed twice.
+2. **Your handler returned `5xx` after partially processing.** We retried, you re-ran the partial work.
+
+##### Fix
+
+Dedupe at the top of your handler using `X-Spectrum-Webhook-Id` plus `payload.message.id` as a composite key:
+
+```ts
+const key = `${webhookId}:${payload.message.id}`;
+if (await store.exists(key)) return c.text('ok', 200);
+await processOnce(payload);
+await store.set(key, true, { ttl: 48 * 60 * 60 });
+```
+
+A 24-48 hour TTL is plenty — our retry budget is bounded to a few minutes at most, so anything we'd re-deliver lands well inside that window.
+
+#### "Deliveries time out"
+
+If you're seeing your endpoint logged as "took >30s," it triggers a retry on our side and a likely duplicate processing on yours.
+
+##### Diagnosis
+
+Look at what your handler is doing synchronously:
+
+```ts
+app.post('/spectrum-webhook', async (c) => {
+  // BAD — blocks the response
+  await callOpenAI(payload);
+  await sendReplyViaSpectrumApi();
+  return c.text('ok');
+});
+```
+
+Anything network-dependent in the request path can blow past 30s.
+
+##### Fix
+
+Acknowledge first, process asynchronously:
+
+```ts
+app.post('/spectrum-webhook', async (c) => {
+  // Verify and queue, then immediately ack
+  if (!verify(c)) return c.text('bad signature', 401);
+  await queue.add('process-webhook', payload);
+  return c.text('ok', 200);
+});
+```
+
+For very small handlers (no LLM, no network), inline processing is fine — just keep the handler under a few hundred ms in P99.
+
+#### "ngrok URL keeps changing"
+
+Free ngrok tunnels get a new URL every restart. That URL won't be registered with us, so deliveries 404 immediately.
+
+##### Fix
+
+- For local development, kill the old webhook and re-register every time you restart ngrok:
+
+  ```sh
+ngrok http 3000
+### Copy the new URL, then:
+curl -X POST "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/" \
+  -u "$PROJECT_ID:$PROJECT_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"webhookUrl":"https://NEW-URL.ngrok-free.app/spectrum-webhook"}'
+```
+
+- Better: use a reserved subdomain (paid plan) so the URL is stable across restarts.
+- Best for long-lived dev: deploy a tiny forwarder (Cloudflare Worker, Vercel function) that POSTs to your local machine over a stable tunnel.
+
+## "The signing secret leaked"
+
+Treat it like any other credential leak.
+
+1. Rotate the secret using the delete-and-recreate flow in [Managing webhooks](/webhooks/managing-webhooks#rotating-the-signing-secret).
+2. If you suspect the project credentials also leaked, rotate them too: `photon projects regenerate-secret <id>`.
+3. Audit recent inbound events for anomalies (events for spaces you don't recognize, suspicious sender ids, payloads with unusual content).
+
+A leaked signing secret lets an attacker forge inbound events to *your* webhook URL. It doesn't let them send messages on your behalf — that requires the project secret.
+
+## "I want to test verification without spamming real messages"
+
+Build a test request locally that mimics a real delivery:
+
+```ts test-verify.ts
+import { createHmac } from 'node:crypto';
+
+const secret = 'a3f8e29b...5c7e9b2d';
+const body = JSON.stringify({
+  event: 'messages',
+  space: { id: 'any;-;+15550100', platform: 'iMessage' },
+  message: {
+    id: 'spc-msg-00000000-0000-4000-8000-000000000001',
+    platform: 'iMessage',
+    direction: 'inbound',
+    timestamp: new Date().toISOString(),
+    sender: { id: '+15550100', platform: 'iMessage' },
+    space: { id: 'any;-;+15550100', platform: 'iMessage' },
+    content: { type: 'text', text: 'hi' },
+  },
+});
+const timestamp = String(Math.floor(Date.now() / 1000));
+const signature = 'v0=' + createHmac('sha256', secret).update(`v0:${timestamp}:${body}`).digest('hex');
+
+console.log(
+  `curl -X POST http://localhost:3000/spectrum-webhook \\
+    -H "Content-Type: application/json" \\
+    -H "X-Spectrum-Event: messages" \\
+    -H "X-Spectrum-Webhook-Id: 6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b" \\
+    -H "X-Spectrum-Timestamp: ${timestamp}" \\
+    -H "X-Spectrum-Signature: ${signature}" \\
+    -d '${body}'`
+);
+```
+
+Run it (`bun test-verify.ts`), copy the printed `curl`, and paste it to test your verifier offline.
+
+#### "How do I see what we sent you?"
+
+We don't currently expose a delivery log to customers. If you need to debug a specific event, the fastest path is:
+
+1. Reach out to support with the webhook id, the approximate UTC timestamp, and what you observed on your side.
+2. We can confirm whether the delivery left our worker, what status code came back, and how many retries it took.
+
+A self-serve delivery log UI is on the roadmap.
+
+#### "Multiple webhook URLs receive the event in different orders"
+
+That's expected. Deliveries to multiple URLs run in parallel — there's no ordering guarantee across URLs. If your downstream consumers need to coordinate, designate one URL as the primary and have it fan out internally rather than registering several with us.
+
+#### Still stuck?
+
+Send us:
+
+- Your project id (the one in `photon projects show`).
+- The webhook id or the URL.
+- A timestamp range (UTC).
+- One example body and signature you couldn't verify (with the secret redacted).
+
+We'll trace it on our side. Either [open a ticket](https://photon.codes/contact) or ping us in the Discord linked in the footer.

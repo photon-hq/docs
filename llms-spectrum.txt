@@ -1,0 +1,2645 @@
+# Photon — Spectrum
+
+> Spectrum brings your agents to the interfaces millions already use.
+
+## Spectrum
+
+### Introduction
+
+Source: https://photon.codes/docs/spectrum-ts/introduction
+
+Welcome to the Spectrum documentation.
+
+If you need support with your integration, email [ryan@photon.codes](mailto:ryan@photon.codes).
+
+Here are some helpful links:
+
+- [Quickstart](/spectrum-ts/getting-started) - Send your first Spectrum message.
+- [iMessage provider](/spectrum-ts/providers/imessage) - Build with Photon's managed iMessage infrastructure.
+- [API reference](/api-reference/introduction) - Manage Spectrum through the API.
+- [Photon CLI](/cli/spectrum) - Manage Spectrum from your terminal.
+- [Spectrum skills](https://www.skills.sh/photon-hq/skills/spectrum) - Add Spectrum knowledge to your AI coding tools.
+
+#### What is Spectrum?
+
+Spectrum lets you build an agent once and connect it to the places your users already are.
+
+A user might message you in iMessage today, WhatsApp tomorrow, and your app next week. Without Spectrum, each interface becomes a separate integration with its own authentication, events, message formats, edge cases, and tools.
+
+With Spectrum, you run one agent server and add providers for the interfaces you want to support. Each provider connects a native interface to the same Spectrum API, so your agent can feel consistent everywhere.
+
+Today, Spectrum supports iMessage, WhatsApp Business, Telegram, and terminal development. The same model is built for more interfaces over time: Slack, Discord, websites, apps, phone calls, meetings, and hardware like HomePod.
+
+#### Supported interfaces today
+
+Spectrum currently includes official providers for:
+
+- [**iMessage**](https://photon.codes/docs/spectrum-ts/providers/imessage) — Run production iMessage agents through managed iMessage lines.
+- [**WhatsApp Business**](https://photon.codes/docs/spectrum-ts/providers/whatsapp-business) — Connect to the official WhatsApp Business Cloud API.
+- [**Telegram**](https://photon.codes/docs/spectrum-ts/providers/telegram) — Build bots on the Telegram Bot API with inbound webhooks through Fusor.
+- [**Terminal**](https://photon.codes/docs/spectrum-ts/providers/terminal) — Build, test, and demo agents from your local terminal.
+
+You can also build custom providers with `definePlatform`. Use custom providers to bring websites, apps, Slack, Discord, internal tools, or new device interfaces into Spectrum.
+
+- [**View all providers**](https://photon.codes/docs/spectrum-ts/providers) — See the built-in providers and learn how to combine them.
+
+#### The agent server model
+
+Spectrum is designed around a simple idea: your agent should run once.
+
+Your Spectrum server owns the product behavior: routing, tools, memory, handoff, safety, analytics, and anything else your agent needs. Providers own the interface work: connecting to each platform, receiving events, sending messages, and exposing native features when they exist.
+
+That keeps your code small. You add providers, but the agent loop stays the same:
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { imessage, terminal } from "spectrum-ts/providers";
+
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [
+    imessage.config(),
+    terminal.config(),
+  ],
+});
+
+for await (const [space] of app.messages) {
+  await space.send("How can I help?");
+}
+```
+
+Every provider feeds the same message stream. Your agent can send, react, reply, and use platform-specific features only when it needs them.
+
+#### Built for iMessage
+
+iMessage is where Spectrum is most mature.
+
+Spectrum gives you production iMessage infrastructure with the richest iMessage feature set we offer today. You get managed iMessage lines, so your agent can run on any server and connect to iMessage through Spectrum. The managed iMessage provider supports local development, DMs and groups, typing indicators, reactions, threaded replies, group creation, message effects, chat backgrounds, chat renaming, group avatars, per-line routing, dedicated line auto-scale, and automatic token renewal.
+
+That matters because iMessage is not a generic SMS fallback. Users expect native behavior, reliable delivery, and conversations that feel like they belong on Apple devices.
+
+- [**Explore the iMessage provider**](https://photon.codes/docs/spectrum-ts/providers/imessage) — Learn how Spectrum connects your agent to managed iMessage lines.
+
+#### Manage Spectrum your way
+
+You do not have to manage Spectrum only from the dashboard. Use the dashboard for setup, the API for automation, and the Photon CLI for terminal workflows and scripts.
+
+- [**Dashboard**](https://app.photon.codes) — Configure projects, users, lines, platforms, and profile settings from the browser.
+- [**API reference**](https://photon.codes/docs/api-reference/introduction) — Automate Spectrum management from your own systems and test live requests.
+- [**CLI**](https://photon.codes/docs/cli/spectrum) — Script profile updates, users, lines, platform toggles, and avatars from a terminal.
+
+#### Where to go next
+
+- [**Get started**](https://photon.codes/docs/spectrum-ts/getting-started) — Install `spectrum-ts` and send your first message.
+- [**Webhooks**](https://photon.codes/docs/spectrum-ts/webhooks) — Receive messages via HTTP with native and Fusor webhook support, plus Hono, Express, and Elysia adapters.
+- [**Build a custom platform**](https://photon.codes/docs/spectrum-ts/custom-platforms) — Add a new interface with Spectrum's provider model.
+
+
+### Getting Started
+
+Source: https://photon.codes/docs/spectrum-ts/getting-started
+
+`spectrum-ts` is a unified messaging SDK for TypeScript. Write your logic once, deliver it across every platform — iMessage, WhatsApp Business, your terminal, or a custom platform you build yourself.
+
+#### Installation
+
+```bash npm
+npm install spectrum-ts
+```
+
+```bash pnpm
+pnpm add spectrum-ts
+```
+
+```bash yarn
+yarn add spectrum-ts
+```
+
+```bash bun
+bun add spectrum-ts
+```
+
+Requires TypeScript 5 or later (TypeScript 6 is also supported).
+
+#### Core concepts
+
+Spectrum is built around four primitives:
+
+| Primitive | What it represents |
+|---|---|
+| **Message** | An incoming piece of content — text, attachments, or structured data — from any platform. |
+| **Space** | A conversation context. A DM, a group chat, a terminal session. You send messages *into* a space. |
+| **User** | A participant on a platform, identified by a platform-specific ID. |
+| **Platform provider** | A platform adapter (iMessage, terminal, WhatsApp, or your own) that translates platform-specific protocols into Spectrum's unified interface. |
+
+Every message arrives as a `[Space, Message]` tuple. The space gives you the ability to respond; the message gives you the content and metadata.
+
+#### Quickstart
+
+##### Get your credentials
+
+Find your `PROJECT_ID` and `SECRET_KEY` in your project **Settings** on the [dashboard](https://app.photon.codes/).
+
+##### Run your first app
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { imessage } from "spectrum-ts/providers/imessage";
+
+const app = await Spectrum({
+  projectId: "your-project-id",
+  projectSecret: "your-project-secret",
+  providers: [
+    imessage.config(),
+  ],
+});
+
+for await (const [space, message] of app.messages) {
+  if (message.content.type === "text") {
+    console.log(`[${message.platform}] ${message.sender.id}: ${message.content.text}`);
+    await space.send("hello world");
+  }
+}
+```
+
+Projectless providers (like `terminal`) can be used without credentials:
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { terminal } from "spectrum-ts/providers/terminal";
+
+const app = await Spectrum({
+  providers: [terminal.config()],
+});
+```
+
+#### The app instance
+
+`Spectrum()` returns a `SpectrumInstance` — an object that merges a message stream with platform-specific custom event streams.
+
+```ts
+app.messages                 // AsyncIterable<[Space, Message]>
+await app.send(space, ...)   // send into a space
+await app.responding(space, fn)  // run fn with a typing indicator
+await app.webhook(req, handler)  // handle an inbound webhook delivery
+await app.stop()             // graceful shutdown
+```
+
+Custom events emitted by providers are exposed as flat async iterables on the same object — see [Custom events and lifecycle](/spectrum-ts/custom-events-and-lifecycle).
+
+`app.webhook()` handles both native Spectrum webhooks and Fusor webhooks through the same method. See [Webhooks](/spectrum-ts/webhooks) for setup and framework adapters.
+
+#### Multi-platform in three lines
+
+Combine providers to receive and send across platforms simultaneously:
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { imessage } from "spectrum-ts/providers/imessage";
+import { terminal } from "spectrum-ts/providers/terminal";
+
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [
+    imessage.config(),
+    terminal.config(),
+  ],
+});
+
+for await (const [space, message] of app.messages) {
+  await space.responding(async () => {
+    await message.reply("Hello from Spectrum.");
+  });
+}
+```
+
+Messages from every provider merge into the single `app.messages` stream. The `message.platform` field identifies the source.
+
+#### Telemetry
+
+Spectrum has built-in [OpenTelemetry](https://opentelemetry.io/) instrumentation. Enable it by passing `telemetry: true`:
+
+```ts
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [imessage.config()],
+  telemetry: true,
+});
+```
+
+When enabled, Spectrum traces initialization, provider setup, message send/receive/get flows, space resolution, and custom events. Each span includes attributes like the provider name, space ID, content type, and sender kind.
+
+Traces are sent to the Photon OTLP endpoint by default. Standard `OTEL_EXPORTER_OTLP_*` environment variables override the default endpoint and headers.
+
+Calling `app.stop()` flushes any pending telemetry data before shutting down.
+
+
+### Messages
+
+Source: https://photon.codes/docs/spectrum-ts/messages
+
+Every incoming message arrives through `app.messages` as a `[Space, Message]` tuple. The space is already bound to the originating conversation — you don't need to resolve it yourself to reply.
+
+#### Receiving messages
+
+```ts
+for await (const [space, message] of app.messages) {
+  // handle the message
+}
+```
+
+Messages from every configured provider merge into this single stream. The order reflects arrival time.
+
+#### The Message shape
+
+Every message conforms to `Message`.
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>id</code></td>
+      <td>Platform-assigned message identifier.</td>
+    </tr>
+    <tr>
+      <td><code>content</code></td>
+      <td>Discriminated union on <code>type</code> — see <a href="#narrowing-content">Narrowing content</a> for the full set of variants.</td>
+    </tr>
+    <tr>
+      <td><code>sender</code></td>
+      <td>The `User` who sent the message.</td>
+    </tr>
+    <tr>
+      <td><code>space</code></td>
+      <td>The `Space` the message was sent into.</td>
+    </tr>
+    <tr>
+      <td><code>platform</code></td>
+      <td>Name of the provider that delivered the message (e.g. <code>"iMessage"</code>, <code>"terminal"</code>).</td>
+    </tr>
+    <tr>
+      <td><code>timestamp</code></td>
+      <td><code>Date</code> of when the message was sent.</td>
+    </tr>
+    <tr>
+      <td><code>react(reaction)</code></td>
+      <td>React to this message. Returns the reaction <code>Message</code> — keep it as the handle to <code>unsend()</code> later. No-op on platforms that don't support reactions.</td>
+    </tr>
+    <tr>
+      <td><code>reply(...content)</code></td>
+      <td>Reply threaded to this message. Falls back silently on platforms without thread support.</td>
+    </tr>
+    <tr>
+      <td><code>edit(newContent)</code></td>
+      <td>Rewrite the content of this outbound message. Fire-and-forget.</td>
+    </tr>
+    <tr>
+      <td><code>unsend()</code></td>
+      <td>Retract this outbound message. Fire-and-forget.</td>
+    </tr>
+  </tbody>
+</table>
+
+#### Narrowing content
+
+`Content` is a discriminated union. Narrow on `message.content.type` before accessing fields:
+
+```ts
+for await (const [space, message] of app.messages) {
+  switch (message.content.type) {
+    case "text":
+      console.log(message.content.text);
+      break;
+    case "attachment":
+      console.log(
+        `${message.content.name} (${message.content.mimeType})`,
+        await message.content.read(),
+      );
+      break;
+    case "voice":
+      console.log(`voice note (${message.content.duration}s)`);
+      break;
+    case "contact":
+      console.log(message.content.name?.formatted, message.content.phones);
+      break;
+    case "richlink":
+      console.log(message.content.url, await message.content.title());
+      break;
+    case "reaction":
+      console.log(`${message.content.emoji} on ${message.content.target.id}`);
+      break;
+    case "poll":
+      console.log(message.content.title, message.content.options);
+      break;
+    case "poll_option":
+      console.log(`vote ${message.content.selected ? "+" : "-"}`, message.content.title);
+      break;
+    case "group":
+      console.log(`group of ${message.content.items.length} items`);
+      break;
+    case "custom":
+      console.log(message.content.raw);
+      break;
+  }
+}
+```
+
+**Content** — The incoming content variants that every Message carries. Most platforms only emit a subset — narrow defensively.
+
+| Type | Fields |
+|---|---|
+| `"text"` | `text: string` |
+| `"markdown"` | `markdown: string` — outbound-only styled text |
+| `"attachment"` | `id: string`, `name: string`, `mimeType: string`, `size?: number`, `read()`, `stream()` |
+| `"voice"` | `name?: string`, `mimeType: string`, `duration?: number`, `size?: number`, `read()`, `stream()` |
+| `"contact"` | `name?`, `phones?`, `emails?`, `addresses?`, `org?`, `urls?`, `birthday?`, `note?`, `photo?`, `user?` |
+| `"richlink"` | `url: string`, `title()`, `summary()`, `cover()` |
+| `"reaction"` | `emoji: string`, `target: Message` |
+| `"poll"` | `title: string`, `options: { title: string }[]` |
+| `"poll_option"` | `option: { title }`, `poll: Poll`, `selected: boolean`, `title: string` — sent as a vote |
+| `"group"` | `items: Message[]` — bundled multi-message unit |
+| `"reply"` | `content: Content`, `target: Message` — threaded reply wrapping inner content |
+| `"edit"` | `content: Content`, `target: Message` — rewrite of a previously-sent message |
+| `"unsend"` | `target: Message` — retraction of a previously-sent message |
+| `"typing"` | `state: "start" \| "stop"` — typing indicator signal |
+| `"streamText"` | `stream: () => AsyncIterable<string>` — streaming text content |
+| `"custom"` | `raw: unknown` — platform-specific structured data |
+
+Outgoing-only variants like `"effect"` (an iMessage screen effect wrapping inner content) appear on messages you sent and are echoed by the platform; see [iMessage](/spectrum-ts/providers/imessage) for the builder.
+
+#### Filtering out your own messages
+
+On platforms where your account also receives its own sends, guard with a platform-specific check — for example, iMessage carries an `isFromMe` flag on the raw message extra you can expose through a provider `message.schema`.
+
+For unified logic, compare the sender to a known identity:
+
+```ts
+for await (const [space, message] of app.messages) {
+  if (message.sender.id === myAccountId) continue;
+  // handle incoming
+}
+```
+
+#### Acting on a message
+
+Every message is its own context. You can reply, react, or send new content into the space:
+
+```ts
+for await (const [space, message] of app.messages) {
+  await message.react("love");              // react
+  await message.reply("Got it");            // threaded reply
+  await space.send("Here's more context");  // fresh send into the space
+}
+```
+
+See [Content](/spectrum-ts/content) for all the ways to build outgoing messages, and [Reactions and replies](/spectrum-ts/reactions-and-replies) for the details of `react` and `reply`.
+
+
+### Content
+
+Source: https://photon.codes/docs/spectrum-ts/content
+
+Spectrum exposes a family of content builders — `text`, `markdown`, `attachment`, `voice`, `contact`, `richlink`, `poll`, `group`, `custom`, `reaction`, `reply`, `edit`, `unsend`, `typing`, `rename`, and `avatar` — plus a string shortcut that's equivalent to `text()`. Any API that takes a `ContentInput` accepts a plain string or a `ContentBuilder`.
+
+#### Text
+
+```ts
+import { text } from "spectrum-ts";
+
+await space.send(text("Hello, world."));
+
+// Plain strings are equivalent:
+await space.send("Hello, world.");
+```
+
+#### Streaming text
+
+Both `text()` and `markdown()` accept a streaming source — an AI SDK result, an `AsyncIterable`, or a `ReadableStream` — in addition to a plain string. On platforms that support it, text streams live: iMessage (remote) sends the first chunk as a real message and edits in place as more text arrives; Telegram (private chats) animates a native draft preview. Platforms without streaming support wait for the stream to finish and send the full text as one message.
+
+**Vercel AI SDK**
+
+```ts
+import { text } from "spectrum-ts";
+import { streamText as aiStreamText } from "ai";
+
+const result = aiStreamText({ model, prompt: message.content.text });
+await space.send(text(result));
+```
+
+**AsyncIterable**
+
+```ts
+import { text } from "spectrum-ts";
+
+async function* generate() {
+  yield "Hello, ";
+  yield "world!";
+}
+
+await space.send(text(generate()));
+```
+
+**Custom extractor**
+
+```ts
+import { text } from "spectrum-ts";
+
+await space.send(
+  text(customStream, {
+    extract: (chunk) => chunk.delta?.text ?? null,
+  }),
+);
+```
+
+A stream can only be sent once. Pass `options.extract` for any chunk shape the built-in auto-detection doesn't recognize.
+
+#### Markdown
+
+Send styled text written in standard markdown (CommonMark plus GFM tables and strikethrough). Each platform renders markdown to its native format — Telegram uses `parse_mode: "HTML"`, iMessage (remote) uses UTF-16 styled text formatting ranges. Platforms without native markdown support receive readable plain text via the send pipeline's automatic fallback.
+
+```ts
+import { markdown } from "spectrum-ts";
+
+await space.send(markdown("**Bold** and _italic_ text."));
+```
+
+`markdown()` also accepts a stream source, just like `text()`. Markdown streams render progressively on platforms with native support; everywhere else the accumulated text falls back through the markdown pipeline instead of surfacing raw `**` markers:
+
+```ts
+import { markdown } from "spectrum-ts";
+import { streamText as aiStreamText } from "ai";
+
+const result = aiStreamText({ model, prompt: message.content.text });
+await space.send(markdown(result));
+```
+
+Markdown is outbound-only by design — inbound messages always surface as `text` content regardless of platform formatting.
+
+#### Attachments
+
+Pass a file path or a `Buffer`. MIME types are detected from the file extension; override with `options.mimeType` when you already have the bytes.
+
+```ts
+import { attachment } from "spectrum-ts";
+
+// From a file path — name and MIME type inferred
+await space.send(attachment("/path/to/photo.jpg"));
+
+// From a buffer — provide name and MIME type
+await space.send(attachment(buffer, {
+  name: "report.pdf",
+  mimeType: "application/pdf",
+}));
+```
+
+If the MIME type can't be inferred from the name and you didn't pass `options.mimeType`, `attachment()` throws when the content is built.
+
+Every resolved attachment carries a stable `id`. When the attachment originates from a provider, the ID preserves the provider-native identifier (iMessage GUID, Slack file ID, WhatsApp media ID). For outbound attachments built with `attachment()`, a random UUID is assigned unless you pass `options.id`:
+
+```ts
+await space.send(attachment(buffer, {
+  id: "custom-id",
+  name: "report.pdf",
+  mimeType: "application/pdf",
+}));
+```
+
+The `Attachment` and `AttachmentInput` types are exported from the public API for use in your own type signatures:
+
+```ts
+import { type Attachment, type AttachmentInput } from "spectrum-ts";
+```
+
+#### Voice
+
+Send a voice note. Same input shape as `attachment` — a path or a `Buffer` plus optional metadata.
+
+```ts
+import { voice } from "spectrum-ts";
+
+// From a file path
+await space.send(voice("/path/to/note.m4a"));
+
+// From a buffer — duration in seconds is optional but useful for waveform UIs
+await space.send(voice(buffer, {
+  name: "note.m4a",
+  mimeType: "audio/mp4",
+  duration: 12,
+}));
+```
+
+Platforms that don't support voice notes typically downgrade to a regular audio attachment. If the MIME type can't be inferred and `options.mimeType` is omitted, the builder throws at send time.
+
+**Voice** — Resolved voice content delivered alongside the message.
+
+| Field | Type | Description |
+|---|---|---|
+| `mimeType` | `string` | The audio MIME type (e.g. `audio/mp4`). |
+| `name` | `string` (optional) | Filename for the underlying clip. |
+| `duration` | `number` (optional) | Length in seconds. |
+| `size` | `number` (optional) | Byte length, when known up front. |
+| `read()` | `() => Promise<Buffer>` | Materialize the bytes. |
+| `stream()` | `() => Promise<ReadableStream>` | Stream the bytes — preferred for large clips. |
+
+#### Contacts
+
+Share contact cards. The `contact()` builder takes either a structured `ContactInput`, a vCard string, a `vcf` instance, or a known `User` paired with optional `ContactDetails`.
+
+**Structured**
+
+```ts
+import { contact } from "spectrum-ts";
+
+await space.send(contact({
+  name: { first: "Ada", last: "Lovelace" },
+  phones: [{ value: "+15551234567", type: "mobile" }],
+  emails: [{ value: "ada@example.com", type: "work" }],
+}));
+```
+
+**From a User**
+
+```ts
+import { contact } from "spectrum-ts";
+
+// Attach extra details on top of an existing platform user
+await space.send(contact(alice, {
+  name: { first: "Alice", last: "Anderson" },
+  org: { name: "Acme", title: "Engineer" },
+}));
+```
+
+**From vCard**
+
+```ts
+import { contact, fromVCard } from "spectrum-ts";
+
+const vcf = await readFile("/path/to/ada.vcf", "utf8");
+await space.send(contact(vcf));
+
+// Or parse first if you want to inspect/edit the fields
+const parsed = fromVCard(vcf);
+await space.send(contact({ ...parsed, note: "Met at conference" }));
+```
+
+`fromVCard(vcf)` parses a vCard string into a `ContactInput`; `toVCard(contact)` serializes a resolved `Contact` back to vCard.
+
+**ContactInput** — The fields you can populate on a contact card. All fields are optional except where the receiving platform requires at least one identifying field.
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | `{ formatted?, first?, last?, middle?, prefix?, suffix? }` | Structured display name. |
+| `phones` | `Array<{ value, type? }>` | Phone numbers. `type` is `"mobile" \| "home" \| "work" \| "other"`. |
+| `emails` | `Array<{ value, type? }>` | Email addresses. `type` is `"home" \| "work" \| "other"`. |
+| `addresses` | `Array<{ street?, city?, region?, postalCode?, country?, type? }>` | Postal addresses. |
+| `org` | `{ name?, title?, department? }` | Employer / org info. |
+| `urls` | `string[]` | Associated URLs. |
+| `birthday` | `string` | ISO date. |
+| `note` | `string` | Free-form note. |
+| `photo` | `{ mimeType, read() }` | Profile photo bytes. |
+| `raw` | `unknown` | Provider-specific extras passed through untouched. |
+
+#### Rich links
+
+Render a URL as a rich preview card with title, summary, and cover image. Spectrum scrapes Open Graph metadata at send time; pass just the URL and the builder fills in the rest.
+
+```ts
+import { richlink } from "spectrum-ts";
+
+await space.send(richlink("https://example.com/article"));
+```
+
+`title()`, `summary()`, and `cover()` are lazy async accessors — the metadata fetch happens only if the receiving platform needs it. Platforms without rich-link support fall back to the URL as plain text.
+
+**Richlink** — Resolved rich-link content with lazy metadata accessors.
+
+| Field | Type | Description |
+|---|---|---|
+| `url` | `string` | The original URL. |
+| `title()` | `() => Promise<string \| undefined>` | OG title. |
+| `summary()` | `() => Promise<string \| undefined>` | OG description. |
+| `cover()` | `() => Promise<{ mimeType?, read(), stream() } \| undefined>` | OG image. |
+
+#### Polls
+
+Send a poll with a title and a list of choices. Each choice can be a plain string or a `PollChoiceInput` object — use `option()` when you want the explicit form.
+
+```ts
+import { poll, option } from "spectrum-ts";
+
+// Variadic strings
+await space.send(poll("Lunch?", "Pizza", "Sushi", "Tacos"));
+
+// Or an array, optionally using option() for clarity
+await space.send(poll("Lunch?", [
+  option("Pizza"),
+  option("Sushi"),
+  option("Tacos"),
+]));
+```
+
+Poll responses arrive as `poll_option` content — see [Messages](/spectrum-ts/messages) for narrowing on incoming votes.
+
+#### Groups
+
+A `group` bundles multiple messages into one logical unit (an album of images, a multi-attachment reply). Each item is delivered as its own `Message`, but they ship together so the receiving platform can render them as a single visual group when supported.
+
+```ts
+import { group, attachment } from "spectrum-ts";
+
+await space.send(group(
+  attachment("/path/to/photo-1.jpg"),
+  attachment("/path/to/photo-2.jpg"),
+  attachment("/path/to/photo-3.jpg"),
+));
+```
+
+Groups don't nest, and reactions can't be group members — the builder enforces both at construction time. Platforms that don't support grouping fall back to sending each item sequentially.
+
+#### Custom
+
+Send structured, platform-specific payloads. Use this when the receiving platform supports rich content types that don't fit into the built-in builders.
+
+```ts
+import { custom } from "spectrum-ts";
+
+await space.send(custom({ type: "card", title: "Order Confirmed" }));
+```
+
+The raw payload round-trips through the provider's `send` action — it's up to the provider to interpret it.
+
+#### Replies
+
+Send a threaded reply by wrapping content with the message being replied to. See [Reactions and replies](/spectrum-ts/reactions-and-replies) for the full details and sugar methods.
+
+```ts
+import { reply, text } from "spectrum-ts";
+
+await space.send(reply(text("Got it"), message));
+```
+
+`reply()` cannot wrap `reply`, `edit`, `reaction`, `group`, `typing`, `rename`, `avatar`, or `unsend` content.
+
+#### Edits
+
+Rewrite the content of a previously-sent outbound message. Edits are fire-and-forget — `space.send(edit(...))` resolves to `undefined`.
+
+```ts
+import { edit, text } from "spectrum-ts";
+
+const sent = await space.send("Draft");
+await space.send(edit(text("Final version"), sent));
+```
+
+`edit()` cannot wrap `edit`, `reply`, `reaction`, `group`, `typing`, `rename`, `avatar`, or `unsend` content.
+
+#### Unsend
+
+Retract a previously-sent outbound message. Unsends are fire-and-forget — `space.send(unsend(...))` resolves to `undefined`.
+
+```ts
+import { unsend } from "spectrum-ts";
+
+const sent = await space.send("Oops");
+await space.send(unsend(sent));
+```
+
+`message.unsend()` and `space.unsend(message)` are sugar for `space.send(unsend(message))`. Only outbound messages can be unsent — the builder throws at build time for inbound targets. Platform constraints (e.g. iMessage enforces Apple's ~2-minute unsend window for regular messages) surface from the provider at send time.
+
+#### Typing indicators
+
+Send a typing indicator signal through the content pipeline. Defaults to `"start"`.
+
+```ts
+import { typing } from "spectrum-ts";
+
+await space.send(typing());        // start typing
+await space.send(typing("stop"));  // stop typing
+```
+
+`space.startTyping()`, `space.stopTyping()`, and `space.responding(fn)` are sugar over `space.send(typing(...))`. Platforms without a typing-indicator API silently no-op.
+
+#### Rename
+
+Rename the current chat. Fire-and-forget — `space.send(rename(...))` resolves to `undefined`.
+
+```ts
+import { rename } from "spectrum-ts";
+
+await space.send(rename("New Chat Name"));
+```
+
+`space.rename(displayName)` is sugar for `space.send(rename(displayName))`. The builder throws at construction time if `displayName` is empty. Per-platform constraints (e.g. iMessage requires remote mode and a group chat) surface as `UnsupportedError` from the provider's send action.
+
+#### Avatar
+
+Set or clear the chat avatar (group icon). Fire-and-forget — `space.send(avatar(...))` resolves to `undefined`.
+
+```ts
+import { avatar } from "spectrum-ts";
+
+// Set from a file path — MIME type inferred from the extension
+await space.send(avatar("./icon.png"));
+
+// Set from a buffer — mimeType is required
+await space.send(avatar(buffer, { mimeType: "image/jpeg" }));
+
+// Clear the current avatar
+await space.send(avatar("clear"));
+```
+
+`space.avatar(...)` is sugar for `space.send(avatar(...))`. Per-platform constraints (e.g. iMessage requires remote mode and a group chat) surface as `UnsupportedError` from the provider's send action.
+
+  The string `"clear"` is a reserved sentinel. If you have a file literally named `clear` with no extension, pass `"./clear"` or load it as a `Buffer`.
+
+#### Composing multiple items
+
+All send methods take a variadic list. Items are sent sequentially as separate messages:
+
+```ts
+await space.send(
+  "Here's the file you requested:",
+  attachment("/path/to/document.pdf"),
+);
+```
+
+This runs one `send()` per item on the underlying provider — not a single compound message. Reach for `group(...)` instead when you specifically want them rendered as one bundled unit.
+
+#### Replies (sugar)
+
+`message.reply(...)` has the same variadic signature and delegates to `space.send(reply(...))` internally:
+
+```ts
+await message.reply(
+  "Thanks for the question.",
+  attachment("/path/to/answer.png"),
+);
+```
+
+On platforms without thread support, `reply()` resolves as a no-op. If you need guaranteed delivery, use `space.send(...)` instead. See [Reactions and replies](/spectrum-ts/reactions-and-replies) for the canonical form and more details.
+
+
+### Spaces and Users
+
+Source: https://photon.codes/docs/spectrum-ts/spaces-and-users
+
+A **space** is a conversation — a DM, a group chat, a terminal session. A **user** is a participant identified by a platform-specific ID. Both carry a `__platform` tag so the narrowing functions from [platform narrowing](/spectrum-ts/platform-narrowing) can recover their platform-specific shapes.
+
+#### Space
+
+Every `Space` exposes the same interface regardless of platform:
+
+| Method | Description |
+|---|---|
+| `send(...content)` | Send one or more content items into the conversation. |
+| `edit(message, newContent)` | Rewrite a previously-sent message. Sugar for `send(edit(newContent, message))`. |
+| `unsend(message)` | Retract a previously-sent message. Sugar for `send(unsend(message))`. |
+| `startTyping()` | Show a typing indicator. No-op if the platform doesn't support it. |
+| `stopTyping()` | Hide the typing indicator. |
+| `responding(fn)` | Start a typing indicator, run `fn`, and stop the indicator when it completes — even if `fn` throws. |
+| `getMessage(id)` | Fetch a message by ID from the conversation. Throws `UnsupportedError` on platforms that don't support it. |
+| `rename(displayName)` | Rename the chat. Sugar for `send(rename(displayName))`. |
+| `avatar(input, options?)` | Set or clear the chat avatar. Sugar for `send(avatar(input, options?))`. |
+
+```ts
+for await (const [space, message] of app.messages) {
+  await space.send("Got it.");
+}
+```
+
+#### User
+
+Users are minimal: an ID and a platform tag.
+
+```ts
+interface User {
+  readonly id: string;
+  readonly __platform: string;
+}
+```
+
+Resolve a user from a platform-specific identifier through a narrowed platform instance:
+
+```ts
+import { imessage } from "spectrum-ts/providers/imessage";
+
+const im = imessage(app);
+const alice = await im.user("+15551234567");
+```
+
+The returned user may include additional platform-specific fields when the provider defines a `user.schema`.
+
+#### Typing indicators
+
+##### Manual
+
+```ts
+await space.startTyping();
+// ... do work ...
+await space.stopTyping();
+```
+
+These are sugar for `space.send(typing("start"))` and `space.send(typing("stop"))` — see [Content](/spectrum-ts/content#typing-indicators) for the canonical form.
+
+##### Automatic with `responding`
+
+`responding` is the recommended pattern. It guarantees the typing indicator is cleared even if the inner function throws:
+
+```ts
+await space.responding(async () => {
+  const result = await generateResponse(message);
+  await space.send(result);
+});
+```
+
+The helper is also available on the app itself:
+
+```ts
+await app.responding(space, async () => {
+  await space.send("Thinking...");
+});
+```
+
+#### Creating a space
+
+To start a new conversation, use [platform narrowing](/spectrum-ts/platform-narrowing) to get a platform instance, then call `space.create(...)` with the users:
+
+```ts
+const im = imessage(app);
+const alice = await im.user("+15551111111");
+const bob = await im.user("+15552222222");
+
+// DM
+const dm = await im.space.create(alice);
+
+// Group
+const group = await im.space.create([alice, bob]);
+
+await group.send("Welcome to the group.");
+```
+
+To look up an existing conversation by its platform ID, use `space.get(id)`:
+
+```ts
+const existing = await im.space.get("any;-;+15551111111");
+await existing.send("Hello again.");
+```
+
+The returned space is the platform-specific type — so you can read extra fields like `type: "dm" | "group"` on iMessage — but it also satisfies the generic `Space` interface, so `send()`, `startTyping()`, and friends are always available.
+
+
+### Reactions and Replies
+
+Source: https://photon.codes/docs/spectrum-ts/reactions-and-replies
+
+Both `react` and `reply` live directly on an incoming message. They no-op silently on platforms that don't support the feature — no `try/catch` required.
+
+Spectrum also exports first-class `reaction()`, `reply()`, and `unsend()` content builders that you can pass directly to `space.send(...)` — the sugar methods on `message` delegate through the same `send` pipeline.
+
+#### Reactions
+
+**Sugar (message.react)**
+
+```ts
+const sent = await message.react("love");
+```
+
+**Canonical (space.send)**
+
+```ts
+import { reaction } from "spectrum-ts";
+
+const sent = await space.send(reaction("love", message));
+```
+
+Both forms are equivalent — `message.react(emoji)` delegates to `space.send(reaction(emoji, message))` internally.
+
+Reactions resolve to a `Message` — keep it as the handle to `unsend()` later. Resolves `undefined` only when the platform does not support reactions.
+
+The reaction string is platform-specific. For iMessage, use the built-in tapback constants:
+
+```ts
+import { imessage } from "spectrum-ts/providers/imessage";
+
+await message.react(imessage.tapbacks.laugh);
+```
+
+`reaction()` rejects reaction messages as targets — reacting to a reaction throws at build time.
+
+Available tapbacks:
+
+| Constant | Value |
+|---|---|
+| `imessage.tapbacks.love` | `"love"` |
+| `imessage.tapbacks.like` | `"like"` |
+| `imessage.tapbacks.dislike` | `"dislike"` |
+| `imessage.tapbacks.laugh` | `"laugh"` |
+| `imessage.tapbacks.emphasize` | `"emphasize"` |
+| `imessage.tapbacks.question` | `"question"` |
+
+#### Threaded replies
+
+**Sugar (message.reply)**
+
+```ts
+await message.reply("Replying to your message.");
+
+await message.reply(
+  "Here's the attachment you asked for:",
+  attachment("/path/to/file.pdf"),
+);
+```
+
+**Canonical (space.send)**
+
+```ts
+import { reply, text } from "spectrum-ts";
+
+await space.send(reply(text("Replying to your message."), message));
+```
+
+Both forms are equivalent — `message.reply(content)` wraps each content item in `reply(content, message)` and delegates to `space.send(...)` internally.
+
+On platforms with thread support (iMessage, WhatsApp Business), this sends a threaded reply. On platforms without, the call resolves as a no-op — **the reply is not downgraded to a regular send**. If you need guaranteed delivery, use `space.send(...)` instead.
+
+`reply()` cannot wrap `reply`, `edit`, `reaction`, `group`, `typing`, `rename`, `avatar`, or `unsend` content — the builder throws at construction time.
+
+#### Editing messages
+
+**Sugar (message.edit)**
+
+```ts
+const sent = await space.send("Draft");
+await sent.edit("Final version");
+```
+
+**Canonical (space.send)**
+
+```ts
+import { edit, text } from "spectrum-ts";
+
+const sent = await space.send("Draft");
+await space.send(edit(text("Final version"), sent));
+```
+
+`edit()` takes new content and the outbound message to rewrite. Edits are fire-and-forget — `space.send(edit(...))` resolves to `undefined`.
+
+`edit()` cannot wrap `edit`, `reply`, `reaction`, `group`, `typing`, `rename`, `avatar`, or `unsend` content.
+
+#### Unsending messages
+
+**Sugar (message.unsend)**
+
+```ts
+const sent = await space.send("Oops");
+await sent.unsend();
+```
+
+**Sugar (space.unsend)**
+
+```ts
+const sent = await space.send("Oops");
+await space.unsend(sent);
+```
+
+**Canonical (space.send)**
+
+```ts
+import { unsend } from "spectrum-ts";
+
+const sent = await space.send("Oops");
+await space.send(unsend(sent));
+```
+
+Unsends retract a previously-sent outbound message. Fire-and-forget — the result is always `undefined`. Only outbound messages can be unsent; the builder throws at build time for inbound targets.
+
+Reactions can also be unsent — keep the `Message` returned by `react()` and pass it to `unsend()`:
+
+```ts
+const reaction = await message.react("love");
+await reaction?.unsend();
+```
+
+#### When to use what
+
+| Want to | Use |
+|---|---|
+| Send fresh content into the conversation | `space.send(...)` |
+| Reply in-thread to a specific message | `message.reply(...)` or `space.send(reply(...))` |
+| React to a specific message | `message.react(emoji)` or `space.send(reaction(emoji, message))` |
+| Rewrite a sent message | `message.edit(content)` or `space.send(edit(content, message))` |
+| Retract a sent message | `message.unsend()` or `space.unsend(message)` or `space.send(unsend(message))` |
+
+`space.send` is the safe default — it works on every platform. The sugar methods (`message.reply`, `message.react`, `message.edit`, `message.unsend`) and the canonical content builders (`reply()`, `reaction()`, `edit()`, `unsend()`) are interchangeable — they both route through the same `send` pipeline.
+
+
+### Platform Narrowing
+
+Source: https://photon.codes/docs/spectrum-ts/platform-narrowing
+
+Every platform provider exports a callable — `imessage`, `terminal`, `whatsappBusiness`, `telegram` — that **narrows** generic Spectrum types into platform-specific ones. The same function handles three different inputs.
+
+#### Narrowing the app
+
+Pass a `Spectrum` instance to get a `PlatformInstance` for that platform. The instance gives you `user()` and `space.create()` / `space.get()` resolvers, plus access to any custom events the provider emits.
+
+```ts
+import { imessage } from "spectrum-ts/providers/imessage";
+
+const im = imessage(app);
+
+const user = await im.user("+15551234567");
+const space = await im.space.create(user);
+
+await space.send("Hello from a new conversation.");
+```
+
+If the platform isn't registered in `providers`, the type of `imessage(app)` resolves to `never` — the call is a compile-time error.
+
+#### Narrowing a space
+
+Pass an existing space to access platform-specific fields:
+
+```ts
+for await (const [space, message] of app.messages) {
+  if (message.platform !== "iMessage") continue;
+
+  const imessageSpace = imessage(space);
+  if (imessageSpace.type === "group") {
+    // group chat logic — `type` only exists on iMessage spaces
+  }
+}
+```
+
+Narrowing a space from the wrong platform logs a structured warning at runtime. Always gate on `message.platform` (or a similar signal) first to avoid unexpected behavior.
+
+#### Narrowing a message
+
+Same idea for messages — useful when a provider declares a `message.schema` to attach extra properties:
+
+```ts
+for await (const [space, message] of app.messages) {
+  if (message.platform !== "iMessage") continue;
+  const imessageMessage = imessage(message);
+  // imessageMessage carries any iMessage-specific fields
+}
+```
+
+#### Creating group conversations
+
+`space.create(...)` accepts a single user or an array of users. On iMessage:
+
+```ts
+const im = imessage(app);
+const alice = await im.user("+15551111111");
+const bob = await im.user("+15552222222");
+
+const group = await im.space.create([alice, bob]);
+await group.send("Welcome to the group.");
+```
+
+Some platforms support an additional `params` argument for extra space creation options — the shape of those params is defined per-provider through `space.params` on the platform definition.
+
+#### Why narrowing matters
+
+The generic `Space` and `Message` interfaces are deliberately small — just enough to send, react, and reply across every platform. Narrowing is the escape hatch for everything else: typed access to iMessage chat types, WhatsApp phone numbers, or any extra field your [custom platform](/spectrum-ts/custom-platforms) exposes.
+
+
+### Webhooks
+
+Source: https://photon.codes/docs/spectrum-ts/webhooks
+
+`app.webhook()` lets you receive messages through HTTP `POST` requests instead of the `app.messages` stream. It handles two webhook formats through the same method:
+
+| | Native Spectrum webhook | Fusor webhook |
+|---|---|---|
+| Body | HMAC-signed, normalized JSON | Protobuf envelope (raw provider request) |
+| Auth | HMAC over body, verified with `webhookSecret` | Platform's own signature via provider `verify()` |
+| Requires a Fusor provider | No | Yes |
+
+Detection is by payload shape (JSON vs protobuf), not headers. Your handler receives the same `(space, message)` pair either way.
+
+#### Configuring a webhook secret
+
+Native Spectrum webhooks require a signing secret for HMAC verification. Pass it to `Spectrum()`:
+
+```ts
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [imessage.config()],
+  webhookSecret: process.env.SPECTRUM_WEBHOOK_SECRET,
+});
+```
+
+The `webhookSecret` option can also be supplied via the `SPECTRUM_WEBHOOK_SECRET` environment variable (the explicit option takes precedence). A native delivery that arrives without a configured secret is answered `500`.
+
+#### Receiving deliveries
+
+Call `app.webhook()` from your HTTP server's `POST` route. The method has two overloads:
+
+**Web Request (Hono / Bun.serve / Workers)**
+
+```ts
+server.post("/spectrum/webhook", (c) =>
+  app.webhook(c.req.raw, async (space, message) => {
+    if (message.content.type === "text") {
+      await space.send(`echo: ${message.content.text}`);
+    }
+  })
+);
+```
+
+**Raw (Express / Node)**
+
+```ts
+server.post(
+  "/spectrum/webhook",
+  express.raw({ type: "*/*" }),
+  async (req, res) => {
+    const result = await app.webhook(
+      { body: req.body, headers: req.headers },
+      async (space, message) => {
+        if (message.content.type === "text") {
+          await space.send(`echo: ${message.content.text}`);
+        }
+      }
+    );
+    res.status(result.status).set(result.headers).send(Buffer.from(result.body));
+  }
+);
+```
+
+The handler is invoked **fire-and-forget** — it runs after the HTTP response is sent. A throw is logged, never surfaced. Dedupe on `message.id` for exactly-once side effects.
+
+Pass the raw body bytes. The HMAC is computed over the exact bytes on the wire. If your framework parses the body to JSON and you re-stringify it, the bytes change and verification fails.
+
+#### Framework adapters
+
+First-party adapters mount the endpoint for you and handle raw-body parsing correctly. Each is an optional subpath import — install the framework as a peer dependency only if you use it.
+
+**Hono**
+
+```ts
+import { Hono } from "hono";
+import { Spectrum } from "spectrum-ts";
+import { imessage } from "spectrum-ts/providers/imessage";
+import { spectrum } from "spectrum-ts/hono";
+
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [imessage.config()],
+  webhookSecret: process.env.SPECTRUM_WEBHOOK_SECRET,
+});
+
+const server = new Hono().route(
+  "/",
+  spectrum({
+    app,
+    onMessage: async (space, message) => {
+      if (message.content.type === "text") {
+        await space.send(`echo: ${message.content.text}`);
+      }
+    },
+  })
+);
+
+export default server;
+```
+
+**Express**
+
+```ts
+import express from "express";
+import { Spectrum } from "spectrum-ts";
+import { imessage } from "spectrum-ts/providers/imessage";
+import { spectrum } from "spectrum-ts/express";
+
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [imessage.config()],
+  webhookSecret: process.env.SPECTRUM_WEBHOOK_SECRET,
+});
+
+const server = express();
+
+server.use(
+  spectrum({
+    app,
+    onMessage: async (space, message) => {
+      if (message.content.type === "text") {
+        await space.send(`echo: ${message.content.text}`);
+      }
+    },
+  })
+);
+
+server.use(express.json());
+server.listen(3000);
+```
+
+Mount the adapter **before** any global `express.json()`. A global JSON parser consumes the body stream first, breaking signature verification.
+
+**Elysia**
+
+```ts
+import { Elysia } from "elysia";
+import { Spectrum } from "spectrum-ts";
+import { imessage } from "spectrum-ts/providers/imessage";
+import { spectrum } from "spectrum-ts/elysia";
+
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [imessage.config()],
+  webhookSecret: process.env.SPECTRUM_WEBHOOK_SECRET,
+});
+
+new Elysia()
+  .use(
+    spectrum({
+      app,
+      onMessage: async (space, message) => {
+        if (message.content.type === "text") {
+          await space.send(`echo: ${message.content.text}`);
+        }
+      },
+    })
+  )
+  .listen(3000);
+```
+
+All three adapters accept the same options:
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `app` | `Spectrum` instance | — | The instance returned by `await Spectrum({...})`. |
+| `onMessage` | `(space, message) => void \| Promise<void>` | — | Invoked once per inbound message, fire-and-forget. |
+| `path` | `string` | `"/spectrum/webhook"` | Route the endpoint is mounted on. |
+
+#### What the SDK handles
+
+- **Signature verification.** Native webhooks are verified with `HMAC-SHA256` over `v0:<timestamp>:<rawBody>`, with a 5-minute replay window. Bad signature returns `401`, missing headers return `400`.
+- **Payload deserialization.** Native webhook JSON is deserialized into normal `Message` / `Space` objects, including reactions and grouped items.
+- **Attachment rehydration.** Native webhooks carry attachment metadata only. `read()` and `stream()` fetch the bytes lazily via the platform.
+- **Format detection.** Native vs Fusor is detected per request by payload shape — JSON for native, protobuf for Fusor.
+
+#### Delivery semantics
+
+`app.webhook()` is stateless and request-scoped — it does **not** feed `app.messages`, and it never opens the streaming connection. Both formats deliver at-least-once, so dedupe on `message.id` for exactly-once side effects.
+
+For more on Spectrum's webhook delivery model, see the [Webhooks documentation](/webhooks/overview).
+
+
+### Providers
+
+#### Platform Providers
+
+Source: https://photon.codes/docs/spectrum-ts/providers
+
+Providers plug into Spectrum's type system and runtime. Each one exports a callable — call `provider.config(...)` to register it, and call `provider(app)` to [narrow](/spectrum-ts/platform-narrowing) into its platform-specific instance.
+
+##### Built-in providers
+
+- [**iMessage**](https://photon.codes/docs/spectrum-ts/providers/imessage) — Local, cloud, and dedicated modes. Tapbacks, typing indicators, threaded replies, DMs and groups.
+- [**Terminal**](https://photon.codes/docs/spectrum-ts/providers/terminal) — Reads stdin, writes stdout. Zero config, great for local development and tests.
+- [**WhatsApp Business**](https://photon.codes/docs/spectrum-ts/providers/whatsapp-business) — Official WhatsApp Business Cloud API. Native reactions and replies, 1:1 conversations only.
+- [**Telegram**](https://photon.codes/docs/spectrum-ts/providers/telegram) — Telegram Bot API with Fusor webhooks. Text, media, reactions, replies, typing, and edits.
+
+##### Combining providers
+
+Drop any combination into `providers`:
+
+**Aggregate import**
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { imessage, terminal, whatsappBusiness } from "spectrum-ts/providers";
+
+const app = await Spectrum({
+  projectId: "...",
+  projectSecret: "...",
+  providers: [
+    imessage.config(),
+    whatsappBusiness.config({
+      accessToken: process.env.WA_TOKEN!,
+      phoneNumberId: process.env.WA_NUMBER_ID!,
+      appSecret: process.env.WA_SECRET!,
+    }),
+    terminal.config(),
+  ],
+});
+```
+
+**Individual imports**
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { imessage } from "spectrum-ts/providers/imessage";
+import { terminal } from "spectrum-ts/providers/terminal";
+import { whatsappBusiness } from "spectrum-ts/providers/whatsapp-business";
+
+const app = await Spectrum({
+  projectId: "...",
+  projectSecret: "...",
+  providers: [
+    imessage.config(),
+    whatsappBusiness.config({
+      accessToken: process.env.WA_TOKEN!,
+      phoneNumberId: process.env.WA_NUMBER_ID!,
+      appSecret: process.env.WA_SECRET!,
+    }),
+    terminal.config(),
+  ],
+});
+```
+
+`app.messages` merges messages from every provider. The `message.platform` field tells you which one delivered each message.
+
+##### Writing your own
+
+If none of the built-ins fit, implement a provider with `definePlatform`. See [Building a custom platform](/spectrum-ts/custom-platforms).
+
+
+#### iMessage
+
+Source: https://photon.codes/docs/spectrum-ts/providers/imessage
+
+```ts
+import { imessage } from "spectrum-ts/providers/imessage";
+```
+
+The iMessage provider supports three connection modes — local, cloud, and dedicated — and exposes iMessage-specific features (tapbacks, DM vs group spaces, per-phone routing) through [platform narrowing](/spectrum-ts/platform-narrowing).
+
+##### Connection modes
+
+**Cloud (default)**
+
+Authenticates with Spectrum Cloud and connects to managed iMessage infrastructure via gRPC. Full feature set: send, receive, typing, reactions, replies, and group creation.
+
+```ts
+imessage.config();
+```
+
+Tokens are renewed automatically at 80% of their TTL. Requires `projectId` and `projectSecret` on the `Spectrum()` call:
+
+```ts
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [imessage.config()],
+});
+```
+
+**Local**
+
+Reads the macOS Messages SQLite database directly. No network. Good for development on your own Mac.
+
+```ts
+imessage.config({ local: true });
+```
+
+  Local mode only supports sending text and attachments. Reactions, typing indicators, threaded replies, group creation, chat backgrounds, chat renaming, and group avatars are not available.
+
+**Dedicated**
+
+Connect directly to one or more iMessage gRPC endpoints with your own tokens — use this when you're running your own iMessage relay and want to skip cloud auth. Each entry must include the `phone` number the instance serves, so Spectrum can route messages through the right number:
+
+```ts
+imessage.config({
+  clients: [
+    { address: "instance-1.example.com:443", token: "your-token", phone: "+15551111111" },
+    { address: "instance-2.example.com:443", token: "your-token", phone: "+15552222222" },
+  ],
+});
+```
+
+Multiple clients route messages based on the phone number associated with each space.
+
+##### Line model
+
+Cloud mode routes your messages through phone numbers ("lines") provisioned by Spectrum. Which lines you get depends on your plan, and the difference is mostly invisible to end users.
+
+| Plan | Line allocation | What end users see |
+|---|---|---|
+| **Free / Pro** | **Shared pool.** Each of your end users is routed through a different number from a shared pool. | A normal iMessage from a number that may differ across recipients. |
+| **Business** | **Dedicated.** All of your end users text the same number, which belongs to your project. | A normal iMessage, always from the same number. |
+
+End-user delivery is identical in both modes; the distinction is which number sends.
+
+###### Auto-scale
+
+When traffic to a dedicated line approaches its per-line capacity, Spectrum can automatically provision an additional line so deliverability isn't affected. Auto-scale is an opt-in feature on the Business plan. Enable it in your project settings if you'd rather not get paged when a line saturates.
+
+  These are managed Spectrum Cloud features. If you're on the open-source path (`imessage.config({ local: true })` or your own dedicated relay), you provide your own iCloud account and managed-line concepts don't apply.
+
+##### Quotas
+
+  Default per-server and per-line quotas apply. Contact [help@photon.codes](mailto:help@photon.codes) for an increase.
+
+  - **5,000 messages per server per day.** Counts every message your instance sends across all chats. Additional sends are rejected until the window resets.
+  - **50 new conversations initiated per line per day.** A "new conversation" is the first message your line sends to a recipient it has never messaged before. Replies within existing conversations don't count.
+
+##### Space types
+
+iMessage spaces carry a `type` field — `"dm"` or `"group"` — and a `phone` field indicating which phone number the conversation is routed through. Both are accessible through narrowing:
+
+```ts
+for await (const [space, message] of app.messages) {
+  if (message.platform !== "iMessage") continue;
+  const im = imessage(space);
+  console.log(im.phone); // the phone number handling this conversation
+  if (im.type === "group") {
+    // group chat logic
+  }
+}
+```
+
+##### Creating conversations
+
+Resolve users by phone number or email, then create a space with `space.create(...)`:
+
+```ts
+const im = imessage(app);
+const alice = await im.user("+15551111111");
+const bob = await im.user("+15552222222");
+
+// DM
+const dm = await im.space.create(alice);
+await dm.send("Hi Alice");
+
+// Group
+const group = await im.space.create([alice, bob]);
+await group.send("Welcome to the group.");
+```
+
+To look up an existing conversation by its chat GUID, use `space.get(id)`:
+
+```ts
+const existing = await im.space.get("any;-;+15551111111");
+```
+
+Space creation requires cloud or dedicated mode. In local mode `space.create()` throws — the local Messages database doesn't expose chat creation. Shared mode cannot create group chats — use a dedicated number, or `space.get(chatGuid)` for an existing group.
+
+###### Per-phone routing
+
+If your account has multiple dedicated phone numbers, you can pin a conversation to a specific line by passing `phone` as a space parameter:
+
+```ts
+const dm = await im.space.create(alice, { phone: "+15559999999" });
+```
+
+When omitted, Spectrum picks a phone at random from the available dedicated lines. All subsequent actions on that space — sending, typing, replies, edits, reactions, unsends, and lookups — route through the chosen number.
+
+  Per-phone routing applies to dedicated lines (Business plan) only. On shared-pool plans the `phone` parameter is ignored — all conversations route through the shared pool automatically.
+
+##### Message effects
+
+iMessage supports bubble effects (sent message animation) and screen effects (full-screen animation on receive). Wrap any content with `effect()`:
+
+```ts
+import { effect, imessage } from "spectrum-ts/providers/imessage";
+
+await space.send(effect("Happy birthday!", imessage.effect.message.celebration));
+await space.send(effect(attachment("/path/to/photo.jpg"), imessage.effect.message.confetti));
+```
+
+The wrapped content can be a string, `markdown(...)`, or any `attachment(...)`. Effects only apply on iMessage — other platforms see the inner content unchanged.
+
+**Bubble effects** — Animate the sent message bubble.
+
+| Constant | Value |
+|---|---|
+| `imessage.effect.message.slam` | `"com.apple.MobileSMS.expressivesend.impact"` |
+| `imessage.effect.message.loud` | `"com.apple.MobileSMS.expressivesend.loud"` |
+| `imessage.effect.message.gentle` | `"com.apple.MobileSMS.expressivesend.gentle"` |
+| `imessage.effect.message.invisible` | `"com.apple.MobileSMS.expressivesend.invisibleink"` |
+
+**Screen effects** — Play a full-screen animation on the recipient
+
+| Constant | Value |
+|---|---|
+| `imessage.effect.message.confetti` | `"com.apple.messages.effect.CKConfettiEffect"` |
+| `imessage.effect.message.fireworks` | `"com.apple.messages.effect.CKFireworksEffect"` |
+| `imessage.effect.message.balloons` | `"com.apple.messages.effect.CKBalloonEffect"` |
+| `imessage.effect.message.heart` | `"com.apple.messages.effect.CKHeartEffect"` |
+| `imessage.effect.message.lasers` | `"com.apple.messages.effect.CKLasersEffect"` |
+| `imessage.effect.message.celebration` | `"com.apple.messages.effect.CKHappyBirthdayEffect"` |
+| `imessage.effect.message.sparkles` | `"com.apple.messages.effect.CKSparklesEffect"` |
+| `imessage.effect.message.spotlight` | `"com.apple.messages.effect.CKSpotlightEffect"` |
+| `imessage.effect.message.echo` | `"com.apple.messages.effect.CKEchoEffect"` |
+
+##### Chat renaming
+
+Rename a group chat using `space.rename()` or the canonical `rename()` content builder:
+
+```ts
+import { rename } from "spectrum-ts";
+
+// Sugar
+await space.rename("Book Club");
+
+// Canonical
+await space.send(rename("Book Club"));
+```
+
+Renaming requires cloud or dedicated mode and only works on group chats. In local mode or on a DM, `rename()` throws an `UnsupportedError`.
+
+##### Group avatars
+
+Set or clear the group chat icon using `space.avatar()` or the canonical `avatar()` content builder:
+
+```ts
+import { avatar } from "spectrum-ts";
+
+// Sugar — set from a file path
+await space.avatar("./icon.png");
+
+// Sugar — clear the current avatar
+await space.avatar("clear");
+
+// Canonical
+await space.send(avatar("./icon.png"));
+```
+
+Group avatars require cloud or dedicated mode and only work on group chats. In local mode or on a DM, `avatar()` throws an `UnsupportedError`.
+
+##### Chat backgrounds
+
+Set or clear the chat background image. Import `background` from the iMessage provider and use the sugar method on a narrowed space:
+
+```ts
+import { background, imessage } from "spectrum-ts/providers/imessage";
+
+const im = imessage(space);
+
+// Set from a file path — MIME type inferred from the extension
+await im.background("./wallpaper.jpg");
+
+// Set from a buffer — mimeType is required
+await im.background(buffer, { mimeType: "image/jpeg" });
+
+// Clear the current background
+await im.background("clear");
+```
+
+`space.background(...)` is sugar for `space.send(background(...))`. The canonical form works on any space reference:
+
+```ts
+await space.send(background("./wallpaper.jpg"));
+await space.send(background("clear"));
+```
+
+After a successful set, the background usually syncs to other users' devices within `30s`. The background asset is uploaded to iCloud and then distributed to the other members of the conversation. Display time is not a hard SLA: network state, iCloud state, and the Messages client state can all affect when the UI appears.
+
+| Stage | What happens |
+|---|---|
+| Before `background(...)` resolves | The provider waits until the background asset reaches a distributable state |
+| After `background(...)` resolves | The conversation has accepted the background change; iCloud distributes the asset to other members |
+| Other members' devices | The background appears after the device receives the iCloud distribution |
+
+Background UI may not appear in these cases:
+
+| Case | Result |
+|---|---|
+| The recipient's network, iCloud, or Messages state is unhealthy | The background may appear late, often after reopening Messages |
+| A group member has never spoken, interacted, or is treated by the system as unknown (untrusted) | Apple may not show the background UI to that member |
+
+  The second case is an Apple Messages display limit, not a Spectrum option. If one group member never sees the background, have that member send a message in the group, mark the sender as known, or reopen Messages before retrying the background change.
+
+  Chat backgrounds require cloud or dedicated mode. In local mode, `background()` throws an `UnsupportedError`.
+
+  The string `"clear"` is a reserved sentinel. If you have a file literally named `clear` with no extension, pass `"./clear"` or load it as a `Buffer`.
+
+##### Mini-app cards
+
+Send a customized iMessage mini-app card — a remote-only rich bubble that shows app metadata, a deep link, and a visual layout. Import `customizedMiniApp` from the iMessage provider:
+
+```ts
+import { customizedMiniApp } from "spectrum-ts/providers/imessage";
+
+const sent = await space.send(customizedMiniApp({
+  appName: "My App",
+  extensionBundleId: "com.example.myapp.imessage",
+  teamId: "ABCDE12345",
+  url: "https://example.com/deep-link",
+  layout: {
+    caption: "Check this out",
+    subcaption: "Tap to open",
+  },
+}));
+```
+
+`space.send(customizedMiniApp(...))` returns the sent message record — unlike `background` and `read`, mini-app cards are real outbound messages.
+
+`appStoreId` is optional. Omit it to send a card whose extension isn't published on the App Store; when set, recipients without the extension are directed to its App Store entry.
+
+**CustomizedMiniAppInput** — Fields for building a mini-app card.
+
+| Field | Type | Description |
+|---|---|---|
+| `appName` | `string` | Display name of the owning app, shown by Messages fallback UI. |
+| `appStoreId` | `number` (optional) | Apple App Store numeric ID. Omit for unpublished extensions. |
+| `extensionBundleId` | `string` | Bundle identifier of the iMessage extension target. |
+| `layout` | `CustomizedMiniAppLayout` | Visible card layout — see below. |
+| `teamId` | `string` | 10-character uppercase alphanumeric Apple Team ID. |
+| `url` | `string` | Absolute URL delivered to the installed extension on tap. |
+
+**CustomizedMiniAppLayout** — Visible layout of a mini-app card. Mirrors Apple
+
+| Field | Type | Description |
+|---|---|---|
+| `caption` | `string` (optional) | Primary caption text. |
+| `subcaption` | `string` (optional) | Secondary caption text. |
+| `trailingCaption` | `string` (optional) | Right-aligned primary text. |
+| `trailingSubcaption` | `string` (optional) | Right-aligned secondary text. |
+| `image` | `Uint8Array` (optional) | Image data for the card. Must be set with `imageTitle`. |
+| `imageTitle` | `string` (optional) | Title for the image. Must be set with `image`. |
+| `imageSubtitle` | `string` (optional) | Subtitle for the image. Requires `image`. |
+| `summary` | `string` (optional) | Fallback text for surfaces that can't render the card (notifications, lock screen). |
+
+At least one of `caption`, `subcaption`, `trailingCaption`, `trailingSubcaption`, or `image` must be set.
+
+  Mini-app cards require cloud or dedicated mode. In local mode, `customizedMiniApp()` throws an `UnsupportedError`.
+
+##### Fetching attachments
+
+Retrieve an attachment by its iMessage GUID using `getAttachment` on the narrowed platform instance. The returned `Attachment` is lazy — `.read()` and `.stream()` each trigger an independent download, so cache `.read()` if you need the bytes more than once.
+
+```ts
+import { imessage } from "spectrum-ts/providers/imessage";
+
+const im = imessage(app);
+const att = await im.getAttachment("p:0/GUID");
+
+if (att) {
+  console.log(att.name, att.mimeType, att.size);
+  const bytes = await att.read();
+}
+```
+
+In multi-phone mode, pass the phone number as the second argument to route the request through the correct instance:
+
+```ts
+const att = await im.getAttachment("p:0/GUID", "+15559999999");
+```
+
+When only one phone is configured (or in shared-pool mode), the phone parameter is optional.
+
+  `getAttachment` requires cloud or dedicated mode. In local mode it throws an `UnsupportedError`.
+
+##### Tapback constants
+
+iMessage uses a fixed set of tapback reactions. The `imessage` object exposes them as constants:
+
+| Constant | Value |
+|---|---|
+| `imessage.tapbacks.love` | `"love"` |
+| `imessage.tapbacks.like` | `"like"` |
+| `imessage.tapbacks.dislike` | `"dislike"` |
+| `imessage.tapbacks.laugh` | `"laugh"` |
+| `imessage.tapbacks.emphasize` | `"emphasize"` |
+| `imessage.tapbacks.question` | `"question"` |
+
+```ts
+import { imessage } from "spectrum-ts/providers/imessage";
+
+await message.react(imessage.tapbacks.laugh);
+```
+
+See [Reactions and replies](/spectrum-ts/reactions-and-replies) for the cross-platform reaction model.
+
+
+#### Terminal
+
+Source: https://photon.codes/docs/spectrum-ts/providers/terminal
+
+```ts
+import { terminal } from "spectrum-ts/providers/terminal";
+```
+
+The terminal provider gives your agent a real chat interface in the terminal — multiple conversations in a sidebar, typing indicators, reactions, threaded replies, file attachments, and inline image rendering — all wired through the same Spectrum APIs you'd use against iMessage or WhatsApp Business.
+
+  <img src="https://framerusercontent.com/images/AMLYOPHgKunMxQPxUzQUFUTkvHM.png?width=2400&height=1260" alt="Terminal UI showing a chat sidebar with multiple conversations, message thread, and typing indicator" />
+
+It's a drop-in test harness: write your agent against the unified `app.messages` stream, and develop everything end-to-end without provisioning a phone number or pairing a device.
+
+##### How it works
+
+`terminal.config()` spawns the standalone [tuichat](https://github.com/photon-hq/tuichat) binary as a subprocess and drives it over JSON-RPC. The binary auto-downloads from GitHub Releases the first time you run it. In a TTY it boots the rich UI; in a non-TTY context (CI, piped input) it falls back to a synchronous readline loop, so the same agent code works for scripted integration tests.
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { terminal } from "spectrum-ts/providers/terminal";
+
+const app = await Spectrum({
+  providers: [terminal.config()],
+});
+
+for await (const [space, message] of app.messages) {
+  if (message.content.type === "text") {
+    await space.send(`echo: ${message.content.text}`);
+  }
+}
+```
+
+No credentials, no config — just import and run.
+
+##### What you get
+
+Input and output are decoupled, so you can type while the agent is responding and the agent can push messages whenever it wants.
+
+| Feature | How |
+|---|---|
+| Multiple chats | `Ctrl+N` opens a new chat, `Ctrl+J` / `Ctrl+K` switch between them. Each chat is its own Spectrum space. |
+| Reactions | Press `r` on a message to react. Arrives in your code as a `reaction` content message. |
+| Replies | Press `e` to reply inline. Arrives with a `replyTo: { messageId }` extra on the message. |
+| File attachments | Drag-and-drop into the terminal — messages arrive with name, MIME type, and buffer. |
+| Inline images | Rendered with the Kitty graphics protocol when supported, with a half-block fallback. |
+| Typing indicators | `space.startTyping()` / `space.stopTyping()` show a live indicator. |
+| Console capture | `console.log` / `info` / `warn` / `error` / `debug` from your agent are forwarded into a pinned `__system__` chat instead of garbling the UI. |
+
+##### Config
+
+```ts
+terminal.config({
+  commands: [
+    { name: "/clear", description: "Clear conversation memory" },
+    { name: "/whoami", description: "Print sender details" },
+  ],
+});
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `commands` | `{ name: string; description?: string }[]` | `[]` | Slash commands surfaced in the TUI's command picker. Names must match `/^\/[A-Za-z0-9_-]+$/`. |
+
+Slash commands arrive as regular text messages with the command string as the content — handle them in your `for await` loop the same way you'd handle any text.
+
+##### Working with multiple spaces
+
+By default the TUI starts on `chat-1`; new chats opened with `Ctrl+N` get `chat-2`, `chat-3`, and so on. To open a named space programmatically, pass an `id`:
+
+```ts
+import { terminal } from "spectrum-ts/providers/terminal";
+
+const t = terminal(app);
+const debug = await t.space.get("debug");
+await debug.send("agent online");
+```
+
+Calling `space.get()` ensures the chat exists in the sidebar — useful for kicking off a conversation before any user input.
+
+##### Reactions and replies
+
+Reactions ride the same `app.messages` stream as text — they arrive as a `reaction` content message:
+
+```ts
+for await (const [space, message] of app.messages) {
+  if (message.content.type === "reaction") {
+    console.log(`${message.sender.id} reacted ${message.content.emoji}`);
+    continue;
+  }
+  if (message.content.type === "text") {
+    await message.react("👀");
+    await space.send(`echo: ${message.content.text}`);
+  }
+}
+```
+
+Threaded replies arrive as a normal message with a `replyTo` field:
+
+```ts
+const replyTo = (message as { replyTo?: { messageId: string } }).replyTo;
+if (replyTo) {
+  await message.reply(`acknowledged your reply to ${replyTo.messageId}`);
+}
+```
+
+##### When to use it
+
+- **Iterating on agent logic** — every Spectrum API works exactly as it would in production, so behavior you build here ships unchanged.
+- **Integration tests** — pipe stdin in non-TTY mode and assert on stdout; no TUI dependency for CI.
+- **CLI tools** — same handler shape as any multi-platform deployment, with reactions and replies as first-class events.
+
+
+#### WhatsApp Business
+
+Source: https://photon.codes/docs/spectrum-ts/providers/whatsapp-business
+
+```ts
+import { whatsappBusiness } from "spectrum-ts/providers/whatsapp-business";
+```
+
+The WhatsApp Business provider wraps the official WhatsApp Business Cloud API. Reactions and threaded replies map to native WhatsApp features.
+
+  WhatsApp Business supports **1:1 conversations only**. The API does not expose group management for business accounts — calling `space.create([userA, userB])` throws.
+
+##### Config
+
+```ts
+whatsappBusiness.config({
+  accessToken: "your-access-token",
+  phoneNumberId: "your-phone-number-id",
+  appSecret: "your-app-secret",
+});
+```
+
+| Option | Description |
+|---|---|
+| `accessToken` | Permanent or system-user token from Meta for Developers. |
+| `phoneNumberId` | The phone number ID for the business account sending messages. |
+| `appSecret` | App secret used to verify webhook payload signatures. |
+
+Find these values in your WhatsApp Business app settings on [Meta for Developers](https://developers.facebook.com/).
+
+##### Example
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { whatsappBusiness } from "spectrum-ts/providers/whatsapp-business";
+
+const app = await Spectrum({
+  providers: [
+    whatsappBusiness.config({
+      accessToken: process.env.WA_TOKEN!,
+      phoneNumberId: process.env.WA_NUMBER_ID!,
+      appSecret: process.env.WA_SECRET!,
+    }),
+  ],
+});
+
+for await (const [space, message] of app.messages) {
+  if (message.content.type === "text") {
+    await message.reply(`Got it: ${message.content.text}`);
+  }
+}
+```
+
+##### Starting a conversation
+
+Resolve a user by their WhatsApp phone number (international format, digits only) and open a 1:1 space:
+
+```ts
+const wa = whatsappBusiness(app);
+const customer = await wa.user("15551234567");
+const space = await wa.space.create(customer);
+
+await space.send("Thanks for reaching out.");
+```
+
+Passing more than one user to `space.create()` throws — the provider rejects group creation explicitly.
+
+
+#### Telegram
+
+Source: https://photon.codes/docs/spectrum-ts/providers/telegram
+
+```ts
+import { telegram } from "spectrum-ts/providers/telegram";
+```
+
+The Telegram provider connects your agent to the Telegram Bot API. Inbound messages are delivered through Fusor webhooks; outbound messages use the Bot API directly. The provider supports text, media, reactions, replies, typing indicators, edits, and lazy media downloads.
+
+##### Config
+
+```ts
+telegram.config({
+  botToken: "your-bot-token",
+});
+```
+
+| Option | Description |
+|---|---|
+| `botToken` | Bot token from [@BotFather](https://t.me/BotFather). |
+| `webhookSecret` | Optional secret token for verifying webhook payloads. |
+
+##### Example
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { telegram } from "spectrum-ts/providers/telegram";
+
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [
+    telegram.config({
+      botToken: process.env.TELEGRAM_BOT_TOKEN!,
+    }),
+  ],
+});
+
+for await (const [space, message] of app.messages) {
+  if (message.content.type === "text") {
+    await space.send(`Echo: ${message.content.text}`);
+  }
+}
+```
+
+##### Starting a conversation
+
+Resolve a user by their Telegram user ID and open a space. You can also pass a `chatId` parameter to target a specific Telegram chat:
+
+```ts
+const tg = telegram(app);
+const user = await tg.user("123456789");
+const space = await tg.space.create(user);
+
+await space.send("Hello from Spectrum.");
+```
+
+##### Webhook registration
+
+In cloud mode (when `projectId` and `projectSecret` are provided), the Telegram provider automatically registers its Fusor webhook on startup. In local or direct mode, you need to configure the webhook yourself through the Telegram Bot API.
+
+##### Supported features
+
+| Feature | Support |
+|---|---|
+| Text messages | Send and receive |
+| Markdown | Send (rendered as Telegram HTML via `parse_mode`) |
+| Streaming text / markdown | Send (native draft preview in private chats) |
+| Media (photos, documents, audio, video) | Send and receive |
+| Reactions | Send and receive |
+| Threaded replies | Send and receive |
+| Typing indicators | Send |
+| Message edits | Send and receive (text and markdown) |
+| Custom Bot API calls | Via platform-specific actions |
+
+
+### Advanced
+
+#### Custom Events and Lifecycle
+
+Source: https://photon.codes/docs/spectrum-ts/custom-events-and-lifecycle
+
+##### Custom events
+
+Platform providers can emit events beyond messages — typing indicators, read receipts, delivery status, whatever the provider chooses to surface. Spectrum exposes each event as a flat async iterable on the app instance:
+
+```ts
+for await (const event of app.typing) {
+  console.log(`${event.platform}: typing event received`);
+}
+```
+
+The property name matches the event name the provider declared. Events are merged across every provider that emits them, and each payload is annotated with a `platform` field so you know the source.
+
+###### Lazy streams
+
+Event streams are created lazily on first access. Accessing `app.typing` once kicks off the underlying listener; subsequent iterations share the same source.
+
+###### Per-platform access
+
+The same events are available on a narrowed platform instance, scoped to that platform only:
+
+```ts
+import { imessage } from "spectrum-ts/providers/imessage";
+
+const im = imessage(app);
+for await (const event of im.typing) {
+  // iMessage-only typing events
+}
+```
+
+Use the flat form on `app` when you want a merged feed across platforms; use the narrowed form when you only care about one.
+
+###### Fusor custom events
+
+Fusor-backed providers can emit non-message events (presence, read receipts, delivery status) into typed event streams using `fusorEvent`. Inside a Fusor `messages` handler, yield a `fusorEvent(name, data)` alongside regular messages to push events into `app.<name>` streams:
+
+```ts
+import { fusorEvent } from "spectrum-ts";
+
+yield fusorEvent("presence", { userId: update.userId, online: true });
+```
+
+Events emitted this way are available as `app.presence` (merged across providers) or `narrowedInstance.presence` (scoped to the emitting provider). The event name and data shape are fully typed based on the provider's event declarations.
+
+##### Lifecycle
+
+###### Graceful shutdown
+
+```ts
+await app.stop();
+```
+
+This closes the merged message stream, drains and disposes every custom event stream, tears down every platform client via its `lifecycle.destroyClient` hook (if one is defined), and flushes any pending telemetry data when [telemetry](/spectrum-ts/getting-started#telemetry) is enabled. It's idempotent — calling `stop()` twice is safe.
+
+###### Signal handling
+
+Spectrum registers `SIGINT` and `SIGTERM` handlers on startup. When a signal fires:
+
+1. `stop()` is invoked with a 3-second timeout.
+2. If cleanup completes in time, the process exits with code 0.
+3. If not, the process exits with code 1.
+
+You don't need to wire this up yourself — running your app in a container with `docker stop` or hitting Ctrl-C in a terminal will drain cleanly.
+
+###### When to call `stop()` manually
+
+- You're embedding Spectrum in a longer-running process and want to tear it down without exiting.
+- You're writing tests that create and dispose an app per case.
+- You want deterministic cleanup before re-initializing with a different provider set.
+
+
+#### Building a Custom Platform
+
+Source: https://photon.codes/docs/spectrum-ts/custom-platforms
+
+`definePlatform` is the entry point for building your own provider. It takes a name and a definition object, and returns a callable that:
+
+- exposes a `.config()` method for registering the provider on `Spectrum()`
+- accepts a Spectrum instance, space, or message for [narrowing](/spectrum-ts/platform-narrowing)
+- carries any `static` properties you declare (like iMessage's `tapbacks`)
+
+The full definition shape is `PlatformDef`.
+
+##### Shape
+
+```ts
+import { definePlatform } from "spectrum-ts";
+import z from "zod";
+
+export const myPlatform = definePlatform("my-platform", {
+  // Validate provider config
+  config: z.object({
+    apiKey: z.string(),
+  }),
+
+  // Resolve a user from a string ID
+  user: {
+    resolve: async ({ input, client }) => ({
+      id: input.userID,
+      displayName: await client.lookupUser(input.userID),
+    }),
+  },
+
+  // Create a conversation from participants
+  space: {
+    create: async ({ input, client }) => ({
+      id: await client.findOrCreateConversation(input.users.map(u => u.id)),
+    }),
+  },
+
+  // Client lifecycle
+  lifecycle: {
+    createClient: async ({ config, store }) => new MyPlatformClient(config.apiKey),
+    destroyClient: async ({ client }) => { await client.disconnect(); },
+  },
+
+  // Inbound message stream
+  async *messages({ client }) {
+    for await (const msg of client.onMessage()) {
+      yield {
+        id: msg.id,
+        content: { type: "text", text: msg.body },
+        sender: { id: msg.authorId },
+        space: { id: msg.channelId },
+        timestamp: new Date(msg.ts),
+      };
+    }
+  },
+
+  // Outbound dispatcher — all content types flow through here
+  send: async ({ space, content, client }) => {
+    switch (content.type) {
+      case "text":
+        return await client.send(space.id, content.text);
+      case "reaction":
+        return await client.react(space.id, content.target.id, content.emoji);
+      case "reply":
+        return await client.reply(space.id, content.target.id, content.content);
+      case "typing":
+        await client.setTyping(space.id, content.state === "start");
+        return;
+    }
+  },
+
+  // Optional static properties
+  static: {
+    reactions: { thumbsUp: "+1", thumbsDown: "-1" } as const,
+  },
+});
+```
+
+##### Field reference
+
+| Field | Required | Description |
+|---|---|---|
+| `config` | Yes | A Zod schema that validates the object passed to `platform.config()`. If every field is optional, `platform.config()` can be called with no arguments. |
+| `user.resolve` | Yes | Resolves a user from a string ID. Returns at minimum `{ id: string }`. |
+| `user.schema` | No | Optional Zod schema for extra user properties. |
+| `space.create` | Yes | Creates a conversation from participants. Receives an array of users plus optional params. |
+| `space.get` | No | Hydrates a space from a known platform space ID. When omitted, the framework builds `{ id }` and validates it against `space.schema`. Providers whose schema requires more fields must implement this. |
+| `space.schema` | No | Optional Zod schema for the resolved space. |
+| `space.params` | No | Zod schema for additional space parameters — surfaces as the second arg to `platform(app).space.create()` and `platform(app).space.get()`. |
+| `space.actions` | No | A map of content-builder factories that become sugar methods on the resolved space. Each `space.<name>(...args)` delegates to `space.send(factory(...args))`. Names that collide with built-in `Space` methods (`send`, `edit`, `unsend`, `startTyping`, `stopTyping`, `responding`, `getMessage`, `rename`, `avatar`) are skipped at runtime with a warning. |
+| `lifecycle.createClient` | Yes | Creates the platform client. Receives `config`, `projectId`, `projectSecret` (both may be `undefined`), and `store`. |
+| `lifecycle.destroyClient` | No | Tears down the client on shutdown. Omit if no cleanup is needed. |
+| `messages` | Yes | Async generator that yields incoming messages. |
+| `send` | Yes | Dispatches a content item to a space. All content types — text, markdown, attachments, reactions, replies, edits, unsends, typing indicators — flow through this single action. Return a `ProviderMessageRecord` for content that produces a message (including reactions — the record is the unsend handle), or `undefined` for fire-and-forget signals (typing, edits, unsends). |
+| `actions.getMessage` | No | Fetches a message by ID from a space. Receives `(ctx, space, messageId)` where `ctx` is `{ client, config, store }`. Powers `space.getMessage(id)`. When omitted, `space.getMessage()` throws `UnsupportedError`. |
+| `actions.[custom]` | No | Platform-specific methods projected onto the platform instance. Each receives `(ctx, ...args)` where `ctx` is `{ client, config, store }`; the public signature drops `ctx`. Names that collide with reserved instance keys (`user`, `space`, `messages`, plus any event names) are skipped at runtime with a warning. |
+| `events.[custom]` | No | Additional async generators for platform-specific events — exposed on `app.[eventName]`. |
+| `message.schema` | No | Zod schema for extra properties on incoming messages. |
+| `static` | No | Constants attached to the platform object (e.g. tapback names). |
+
+##### Message direction
+
+Records yielded from `messages` are wrapped as inbound, and records returned from `send` are wrapped as outbound. When a provider knows the actual direction of a record, it can set `direction` on the raw record and Spectrum will use it instead of the wrapping context:
+
+```ts
+yield {
+  id: reactionEvent.id,
+  content: {
+    type: "reaction",
+    emoji: reactionEvent.emoji,
+    target: {
+      id: reactionEvent.targetId,
+      content: { type: "text", text: reactionEvent.targetText },
+      direction: "outbound",
+      space: { id: reactionEvent.channelId },
+    },
+  },
+  sender: { id: reactionEvent.userId },
+  space: { id: reactionEvent.channelId },
+};
+```
+
+This matters for nested records like reaction targets: the outer reaction is inbound (someone reacted) but the target may be outbound (they reacted to a message you sent). Without `direction`, nested targets default to the outer record's direction.
+
+##### Event producers
+
+Every event generator receives `{ client, config, store }` and returns an `AsyncIterable`. The signature is `EventProducer`.
+
+The core `messages` stream lives at the top level of the definition. Optional custom event streams (presence, read receipts, etc.) live inside `events`:
+
+```ts
+// Top-level — required
+async *messages({ client }) { /* ... */ },
+
+// Optional custom events
+events: {
+  async *presence({ client }) {
+    for await (const ev of client.presence()) {
+      yield { spaceId: ev.chatId, userId: ev.user, online: ev.online };
+    }
+  },
+},
+```
+
+Custom events are auto-wired as flat properties on both the Spectrum instance (`app.presence`) and the narrowed platform instance (`myPlatform(app).presence`).
+
+##### Message extras
+
+Declare a `message.schema` to add extra typed fields to every incoming message. The extractor surfaces them through a narrowed message:
+
+```ts
+message: {
+  schema: z.object({
+    threadId: z.string().optional(),
+    reactions: z.array(z.string()),
+  }),
+},
+```
+
+Use `SchemaMessage` when you need the message shape in your own types.
+
+##### Instance actions
+
+Methods declared in `actions` are projected onto the platform instance returned by `myPlatform(app)`. The framework injects `ctx = { client, config, store }` as the first argument, so callers only pass the trailing args.
+
+Two tiers share the `actions` slot:
+
+- **Platform-wise actions** (`getMessage`) — framework-recognized names. Always present on every platform instance. When omitted, the framework wires a default that throws `UnsupportedError`.
+- **Platform-specific actions** — free-form keys for platform ergonomics (e.g. iMessage's `getAttachment`). Only present when declared.
+
+```ts
+export const myPlatform = definePlatform("my-platform", {
+  // ...
+  actions: {
+    getMessage: async ({ client }, space, messageId) => {
+      return await client.fetchMessage(space.id, messageId);
+    },
+    lookupThread: async ({ client }, threadId: string) => {
+      return await client.getThread(threadId);
+    },
+  },
+});
+
+const mine = myPlatform(app);
+
+// Platform-wise — always available, throws UnsupportedError if not overridden
+const msg = await mine.getMessage(space, "msg-123");
+
+// Platform-specific — available because declared above
+const thread = await mine.lookupThread("thread-456");
+```
+
+##### Fusor-backed providers
+
+When your platform receives inbound messages through webhooks (rather than a persistent connection), use `fusor(...)` as the client in `lifecycle.createClient`. A Fusor client handles webhook signature verification and delivers parsed payloads to your `messages` handler:
+
+```ts
+import { definePlatform, fusor, fusorEvent } from "spectrum-ts";
+import z from "zod";
+
+export const myWebhookPlatform = definePlatform("my-webhook-platform", {
+  config: z.object({
+    webhookSecret: z.string(),
+  }),
+
+  lifecycle: {
+    createClient: async ({ config }) =>
+      fusor("my-webhook-platform", (req) => {
+        verifySignature(req.rawBody, req.headers, config.webhookSecret);
+        return JSON.parse(new TextDecoder().decode(req.rawBody));
+      }),
+  },
+
+  messages: async function* ({ payload, config, respond }) {
+    respond({ status: 200 });
+    yield {
+      id: payload.id,
+      content: { type: "text", text: payload.text },
+      sender: { id: payload.userId },
+      space: { id: payload.chatId },
+      timestamp: new Date(payload.ts),
+    };
+  },
+
+  send: async ({ space, content, config }) => {
+    // dispatch outbound messages
+  },
+
+  user: {
+    resolve: async ({ input }) => ({ id: input.userID }),
+  },
+
+  space: {
+    create: async ({ input }) => ({ id: input.users[0].id }),
+  },
+});
+```
+
+The Fusor overload of `definePlatform` replaces the top-level `messages` async generator with a per-webhook-delivery handler that receives `{ payload, config, respond }`. Call `respond()` to set the HTTP response sent back to the webhook caller.
+
+##### Registering your platform
+
+Exported platforms work like the built-ins — register with `.config()` and use narrowing for the typed surface:
+
+```ts
+const app = await Spectrum({
+  providers: [
+    myPlatform.config({ apiKey: process.env.MY_KEY! }),
+  ],
+});
+
+const mine = myPlatform(app);
+const user = await mine.user("user-123");
+const space = await mine.space.create(user);
+
+await space.send("Hello from my custom platform.");
+```
+
+
+## Best Practices
+
+### Architecture
+
+Source: https://photon.codes/docs/best-practices/architecture
+
+This is the architecture we use at Photon to ship agents that **live natively inside IM apps**.
+
+The patterns below are pulled directly from production, based on the problems we encountered and the solutions we built to solve them. They're not theoretical best practices - they're the ones that **worked in the real world, with real users, and real bugs**. If you're building a similar agent, these patterns will save you **months** of trial and error.
+
+A naive Spectrum agent - read incoming, call the LLM, send the reply - falls apart in ways you don't see until you ship it. The user types "hey" → "wait" → "actually nvm" inside three seconds and gets three independent responses. The agent replies in 200ms when a real person would take five minutes. A worker crashes mid-send and the user receives the same message twice on retry.
+
+This section captures the patterns that solve those problems, drawn from production agents built on Spectrum.
+
+#### The pipeline
+
+Every incoming message flows through five stages backed by a job queue. Each stage is a separately enqueued job, which is what makes any of them cancellable when a follow-up message lands.
+
+```mermaid
+flowchart LR
+  In([Incoming message]) --> BQ[(Batch queue)]
+  BQ -->|debounce window| Flush[Batch flush]
+  Flush --> Read[Mark as read]
+  Read --> Gen[Generate reply]
+  Gen --> Send[Send with pacing]
+  Send --> Done([Done])
+
+  Inflight[(In-flight table)] -.tracks.- Flush
+  Inflight -.tracks.- Read
+  Inflight -.tracks.- Gen
+  Inflight -.tracks.- Send
+```
+
+The `In-flight` table is a per-chat record of whichever job ID currently owns each stage. When a new message arrives, the enqueuer reads it, cancels those jobs, and moves any messages that were already drained into a carry-forward table so the next batch sees them.
+
+#### Why split it up
+
+If you do everything in one handler - read, generate, send - you lose the ability to react to a new message that arrives during generation. By the time you notice, you've already sent a reply that ignored what the user just said, or you've raced the LLM against itself.
+
+Splitting into stages costs a few hundred ms of extra hop latency and buys you:
+
+- **Cancellation points.** Each stage can check a flag and abort cleanly.
+- **Resume points.** A worker crash mid-stage retries one stage, not the whole conversation turn.
+- **Idempotency seams.** The send stage carries stable client GUIDs so retries don't double-send.
+- **Distinct timing.** The read stage can sleep for an hour while the send stage runs in 500ms - they're independent jobs.
+
+#### What's in this section
+
+- [Inbound pipeline](/best-practices/inbound-pipeline) - debouncing message bursts, batching, surviving cancellation, and the carry-forward rule that keeps messages from getting lost.
+- [Recovery and state](/best-practices/recovery-and-state) - idempotent retries via client GUIDs, per-resource memory scope, and a durable failure audit log.
+
+
+### Inbound pipeline
+
+Source: https://photon.codes/docs/best-practices/inbound-pipeline
+
+People text in bursts. A real conversation looks like this:
+
+```
+hey
+wait
+actually
+do you know if the train runs on holidays
+```
+
+Four messages in eight seconds. If your agent fires a generation on each one, you get four overlapping replies - and the model never sees the actual question. The fix is to debounce: wait a few seconds for the burst to settle, and handle whatever has accumulated as one turn.
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant Q as Batch queue
+  participant H as Batch handler
+
+  U->>Q: "hey"
+  Q->>Q: schedule flush in 5s
+  U->>Q: "wait"
+  Q->>Q: reset flush timer
+  U->>Q: "actually"
+  Q->>Q: reset flush timer
+  U->>Q: "do you know..."
+  Q->>Q: reset flush timer
+  Note over Q: 5s elapse, no new message
+  Q->>H: flush - drain all four messages
+  H->>H: generate one reply
+```
+
+A few seconds of fixed debounce gets you most of the way there. The harder problems are what happens after the flush.
+
+#### Drain in the handler, not the enqueuer
+
+The single most important rule: **the messages stay in the queue table until the handler reads them.** Don't pull them into the job payload at enqueue time.
+
+Why: if the batch-flush job gets cancelled before the handler runs, anything in the payload is lost. Anything still in the queue is naturally picked up by the next batch. Keeping the data in the queue table until the last possible moment makes cancellation a non-event for those messages.
+
+```mermaid
+flowchart TD
+  A[New message] --> B[Insert into batch_queue table]
+  B --> C{Batch flush job<br/>already scheduled?}
+  C -->|yes| D[Reset its run_at to now + debounce]
+  C -->|no| E[Schedule new batch flush job]
+  D --> F[Job fires at run_at]
+  E --> F
+  F --> G[Handler reads + deletes rows<br/>from batch_queue]
+  G --> H[Hand drained messages to read stage]
+```
+
+If the flush job is cancelled between steps F and G, the rows stay in `batch_queue` and the next incoming message picks them up.
+
+#### Carry-forward
+
+Sometimes the handler does drain the queue but is then cancelled mid-generation. Those messages are now in memory inside a cancelled job - they'd be lost on the floor.
+
+The fix is a `carried_messages` table. When a job is cancelled after draining, write the drained messages there. The next batch's handler reads from `carried_messages` first and prepends them as `[Earlier message] ...` lines so the model sees them as historical context, not as fresh input.
+
+```mermaid
+stateDiagram-v2
+  [*] --> Queued
+  Queued --> Drained: handler starts
+  Drained --> Generating: pass to LLM
+  Generating --> Sent: reply complete
+  Generating --> Carried: cancelled
+  Carried --> Queued: re-enqueued for next batch
+  Sent --> [*]
+```
+
+#### In-flight cancellation
+
+When a new message arrives and you have a job in flight (reading, generating, or sending), you need to stop it. Two pieces:
+
+1. **A cancellation flag** in a per-chat `in_flight` table. The enqueuer sets `cancelled_at` and calls `boss.cancel(jobId)`.
+2. **Polling inside the handler.** The send stage in particular polls `cancelled_at` every 500ms and aborts via an `AbortController`.
+
+The subtle bit: compare `cancelled_at` against the chain's own `chainStartedAt` timestamp, not against "is the flag set." Otherwise a stale flag from a prior cancelled chain orphans the new one. The flag is per-chain, not per-chat.
+
+```ts
+const inflight = await readInflight(chatId);
+if (inflight?.cancelled_at && inflight.cancelled_at > chainStartedAt) {
+  abortController.abort();
+}
+```
+
+#### What you give up
+
+This pipeline buys you correctness at the cost of a few hundred milliseconds of hop latency between stages. For a conversational Spectrum agent that's irrelevant - humans don't notice 300ms when a "real" reply takes 5 seconds anyway. For a low-latency tool integration, you'd consolidate stages.
+
+
+### Recovery and state
+
+Source: https://photon.codes/docs/best-practices/recovery-and-state
+
+Workers crash. The send job fails halfway through a 4-message reply. The retry runs from the top - and the user gets messages 1 and 2 again, then 3 and 4 for the first time. Now they have a duplicate.
+
+You need three things to make this robust: stable client GUIDs, a resume cursor, and a place to record what failed.
+
+#### Stable client GUIDs
+
+Every message you enqueue gets a deterministic identifier - a `clientGuid` - assigned at enqueue time, not at send time. The transport uses it for deduplication: if it sees the same `clientGuid` twice, it discards the second copy.
+
+```ts
+const messages = reply.map((text, index) => ({
+  text,
+  clientGuid: `${jobId}-${index}`, // stable across retries
+}));
+```
+
+Most modern messaging transports support stable client-side IDs for dedup, and Spectrum surfaces them through the provider interface - check what your provider exposes before assuming you need to build dedup yourself.
+
+The reason `clientGuid` must be stable is subtle: a worker that crashes after the transport ack'd but before the worker recorded it will retry the same message. Without a stable GUID, the transport sees a "new" message and delivers a duplicate.
+
+#### startIndex resume cursor
+
+GUID-based dedup handles the "transport already saw this" case. But you also want the worker itself to skip messages it knows it already sent - both for performance and to avoid even attempting the dedup roundtrip.
+
+Persist a `startIndex` on the job. After each successful send, atomically bump it. On retry, resume from there:
+
+```mermaid
+sequenceDiagram
+  participant W as Worker
+  participant Tx as Transport
+
+  W->>W: assign clientGuids [A, B, C, D]
+  W->>Tx: send msg[0] (guid A)
+  Tx-->>W: ack
+  W->>W: startIndex = 1 (persisted)
+  W->>Tx: send msg[1] (guid B)
+  Tx-->>W: ack
+  W->>W: startIndex = 2 (persisted)
+  W-x W: ⚡ crash
+  Note over W,Tx: retry - load startIndex=2
+  W->>Tx: send msg[2] (guid C)
+  W->>Tx: send msg[3] (guid D)
+```
+
+If the crash happens _between_ ack and persist, the retry will resend `msg[1]` - but the transport sees the same `clientGuid B` and discards it. Both layers of defense are doing work.
+
+#### Per-resource memory scope
+
+A single agent talks to many users. Each one needs their own working memory, conversation history, and observational notes. Mixing them up is catastrophic - the agent telling one user about another user's plans is the kind of bug you see once and never forget.
+
+Scope every memory operation by `resourceId = senderAddress`. The thread ID is per-chat (`chat-${chatId}`), but memory is per-person:
+
+```ts
+await memory.getWorkingMemory({
+  resourceId: senderAddress,
+  threadId: `chat-${chatId}`,
+});
+```
+
+The same person messaging from a group chat versus a 1:1 sees the same working memory (same `resourceId`), but conversation history is per-thread (different `threadId`). That's usually what you want - the agent remembers _who you are_ across all chats but treats each thread as its own conversation.
+
+```mermaid
+flowchart TD
+  Sender[senderAddress: alice@example.com]
+  Sender --> WM[Working memory:<br/>per-resource]
+  Sender --> Notes[Observational notes:<br/>per-resource]
+
+  Chat1[chat-1<br/>1:1 with alice]
+  Chat2[chat-2<br/>group with alice + bob]
+
+  Chat1 --> H1[Message history<br/>per-thread]
+  Chat2 --> H2[Message history<br/>per-thread]
+
+  WM -.shared across.- Chat1
+  WM -.shared across.- Chat2
+```
+
+If you shard memory across databases or tenants, each shard needs to follow the same convention. Test multi-user concurrency hard - race conditions in working-memory updates corrupt state silently and you won't notice until two users compare notes.
+
+#### Job failure audit log
+
+When a job fails, you want to know which job, when, with what payload, and why - without grepping through rotating logs.
+
+A `job_failures` table is a small amount of code that pays back disproportionately. Every error path calls `recordJobFailure(queueName, jobId, payload, error)` and inserts a row. Now you can ask:
+
+- "Which jobs failed in the last hour?"
+- "Are all failures coming from one chat?" (a corrupt working-memory state)
+- "Are all failures from one queue stage?" (a transport outage vs. an LLM bug)
+- "What was the payload that triggered this?" (reproducer)
+
+Couple of operational notes:
+
+- **Add a retention policy.** Otherwise the table grows forever. Delete entries older than 30 days.
+- **Make `recordJobFailure` itself fail-safe.** Wrap it in a try/catch with a log fallback - you don't want a failed-failure-record to take down the worker.
+- **Be careful with payload size.** If your jobs carry images or large blobs, the audit table balloons. Either truncate the payload or store a pointer to it.
+
+#### Putting it together
+
+The crash-recovery story:
+
+```mermaid
+flowchart TD
+  Job[Job starts] --> Try{Run handler}
+  Try -->|success| Done[Done]
+  Try -->|crash| Retry[Queue retries with same jobId]
+  Try -->|error| Audit[recordJobFailure]
+  Audit --> Retry
+  Retry --> Resume[Load startIndex]
+  Resume --> Send[Send from startIndex onward]
+  Send --> Tx{Transport check}
+  Tx -->|new clientGuid| Deliver[Delivered]
+  Tx -->|seen clientGuid| Skip[Discarded as dup]
+  Deliver --> Bump[Persist startIndex]
+  Skip --> Bump
+  Bump --> Done
+```
+
+Three independent layers - queue retry, resume cursor, transport dedup - and any one of them is enough to prevent a duplicate in most failure modes. Together they survive almost everything short of the database itself going down.
+
+
+### iMessage deliverability
+
+Source: https://photon.codes/docs/best-practices/imessage-deliverability
+
+iMessage is end-to-end encrypted, so Apple can't read message content: they filter on behavior. Patterns that look automated, cold, or burst-y will get a line flagged regardless of what the messages actually say. The guidance below is what we see work and fail in production.
+
+#### Inbound-first is the decision that matters
+
+The single most important design call is whether users text you first or you text users. Inbound-first integrations never surface the "Report Junk" banner that Apple shows on every message from an unknown number. Outbound-first integrations do, and after a couple of unanswered messages it tends to get tapped.
+
+How to make inbound-first work in practice:
+
+- **Pre-populate the first message.** Ship `sms:+1...&body=Hey!` deep links so tapping opens Messages with text pre-filled. Zero friction, and the user is the one who hits send.
+- **Share a contact card early.** Push a native iMessage contact card (or a `.VCF` for Android) shortly after the first exchange. Once they save it, you're a known contact and "Report Junk" is gone for good.
+
+#### Capacity
+
+Two quotas govern how much traffic a deployment can carry. They're enforced limits.
+
+| Limit | Guidance |
+|---|---|
+| **5,000 messages per server per day** | Counts every send across all chats on a server. Past this, sends are rejected until the window resets. Email [help@photon.codes](mailto:help@photon.codes) for an increase. |
+| **50 new conversations per line per day** | A "new conversation" is the first message a line sends to a recipient it has never messaged before. Replies within existing conversations don't count. Most relevant if you're initiating outbound. |
+
+When a server hits 70-80% utilization, stop assigning new users to it. When the whole pool gets there, add capacity. On the Business plan, [auto-scale](/spectrum-ts/providers/imessage#auto-scale) handles the second step automatically.
+
+##### What gets a line flagged
+
+Because Apple filters on behavior, the same five patterns account for nearly every flag we see:
+
+1. **Burst sending**: 100+ messages from one line in a tight window
+2. **No conversation**: broadcasting without exchange
+3. **Hammering non-responders**: more than 2–3 follow-ups
+4. **Cold outreach**: texting people who never opted in
+5. **Off-hours sending**: 3am messages signal automation
+
+Avoid all five and blocks are rare. When a line does get flagged, the cause is almost always one of the first three within the hour before.
+
+#### Do
+
+- **Design for inbound-first.** Users text you, not the other way around.
+- **Pace messages naturally.** Don't fire several within seconds. Bursts of 100/min look automated because they are.
+- **Make outreach conversational.** If you need to push an update (digest, accountability ping), open with a question and wait: "Ready for your update?"
+- **Share a contact card after the first exchange.** Once saved, the "Report Junk" surface is gone.
+- **Round-robin new users across lines.** Spread load before any one line stands out.
+- **Watch the dashboard.** When a line goes Flagged, review what the agent was doing in the hour before — the cause is almost always there.
+
+#### Don't
+
+- **Push past the per-server quota.** Add capacity; horizontal scaling is the design.
+- **Include links or media in the first message.** Apple suppresses link-clicking until a reply lands. Ship a text-only opener built to get a response.
+- **Leave fallback lines dormant.** Apple deactivates lines with no traffic for ~2 months. Every line you keep around needs some traffic.
+- **Bombard non-responders.** Cap at 2–3 follow-ups, spaced across days, not hours.
+- **Segment Android users onto separate lines.** Spread them through the pool — they may be your power users.
+- **Use iMessage for cold outreach.** Cold belongs on A2P channels (Twilio etc.). iMessage is for warm conversations.
+
+#### Getting help
+
+If you're scaling past a handful of lines, talk to us. We do capacity planning with customers, surface per-line analytics in the dashboard, and run a shared Slack or Discord channel with engineering for production deployments.
