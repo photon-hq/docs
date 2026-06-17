@@ -56,6 +56,12 @@
             ]
           },
           {
+            "group": "Integrations",
+            "pages": [
+              "integrations/chat-sdk"
+            ]
+          },
+          {
             "group": "Best Practices",
             "pages": [
               "best-practices/architecture",

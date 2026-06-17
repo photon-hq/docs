@@ -9,6 +9,7 @@ advanced-kits/whatsapp/*.mdx
 opensource/*.mdx
 spectrum-ts/*.mdx
 spectrum-ts/**/*.mdx
+integrations/*.mdx
 webhooks/events.mdx
 
 # Custom llms.txt generator output (built from docs.json + rendered .mdx)
