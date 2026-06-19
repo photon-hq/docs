@@ -1,0 +1,16 @@
+---
+title: "App link cards"
+description: "Present URLs as tappable app-style cards where providers support them."
+---
+
+Use `app()` to send a URL as an app-style link card. On iMessage, the URL renders as a native mini-app card. On Slack, Telegram, WhatsApp, and terminal, it falls back to the plain URL.
+
+```ts
+import { app } from "spectrum-ts";
+
+await space.send(app("https://example.com/deep-link"));
+```
+
+Use `app()` when you want to present a link as a tappable card rather than an inline URL.
+
+For richer iMessage cards with layout control, see [Mini-app cards](/spectrum-ts/providers/imessage/messaging-features#mini-app-cards).

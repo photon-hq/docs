@@ -1,6 +1,6 @@
 ---
 title: "Slack"
-description: "Send and receive messages through the Slack API"
+description: "Send and receive messages through the Slack API."
 ---
 
 ```ts
@@ -9,116 +9,13 @@ import { slack } from "spectrum-ts/providers/slack";
 
 The Slack provider connects your agent to Slack workspaces through the Slack API. It supports multi-workspace installations, text and media messaging, reactions, threaded replies, typing indicators, and edits.
 
-## Config
+## Explore Slack
 
-<Tabs>
-  <Tab title="Single workspace">
-    ```ts
-    slack.config({
-      tokens: {
-        TEAM_ID: "xoxb-your-bot-token",
-      },
-    });
-    ```
-  </Tab>
-  <Tab title="Multi-workspace">
-    ```ts
-    slack.config({
-      tokens: {
-        TEAM_A: process.env.SLACK_TOKEN_A!,
-        TEAM_B: process.env.SLACK_TOKEN_B!,
-      },
-      teams: {
-        TEAM_A: {
-          appId: "A0123456789",
-          botUserId: "U0123456789",
-          grantedScopes: ["chat:write", "channels:history"],
-          teamName: "Team A",
-        },
-        TEAM_B: {
-          appId: "A9876543210",
-          botUserId: "U9876543210",
-          grantedScopes: ["chat:write", "channels:history"],
-          teamName: "Team B",
-        },
-      },
-    });
-    ```
-  </Tab>
-</Tabs>
-
-| Option | Description |
-|---|---|
-| `tokens` | A map of team ID to bot token (`xoxb-...`). At least one entry is required. |
-| `teams` | Optional metadata per team — app ID, bot user ID, granted scopes, and display name. |
-| `endpoint` | Optional custom Slack API base URL. |
-
-## Example
-
-```ts
-import { Spectrum } from "spectrum-ts";
-import { slack } from "spectrum-ts/providers/slack";
-
-const app = await Spectrum({
-  projectId: process.env.PROJECT_ID!,
-  projectSecret: process.env.PROJECT_SECRET!,
-  providers: [
-    slack.config({
-      tokens: { TEAM_ID: process.env.SLACK_BOT_TOKEN! },
-    }),
-  ],
-});
-
-for await (const [space, message] of app.messages) {
-  if (message.content.type === "text") {
-    await space.send(`Echo: ${message.content.text}`);
-  }
-}
-```
-
-## Starting a conversation
-
-Resolve a user by their Slack user ID and open a space. Pass `teamId` as a space parameter to target a specific workspace:
-
-```ts
-const sl = slack(app);
-const user = await sl.user("U0123456789");
-const space = await sl.space.create(user, { teamId: "TEAM_ID" });
-
-await space.send("Hello from Spectrum.");
-```
-
-## Space properties
-
-Slack spaces carry a `teamId` field indicating which workspace the conversation belongs to. Access it through narrowing:
-
-```ts
-for await (const [space, message] of app.messages) {
-  if (message.platform !== "Slack") continue;
-  const slackSpace = slack(space);
-  console.log(slackSpace.teamId);
-}
-```
-
-## Message extras
-
-Narrowed Slack messages expose additional fields:
-
-| Field | Type | Description |
-|---|---|---|
-| `isFromMe` | `boolean` | Whether the message was sent by the bot. |
-| `subtype` | `string` (optional) | Slack message subtype (e.g. `"bot_message"`). |
-| `threadTs` | `string` (optional) | Thread timestamp if the message is in a thread. |
-| `ts` | `string` (optional) | Message timestamp. |
-
-## Supported features
-
-| Feature | Support |
-|---|---|
-| Text messages | Send and receive |
-| Markdown | Send (rendered as Slack mrkdwn) |
-| Media (files, images) | Send and receive |
-| Reactions | Send and receive |
-| Threaded replies | Send and receive |
-| Typing indicators | Send |
-| Message edits | Send and receive |
+<CardGroup cols={2}>
+  <Card title="Setup" icon="sliders-horizontal" href="/spectrum-ts/providers/slack/setup">
+    Configure single-workspace or multi-workspace Slack apps and start an echo loop.
+  </Card>
+  <Card title="Conversations and events" icon="message-circle" href="/spectrum-ts/providers/slack/conversations-and-events">
+    Start conversations, inspect narrowed Slack fields, and check supported features.
+  </Card>
+</CardGroup>
