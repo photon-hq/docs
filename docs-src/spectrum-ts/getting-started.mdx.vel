@@ -9,6 +9,8 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 
 ## Installation
 
+`spectrum-ts` is the batteries-included package — it bundles the runtime and every official provider.
+
 <CodeGroup>
 ```bash npm
 npm install spectrum-ts
@@ -26,6 +28,14 @@ yarn add spectrum-ts
 bun add spectrum-ts
 ```
 </CodeGroup>
+
+For a leaner install, depend on `@spectrum-ts/core` plus only the providers you need:
+
+```bash
+bun add @spectrum-ts/core @spectrum-ts/imessage @spectrum-ts/telegram
+```
+
+Either way, the `spectrum-ts/providers/<platform>` import paths work as long as the matching provider package is installed.
 
 Requires TypeScript 5 or later (TypeScript 6 is also supported).
 
@@ -124,6 +134,21 @@ for await (const [space, message] of app.messages) {
 ```
 
 Messages from every provider merge into the single `app.messages` stream. The `message.platform` field identifies the source.
+
+## Logging
+
+Spectrum emits structured logs across the core runtime and providers. Control the verbosity with `logLevel`:
+
+```ts
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [imessage.config()],
+  logLevel: "debug",
+});
+```
+
+Log output is sanitized — sensitive fields like tokens and secrets are redacted from error attributes before they reach any log destination.
 
 ## Telemetry
 

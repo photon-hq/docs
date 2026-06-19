@@ -43,7 +43,8 @@
                   "spectrum-ts/providers/imessage",
                   "spectrum-ts/providers/terminal",
                   "spectrum-ts/providers/whatsapp-business",
-                  "spectrum-ts/providers/telegram"
+                  "spectrum-ts/providers/telegram",
+                  "spectrum-ts/providers/slack"
                 ]
               },
               {

@@ -318,6 +318,34 @@ const sent = await space.send(customizedMiniApp({
   Mini-app cards require cloud or dedicated mode. In local mode, `customizedMiniApp()` throws an `UnsupportedError`.
 </Note>
 
+## Native contact card sharing
+
+Share the bot account's own iMessage contact card directly in a chat. Use `nativeContactCard()` to build the content, or the `space.shareContactCard()` sugar method on a narrowed iMessage space:
+
+<Tabs>
+  <Tab title="Sugar (space.shareContactCard)">
+    ```ts
+    import { imessage } from "spectrum-ts/providers/imessage";
+
+    const im = imessage(space);
+    await im.shareContactCard();
+    ```
+  </Tab>
+  <Tab title="Canonical (space.send)">
+    ```ts
+    import { nativeContactCard, imessage } from "spectrum-ts/providers/imessage";
+
+    await space.send(nativeContactCard());
+    ```
+  </Tab>
+</Tabs>
+
+This shares the bot's own contact card as it appears in iMessage — recipients can tap it to save the contact. Useful for onboarding flows where you want users to add your bot to their contacts.
+
+<Note>
+  Native contact card sharing requires cloud or dedicated mode. In local mode, `nativeContactCard()` throws an `UnsupportedError`.
+</Note>
+
 ## Fetching attachments
 
 Retrieve an attachment by its iMessage GUID using `getAttachment` on the narrowed platform instance. The returned `Attachment` is lazy — `.read()` and `.stream()` each trigger an independent download, so cache `.read()` if you need the bytes more than once.
