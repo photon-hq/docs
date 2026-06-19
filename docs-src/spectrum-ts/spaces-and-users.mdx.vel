@@ -64,7 +64,7 @@ await space.startTyping();
 await space.stopTyping();
 ```
 
-These are sugar for `space.send(typing("start"))` and `space.send(typing("stop"))` — see [Content](/spectrum-ts/content#typing-indicators) for the canonical form.
+These are sugar for `space.send(typing("start"))` and `space.send(typing("stop"))` — see [Typing indicators](/spectrum-ts/content/typing-indicators) for the canonical form.
 
 ### Automatic with `responding`
 
