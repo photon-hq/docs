@@ -20,6 +20,9 @@ Providers plug into Spectrum's type system and runtime. Each one exports a calla
   <Card title="Telegram" icon="paper-plane" href="/spectrum-ts/providers/telegram">
     Telegram Bot API with Fusor webhooks. Text, media, reactions, replies, typing, and edits.
   </Card>
+  <Card title="Slack" icon="hashtag" href="/spectrum-ts/providers/slack">
+    Slack API with multi-workspace support. Text, media, reactions, replies, typing, and threads.
+  </Card>
 </CardGroup>
 
 ## Combining providers
@@ -30,7 +33,7 @@ Drop any combination into `providers`:
   <Tab title="Aggregate import">
     ```ts
     import { Spectrum } from "spectrum-ts";
-    import { imessage, terminal, whatsappBusiness } from "spectrum-ts/providers";
+    import { imessage, slack, terminal, whatsappBusiness } from "spectrum-ts/providers";
 
     const app = await Spectrum({
       projectId: "...",
@@ -42,6 +45,9 @@ Drop any combination into `providers`:
           phoneNumberId: process.env.WA_NUMBER_ID!,
           appSecret: process.env.WA_SECRET!,
         }),
+        slack.config({
+          tokens: { TEAM_ID: process.env.SLACK_BOT_TOKEN! },
+        }),
         terminal.config(),
       ],
     });
@@ -51,6 +57,7 @@ Drop any combination into `providers`:
     ```ts
     import { Spectrum } from "spectrum-ts";
     import { imessage } from "spectrum-ts/providers/imessage";
+    import { slack } from "spectrum-ts/providers/slack";
     import { terminal } from "spectrum-ts/providers/terminal";
     import { whatsappBusiness } from "spectrum-ts/providers/whatsapp-business";
 
@@ -63,6 +70,9 @@ Drop any combination into `providers`:
           accessToken: process.env.WA_TOKEN!,
           phoneNumberId: process.env.WA_NUMBER_ID!,
           appSecret: process.env.WA_SECRET!,
+        }),
+        slack.config({
+          tokens: { TEAM_ID: process.env.SLACK_BOT_TOKEN! },
         }),
         terminal.config(),
       ],

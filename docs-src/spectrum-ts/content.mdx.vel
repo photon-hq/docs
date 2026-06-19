@@ -1,6 +1,6 @@
 ---
 title: "Content"
-description: "Build text, markdown, attachments, voice, contacts, polls, rich links, groups, replies, edits, unsends, typing indicators, rename, avatar, and platform-specific content for outgoing messages"
+description: "Build text, markdown, attachments, voice, contacts, polls, rich links, app link cards, groups, replies, edits, unsends, typing indicators, rename, avatar, and platform-specific content for outgoing messages"
 ---
 
 import { TypeTooltip } from "/snippets/type-tooltip.mdx";
@@ -8,7 +8,7 @@ import { TypeTooltip } from "/snippets/type-tooltip.mdx";
 {% set ci = symbol("ts:spectrum-ts#ContentInput") %}
 {% set cb = symbol("ts:spectrum-ts#ContentBuilder") %}
 
-Spectrum exposes a family of content builders — `text`, `markdown`, `attachment`, `voice`, `contact`, `richlink`, `poll`, `group`, `custom`, `reaction`, `reply`, `edit`, `unsend`, `typing`, `rename`, and `avatar` — plus a string shortcut that's equivalent to `text()`. Any API that takes a <TypeTooltip name="ContentInput" type={`{{ ci.signature }}`} /> accepts a plain string or a <TypeTooltip name="ContentBuilder" type={`{{ cb.signature }}`} />.
+Spectrum exposes a family of content builders — `text`, `markdown`, `attachment`, `voice`, `contact`, `richlink`, `app`, `poll`, `group`, `custom`, `reaction`, `reply`, `edit`, `unsend`, `typing`, `rename`, and `avatar` — plus a string shortcut that's equivalent to `text()`. Any API that takes a <TypeTooltip name="ContentInput" type={`{{ ci.signature }}`} /> accepts a plain string or a <TypeTooltip name="ContentBuilder" type={`{{ cb.signature }}`} />.
 
 ## Text
 
@@ -228,6 +228,18 @@ await space.send(richlink("https://example.com/article"));
   | `summary()` | `() => Promise<string \| undefined>` | OG description. |
   | `cover()` | `() => Promise<{ mimeType?, read(), stream() } \| undefined>` | OG image. |
 </Accordion>
+
+## App link cards
+
+Send a URL as an app-style link card. On iMessage, the URL renders as a native mini-app card; on Slack, Telegram, WhatsApp, and terminal, it falls back to the plain URL.
+
+```ts
+import { app } from "spectrum-ts";
+
+await space.send(app("https://example.com/deep-link"));
+```
+
+Use `app()` when you want to present a link as a tappable card rather than an inline URL. For richer iMessage cards with layout control, see [Mini-app cards](/spectrum-ts/providers/imessage#mini-app-cards).
 
 ## Polls
 
