@@ -44,8 +44,8 @@
           },
           {
             "group": "Content",
-            "root": "spectrum-ts/content",
             "pages": [
+              "spectrum-ts/content",
               "spectrum-ts/content/text",
               "spectrum-ts/content/markdown",
               "spectrum-ts/content/attachments",
@@ -67,8 +67,8 @@
           },
           {
             "group": "Providers",
-            "root": "spectrum-ts/providers",
             "pages": [
+              "spectrum-ts/providers",
               {
                 "group": "iMessage",
                 "icon": "comment",
