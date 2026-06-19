@@ -52,7 +52,7 @@
               "spectrum-ts/content/voice",
               "spectrum-ts/content/contacts",
               "spectrum-ts/content/rich-links",
-              "spectrum-ts/content/app-link-cards",
+              "spectrum-ts/content/app",
               "spectrum-ts/content/polls",
               "spectrum-ts/content/groups",
               "spectrum-ts/content/custom",
