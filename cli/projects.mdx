@@ -32,14 +32,16 @@ photon projects create
 Without flags, the CLI walks you through an interactive prompt. You can also pass flags directly:
 
 ```sh
-photon projects create --name "My Project" --location us-east --spectrum
+photon projects create --name "My Project" --location "United States" --spectrum
 ```
 
 | Flag | Description |
 |------|-------------|
-| `--name <name>` | Project name |
-| `--location <loc>` | Deployment region |
-| `--spectrum` | Enable Spectrum for the project |
+| `-n, --name <name>` | Project name |
+| `-l, --location <location>` | Location (default: `United States`) |
+| `--spectrum` / `--no-spectrum` | Enable / disable Spectrum |
+| `--template` | Use the project as a template |
+| `--observability` | Enable observability |
 
 Aliases: `projects new`.
 
