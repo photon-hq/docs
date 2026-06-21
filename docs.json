@@ -137,6 +137,12 @@
               "best-practices/recovery-and-state",
               "best-practices/imessage-deliverability"
             ]
+          },
+          {
+            "group": "Troubleshooting",
+            "pages": [
+              "spectrum-ts/troubleshooting/imessage"
+            ]
           }
         ]
       },
