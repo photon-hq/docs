@@ -96,6 +96,32 @@ for await (const [space, message] of app.messages) {
 }
 ```
 
+## Sender identity
+
+When you narrow an iMessage message, the sender carries optional fields that describe how the sender reached you:
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | `string` | The sender's address, used as the cross-provider identity key. |
+| `address` | `string` (optional) | The raw address (phone number or email) the message came from. |
+| `country` | `string` (optional) | Two-letter country code for the sender's address, when known. |
+| `service` | `"iMessage" \| "SMS" \| "RCS" \| "unknown"` (optional) | Which service delivered the message. |
+
+Use `service` to tell whether a sender reached you over iMessage (blue bubble), SMS or RCS (green bubble), or an unknown transport:
+
+```ts
+for await (const [space, message] of app.messages) {
+  if (message.platform !== "iMessage") continue;
+  const im = imessage(message);
+
+  if (im.sender.service === "SMS") {
+    await space.send("You're on SMS — some features may be limited.");
+  }
+}
+```
+
+All fields except `id` are optional. In local mode, only `address` is populated (from the participant identifier); `country` and `service` are unavailable. Actor-less events (e.g. a system notification) may have none of the optional fields.
+
 ## Creating conversations
 
 Resolve users by phone number or email, then create a space with `space.create(...)`:
