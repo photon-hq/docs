@@ -52,6 +52,10 @@ To find the handle iMessage is really using:
   </Step>
 </Steps>
 
+<Note>
+  **If the debug bot reports an email instead of a phone number**, your iPhone is starting iMessage conversations from your Apple Account email rather than your number. To switch it, open **Settings → Messages → Send & Receive** on your iPhone and pick your phone number under **Start new conversations from**. Apple's guide: [If your iPhone sends text messages from your email address](https://support.apple.com/en-us/101744).
+</Note>
+
 If the handle the debug bot reports isn't what you expect at all, the underlying issue is on Apple's side — iMessage isn't registered to the number you think it is. Apple's official guides for fixing iMessage registration and activation:
 
 - [If you can't turn on or sign in to iMessage or FaceTime on your iPhone](https://support.apple.com/en-us/119859) — phone-number verification and activation.
