@@ -13,6 +13,14 @@ photon login
 
 This opens your default browser to the Photon approval page. Once you approve, the CLI stores your access token locally and you're ready to go.
 
+<Frame caption="Running photon login in the terminal.">
+<img src="/images/cli/authentication/login-cli.avif" alt="Terminal running photon login, showing the device code and approval URL" style={{ padding: "1rem" }} />
+</Frame>
+
+<Frame caption="Approving the device login in the browser.">
+<img src="/images/cli/authentication/login-web.avif" alt="Photon browser approval page for the device login flow" style={{ padding: "1rem" }} />
+</Frame>
+
 If you're on a headless machine (SSH session, container), pass `--no-browser` to get a URL you can open elsewhere:
 
 ```sh
@@ -26,6 +34,11 @@ photon whoami
 ```
 
 Prints your name, email, and the backend you're signed in to. If the session has expired, you'll see a hint to re-run `photon login`.
+
+<Frame caption="Terminal output of photon whoami showing name, email, and backend.">
+<img src="/images/cli/authentication/whoami-cli.avif" alt="Terminal output of photon whoami showing name, email, and backend" />
+</Frame>
+
 
 ## Log out
 
