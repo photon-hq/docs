@@ -96,6 +96,32 @@ for await (const [space, message] of app.messages) {
 }
 ```
 
+## User properties
+
+iMessage users carry optional platform-specific fields when resolved through narrowing. These are available when the platform has sender details for the user:
+
+| Field | Type | Description |
+|---|---|---|
+| `address` | `string` (optional) | The user's phone number or email address. |
+| `country` | `string` (optional) | The user's country code. |
+| `service` | `"iMessage" \| "SMS" \| "RCS" \| "unknown"` (optional) | The messaging service the user is reachable on. |
+
+```ts
+const im = imessage(app);
+const alice = await im.user("+15551111111");
+console.log(alice.address, alice.country, alice.service);
+```
+
+These fields are also available on `message.sender` after narrowing:
+
+```ts
+for await (const [space, message] of app.messages) {
+  if (message.platform !== "iMessage") continue;
+  const imMsg = imessage(message);
+  console.log(imMsg.sender.service);
+}
+```
+
 ## Creating conversations
 
 Resolve users by phone number or email, then create a space with `space.create(...)`:
