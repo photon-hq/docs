@@ -152,6 +152,8 @@ On success, the script prints `message.guid`. Seeing that GUID means the message
 | `tls` | `boolean` | No | Encrypt the gRPC connection. Defaults to `true`; keep the default for hosted servers. |
 | `timeout` | `number` | No | Timeout, in milliseconds, for unary requests. Streams stay open. |
 | `retry` | `boolean \| RetryOptions` | No | Retry retryable unary failures. Streams are not retried automatically. |
+| `onHeartbeat` | `HeartbeatHandler` | No | Called on every server heartbeat frame on `subscribeEvents` / `watch` streams. Use it to build a stall watchdog. See [events](/advanced-kits/imessage/events#heartbeat-detection). |
+| `channelOptions` | `GrpcChannelOptions` | No | Extra `@grpc/grpc-js` channel options merged onto the SDK defaults, including keepalive settings. |
 
 ## SDK Overview
 
