@@ -75,7 +75,7 @@ Pass the raw body bytes. The HMAC is computed over the exact bytes on the wire. 
 
 ## Framework adapters
 
-First-party adapters mount the endpoint for you and handle raw-body parsing correctly. Each is an optional subpath import — install the framework as a peer dependency only if you use it.
+First-party adapters mount the endpoint for you and handle raw-body parsing correctly. Each adapter is a standalone package — install the one for your framework alongside `spectrum-ts`.
 
 <Tabs>
   <Tab title="Hono">
@@ -83,7 +83,7 @@ First-party adapters mount the endpoint for you and handle raw-body parsing corr
     import { Hono } from "hono";
     import { Spectrum } from "spectrum-ts";
     import { imessage } from "spectrum-ts/providers/imessage";
-    import { spectrum } from "spectrum-ts/hono";
+    import { spectrum } from "@spectrum-ts/hono";
 
     const app = await Spectrum({
       projectId: process.env.PROJECT_ID!,
@@ -112,7 +112,7 @@ First-party adapters mount the endpoint for you and handle raw-body parsing corr
     import express from "express";
     import { Spectrum } from "spectrum-ts";
     import { imessage } from "spectrum-ts/providers/imessage";
-    import { spectrum } from "spectrum-ts/express";
+    import { spectrum } from "@spectrum-ts/express";
 
     const app = await Spectrum({
       projectId: process.env.PROJECT_ID!,
@@ -145,7 +145,7 @@ First-party adapters mount the endpoint for you and handle raw-body parsing corr
     import { Elysia } from "elysia";
     import { Spectrum } from "spectrum-ts";
     import { imessage } from "spectrum-ts/providers/imessage";
-    import { spectrum } from "spectrum-ts/elysia";
+    import { spectrum } from "@spectrum-ts/elysia";
 
     const app = await Spectrum({
       projectId: process.env.PROJECT_ID!,
