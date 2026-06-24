@@ -16,7 +16,7 @@ Use this page to choose an iMessage connection mode and understand how Spectrum 
     imessage.config();
     ```
 
-    Tokens are renewed automatically at 80% of their TTL. Requires `projectId` and `projectSecret` on the `Spectrum()` call:
+    Tokens are renewed automatically at 80% of their TTL. If a token is rejected after a server restart, the stream re-mints it automatically. Requires `projectId` and `projectSecret` on the `Spectrum()` call:
 
     ```ts
     const app = await Spectrum({
@@ -52,6 +52,14 @@ Use this page to choose an iMessage connection mode and understand how Spectrum 
     Multiple clients route messages based on the phone number associated with each space.
   </Tab>
 </Tabs>
+
+## Outbound reliability
+
+All remote connection modes (cloud and dedicated) automatically retry transient gRPC failures on outbound actions — send, reply, react, and typing. Each retry carries an idempotency key so a retried request cannot double-deliver a message. Brief server or network blips are absorbed by the provider instead of surfacing as errors in your application.
+
+<Note>
+  Local mode does not use gRPC and is not affected by this behavior.
+</Note>
 
 ## Line model
 
