@@ -2,9 +2,20 @@
 
 The documentation site at [photon.codes](https://photon.codes/), built with [Mintlify](https://mintlify.com/) and driven by [vellum](https://github.com/photon-hq/vellum). Vellum extracts type information from installed npm packages and renders `.mdx.vel` templates into the `.mdx` files Mintlify ships.
 
+This repo is an **aggregator**: some doc areas are authored here in [`docs-src/`](docs-src/), and others are authored in the SDK repos they document and pulled in at build time (see [Where docs live](#where-docs-live)).
+
+## Where docs live
+
+`scripts/sync-docs` assembles a single template tree (`.vellum-src/`, gitignored) before vellum runs, from two places:
+
+- **Local** — most areas still live in [`docs-src/`](docs-src/) in this repo.
+- **Source repos** — areas listed in [`scripts/sources.json`](scripts/sources.json) are pulled from their SDK repo's `docs-site/` directory, at the git tag matching the installed package version (so prose stays aligned with the types vellum extracts). Edit those in the SDK repo, not here. Until a source repo has its `docs-site/`, sync falls back to the `local` path in the manifest, so the pilot keeps building offline.
+
+Navigation works the same way: [`docs.json`](docs.json) is **generated** by `scripts/build-nav` from [`docs.base.json`](docs.base.json) (the site skeleton) plus a `nav.json` fragment contributed by each source. Don't edit `docs.json` directly — edit `docs.base.json` or the fragment.
+
 ## How to edit
 
-1. **Edit the source, not the output.** Sources live in [`docs-src/`](docs-src/) as `.mdx.vel` files. The rendered `.mdx` files at the repo root are build artifacts — gitignored on `main`, only present on the `dist` branch. Don't edit them directly; they get overwritten on every deploy.
+1. **Edit the source, not the output.** Sources are `.mdx.vel` files in [`docs-src/`](docs-src/) (this repo) or a source repo's `docs-site/`. The rendered `.mdx` files and `docs.json` at the repo root are build artifacts — gitignored on `main`, only present on the `dist` branch. Don't edit them directly; they get overwritten on every deploy.
 
 2. **Render and preview locally:**
 

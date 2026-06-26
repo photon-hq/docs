@@ -8,7 +8,7 @@ const config: VellumConfig = {
   sources: {
     ts: { include: [], packages: ['@photon-ai/advanced-imessage', '@photon-ai/imessage-kit', '@photon-ai/whatsapp-business', 'spectrum-ts'] },
   },
-  templates: 'docs-src',
+  templates: '.vellum-src',
   outDir: '.',
   extractors: [new TypeScriptExtractor()],
   engine: new NunjucksEngine(),
