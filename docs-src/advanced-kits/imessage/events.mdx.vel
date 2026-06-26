@@ -214,6 +214,26 @@ const firstReceived = im.messages
   .take(1);
 ```
 
+## Heartbeat Detection
+
+The server sends a heartbeat frame on every `subscribeEvents(...)` and `watch(...)` stream roughly every 30 seconds, even when no domain events are arriving. By default the SDK drops these frames silently. To observe them, pass `onHeartbeat` when creating the client:
+
+```ts
+let lastHeartbeat = Date.now();
+
+const im = createClient({
+  address: "imessage.example.com:443",
+  token: process.env.IMESSAGE_TOKEN!,
+  onHeartbeat() {
+    lastHeartbeat = Date.now();
+  },
+});
+```
+
+`onHeartbeat` fires once per heartbeat frame across all open streams. If no heartbeat arrives within a grace window — for example, 90 seconds — the connection is likely half-open and you should tear down and re-establish the stream.
+
+The SDK also enables gRPC keepalive pings by default, which detect half-open connections at the transport layer. `onHeartbeat` is an application-level signal on top of that — useful when you want your own watchdog logic independent of the gRPC transport.
+
 ## TypedEventStream
 
 | Member | Purpose |
