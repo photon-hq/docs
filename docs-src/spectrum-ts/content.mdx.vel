@@ -29,7 +29,7 @@ Use this section when you need to choose the right outbound content shape or und
     Share contact cards from structured data, users, or vCards.
   </Card>
   <Card title="Rich links" icon="link" href="/spectrum-ts/content/rich-links">
-    Render URLs as rich previews with lazy Open Graph metadata.
+    Send URLs as rich preview cards rendered by the receiving platform.
   </Card>
   <Card title="App link cards" icon="panel-top" href="/spectrum-ts/content/app-link-cards">
     Present URLs as tappable app-style cards where providers support them.

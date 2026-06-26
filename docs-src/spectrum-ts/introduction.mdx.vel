@@ -116,7 +116,7 @@ You do not have to manage Spectrum only from the dashboard. Use the dashboard fo
     Install `spectrum-ts` and send your first message.
   </Card>
   <Card title="Webhooks" icon="webhook" href="/spectrum-ts/webhooks">
-    Receive messages via HTTP with native and Fusor webhook support, plus Hono, Express, and Elysia adapters.
+    Receive messages via HTTP with native and Fusor webhook support, plus Hono, Express, Elysia, and Fastify adapters.
   </Card>
   <Card title="Build a custom platform" icon="blocks" href="/spectrum-ts/custom-platforms">
     Add a new interface with Spectrum's provider model.

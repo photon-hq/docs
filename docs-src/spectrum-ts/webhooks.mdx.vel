@@ -168,9 +168,39 @@ First-party adapters mount the endpoint for you and handle raw-body parsing corr
       .listen(3000);
     ```
   </Tab>
+  <Tab title="Fastify">
+    ```ts
+    import Fastify from "fastify";
+    import { Spectrum } from "spectrum-ts";
+    import { imessage } from "spectrum-ts/providers/imessage";
+    import { spectrum } from "@spectrum-ts/fastify";
+
+    const app = await Spectrum({
+      projectId: process.env.PROJECT_ID!,
+      projectSecret: process.env.PROJECT_SECRET!,
+      providers: [imessage.config()],
+      webhookSecret: process.env.SPECTRUM_WEBHOOK_SECRET,
+    });
+
+    const server = Fastify();
+
+    server.register(spectrum, {
+      app,
+      onMessage: async (space, message) => {
+        if (message.content.type === "text") {
+          await space.send(`echo: ${message.content.text}`);
+        }
+      },
+    });
+
+    await server.listen({ port: 3000 });
+    ```
+
+    Fastify auto-parses known content types before your route handler runs, which breaks HMAC verification. The `@spectrum-ts/fastify` plugin registers a wildcard raw-body parser in its own encapsulated scope, so the webhook route receives exact wire bytes while your other routes keep their normal JSON parsing.
+  </Tab>
 </Tabs>
 
-All three adapters accept the same options:
+All four adapters accept the same options:
 
 | Option | Type | Default | Description |
 |---|---|---|---|

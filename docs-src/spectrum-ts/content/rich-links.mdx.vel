@@ -1,9 +1,9 @@
 ---
 title: "Rich links"
-description: "Render URLs as rich previews with lazy Open Graph metadata."
+description: "Send URLs as rich preview cards rendered by the receiving platform."
 ---
 
-Use `richlink()` to render a URL as a rich preview card with title, summary, and cover image. Spectrum scrapes Open Graph metadata at send time. Pass just the URL and the builder fills in the rest.
+Use `richlink()` to send a URL as a rich preview card. Each platform's native client renders the preview — iMessage enables `enableLinkPreview`, Telegram auto-unfurls the bare URL. Spectrum carries only the URL; metadata fetching is left to the platform.
 
 ```ts
 import { richlink } from "spectrum-ts";
@@ -11,13 +11,13 @@ import { richlink } from "spectrum-ts";
 await space.send(richlink("https://example.com/article"));
 ```
 
-`title()`, `summary()`, and `cover()` are lazy async accessors. The metadata fetch happens only if the receiving platform needs it. Platforms without rich-link support fall back to the URL as plain text.
+Platforms without rich-link support fall back to the URL as plain text.
 
-<Accordion title="Richlink" description="Resolved rich-link content with lazy metadata accessors.">
+`richlink` is **outbound-only**. Inbound URLs always arrive as `text` content — a URL received from any platform is normalized to its URL string and deserialized as plain `text`, never as a `richlink` payload.
+
+<Accordion title="Richlink" description="A URL the platform should render as a rich link preview.">
   | Field | Type | Description |
   |---|---|---|
-  | `url` | `string` | The original URL. |
-  | `title()` | `() => Promise<string \| undefined>` | OG title. |
-  | `summary()` | `() => Promise<string \| undefined>` | OG description. |
-  | `cover()` | `() => Promise<{ mimeType?, read(), stream() } \| undefined>` | OG image. |
+  | `type` | `"richlink"` | Content discriminator. |
+  | `url` | `string` | The URL to preview. |
 </Accordion>
