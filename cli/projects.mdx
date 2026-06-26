@@ -14,6 +14,10 @@ photon projects ls --json
 
 Aliases: `project ls`, `projects list`.
 
+<Frame caption="Listing projects in the terminal.">
+<img src="/images/cli/projects/projects-ls.avif" alt="Terminal output of photon projects ls showing a table of projects with id, name, location, status, platforms, and updated columns" style={{ padding: "1rem" }} />
+</Frame>
+
 ## Show project details
 
 ```sh
@@ -23,23 +27,33 @@ photon projects show <project-id>
 
 Defaults to `$PHOTON_PROJECT_ID` if no ID is given. Aliases: `projects get`.
 
+<Frame caption="Viewing project details.">
+<img src="/images/cli/projects/projects-show.avif" alt="Terminal output of photon projects show displaying a project's status, location, owner, timestamps, and other details" style={{ padding: "1rem" }} />
+</Frame>
+
 ## Create a project
 
 ```sh
 photon projects create
 ```
 
+<Frame caption="Creating a project through the interactive wizard.">
+<video src="/images/cli/projects/demo-create.webm" autoPlay loop muted playsInline />
+</Frame>
+
 Without flags, the CLI walks you through an interactive prompt. You can also pass flags directly:
 
 ```sh
-photon projects create --name "My Project" --location us-east --spectrum
+photon projects create --name "My Project" --location "United States" --spectrum
 ```
 
 | Flag | Description |
 |------|-------------|
-| `--name <name>` | Project name |
-| `--location <loc>` | Deployment region |
-| `--spectrum` | Enable Spectrum for the project |
+| `-n, --name <name>` | Project name |
+| `-l, --location <location>` | Location (default: `United States`) |
+| `--spectrum` / `--no-spectrum` | Enable / disable Spectrum |
+| `--template` | Use the project as a template |
+| `--observability` | Enable observability |
 
 Aliases: `projects new`.
 
@@ -74,6 +88,10 @@ photon projects regenerate-secret -y
 ```
 
 Generates a new Spectrum API secret for the project. The old secret stops working immediately.
+
+<Frame caption="Rotating the Spectrum API secret.">
+<video src="/images/cli/billing/demo-regenerate-secret.webm" autoPlay loop muted playsInline />
+</Frame>
 
 Aliases: `projects rotate-secret`.
 
@@ -111,6 +129,10 @@ photon projects upgrade --plan price_xxx
 ```
 
 Available tiers: `pro`, `business`, `enterprise`.
+
+<Frame caption="Upgrading a project from the interactive picker.">
+<video src="/images/cli/billing/demo-upgrade.webm" autoPlay loop muted playsInline />
+</Frame>
 
 | Flag | Description |
 |------|-------------|
