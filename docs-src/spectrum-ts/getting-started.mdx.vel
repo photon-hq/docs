@@ -163,7 +163,11 @@ const app = await Spectrum({
 });
 ```
 
-When enabled, Spectrum traces initialization, provider setup, message send/receive/get flows, space resolution, and custom events. Each span includes attributes like the provider name, space ID, content type, and sender kind.
+Spectrum's telemetry is scoped — it creates its own tracer provider and does not take over your app's global OpenTelemetry setup. If your app already has its own tracing pipeline, Spectrum's traces stay separate.
+
+When enabled, Spectrum traces initialization, provider setup, message send/receive/get flows, space resolution, and custom events. Each span includes attributes like the provider name, space ID, content type, and sender kind. Outbound HTTP calls to Spectrum Cloud, media downloads, Telegram, and WhatsApp Business are traced as CLIENT spans with service labels.
+
+Media URLs from Telegram and WhatsApp are redacted before they are recorded in spans, so bot tokens and signed query strings do not leak into telemetry.
 
 Traces are sent to the Photon OTLP endpoint by default. Standard `OTEL_EXPORTER_OTLP_*` environment variables override the default endpoint and headers.
 
