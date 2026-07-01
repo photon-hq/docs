@@ -1,0 +1,345 @@
+---
+title: "Chat SDK"
+description: "Add iMessage to a Chat SDK bot with the iMessage adapter"
+---
+
+The iMessage adapter (`chat-adapter-imessage`) connects [Chat SDK](https://chat-sdk.dev/docs) bots to iMessage. It's built on [`spectrum-ts`](/spectrum-ts/introduction), so the same bot code reaches iMessage through any of three modes:
+
+- **Cloud** (recommended) — connects to [Spectrum Cloud](https://app.photon.codes) with a project ID and secret. Runs anywhere, including serverless.
+- **Self-hosted** — connects to your own `@photon-ai/advanced-imessage` gRPC endpoint.
+- **Local** — reads the on-device Messages database and sends through Apple's native APIs. macOS only.
+
+The mode is auto-detected from the options you pass (and their environment-variable fallbacks). See [Configuration](#configuration).
+
+## Installation
+
+```bash
+pnpm add chat chat-adapter-imessage
+```
+
+`chat` is the Chat SDK; `chat-adapter-imessage` is the iMessage adapter for it.
+
+## Add the adapter
+
+Register the adapter under `adapters.imessage` when you construct your bot, then handle messages with the usual Chat SDK callbacks.
+
+<Tabs>
+  <Tab title="Cloud">
+    Connects to Spectrum Cloud over gRPC. Get your project ID and secret from the [dashboard](https://app.photon.codes).
+
+    ```ts
+    import { Chat } from "chat";
+    import { createiMessageAdapter } from "chat-adapter-imessage";
+
+    const bot = new Chat({
+      userName: "mybot",
+      adapters: {
+        imessage: createiMessageAdapter({
+          local: false,
+          projectId: process.env.IMESSAGE_PROJECT_ID,
+          projectSecret: process.env.IMESSAGE_PROJECT_SECRET,
+        }),
+      },
+    });
+
+    bot.onNewMention(async (thread, message) => {
+      await thread.post("Hello from iMessage!");
+    });
+    ```
+  </Tab>
+  <Tab title="Self-hosted">
+    Points the adapter at your own `@photon-ai/advanced-imessage` gRPC server.
+
+    ```ts
+    const bot = new Chat({
+      userName: "mybot",
+      adapters: {
+        imessage: createiMessageAdapter({
+          local: false,
+          serverUrl: process.env.IMESSAGE_SERVER_URL,
+          apiKey: process.env.IMESSAGE_API_KEY,
+        }),
+      },
+    });
+    ```
+
+    For multi-number setups, pass explicit `clients` instead of `serverUrl`/`apiKey`:
+
+    ```ts
+    createiMessageAdapter({
+      local: false,
+      clients: [
+        { address: "imessage.example.com:443", token: "…", phone: "+1234567890" },
+      ],
+    });
+    ```
+
+    <Warning>
+      `serverUrl` is a gRPC `host:port` (e.g. `imessage.example.com:443`), **not** an `https://` URL. A bare host gets `:443` appended; any URL scheme is stripped.
+    </Warning>
+  </Tab>
+  <Tab title="Local">
+    Runs directly on a Mac — reads the local Messages database and sends on-device, with no external server. Requires macOS with **Full Disk Access** granted to your terminal or application, and iMessage signed in.
+
+    ```ts
+    const bot = new Chat({
+      userName: "mybot",
+      adapters: {
+        imessage: createiMessageAdapter({ local: true }),
+      },
+    });
+    ```
+  </Tab>
+</Tabs>
+
+## Configuration
+
+`createiMessageAdapter(options)` accepts the options below. Each has an environment-variable fallback, so you can configure the adapter entirely through the environment and pass no arguments.
+
+| Option | Required | Description |
+|---|---|---|
+| `local` | No | `true` for local, `false` for cloud/self-host. Defaults to local unless `local: false`, `IMESSAGE_LOCAL=false`, or remote credentials are provided. |
+| `projectId` | Cloud | Spectrum Cloud project ID. Falls back to `IMESSAGE_PROJECT_ID`. |
+| `projectSecret` | Cloud | Spectrum Cloud project secret. Falls back to `IMESSAGE_PROJECT_SECRET`. |
+| `serverUrl` | Self-host | gRPC `host:port` of your iMessage server. Falls back to `IMESSAGE_SERVER_URL`. |
+| `apiKey` | Self-host | Auth token for the self-hosted server. Falls back to `IMESSAGE_API_KEY`. |
+| `clients` | No | Explicit `{ address, token, phone }[]` for multi-number self-host setups. |
+| `phone` | No | Routing/identity phone for legacy self-host (defaults to `"shared"`). Falls back to `IMESSAGE_PHONE`. |
+| `webhookSecret` | No | Per-webhook signing secret for verifying Spectrum Cloud deliveries. Required to receive [webhooks](#webhooks). Falls back to `IMESSAGE_WEBHOOK_SECRET`. |
+| `logger` | No | Logger instance (defaults to `ConsoleLogger("info")`). |
+
+### Environment variables
+
+```bash
+# .env.local
+IMESSAGE_LOCAL=false                  # "false" for cloud/self-host (default: true)
+
+# Cloud (recommended)
+IMESSAGE_PROJECT_ID=...
+IMESSAGE_PROJECT_SECRET=...
+
+# Self-hosted (alternative)
+IMESSAGE_SERVER_URL=imessage.example.com:443   # gRPC host:port (NOT an https URL)
+IMESSAGE_API_KEY=...
+IMESSAGE_PHONE=+1234567890                      # optional, for multi-number routing
+
+# Webhooks (remote/cloud only)
+IMESSAGE_WEBHOOK_SECRET=whsec_...               # per-webhook signing secret
+```
+
+## Receiving messages
+
+There are two ways to receive inbound messages:
+
+- **Webhooks** (recommended for serverless) — Spectrum Cloud delivers each message to an HTTPS endpoint as signed JSON. No long-lived connection or cron job. Cloud mode only.
+- **Gateway listener** — `startGatewayListener()` consumes spectrum-ts's message stream in real time. Works in all modes; in serverless it needs a cron job to stay connected.
+
+### Webhooks
+
+In cloud mode, [Spectrum Cloud](https://app.photon.codes) delivers inbound messages to your HTTPS endpoint as signed JSON — see the [webhook docs](/webhooks/overview). This is the simplest path for serverless: no cron, no persistent connection.
+
+<Steps>
+  <Step title="Register the endpoint">
+    In the [Spectrum Cloud dashboard](https://app.photon.codes), register your endpoint URL (public HTTPS only) and copy the per-webhook **signing secret** — it is shown only once.
+  </Step>
+  <Step title="Configure the secret">
+    Set `IMESSAGE_WEBHOOK_SECRET` to that signing secret. The adapter verifies the `X-Spectrum-Signature` HMAC on every delivery and rejects unsigned, mismatched, or stale (>5 min) requests.
+
+    ```bash
+    IMESSAGE_WEBHOOK_SECRET=whsec_...
+    ```
+  </Step>
+  <Step title="Create the webhook route">
+    ```ts
+    // app/api/imessage/webhook/route.ts
+    import { after } from "next/server";
+    import { bot } from "@/lib/bot";
+
+    export async function POST(request: Request): Promise<Response> {
+      return bot.webhooks.imessage(request, {
+        waitUntil: (task) => after(() => task),
+      });
+    }
+    ```
+
+    `bot.webhooks.imessage` verifies the signature, parses the `messages` event, and routes the message into your bot. Processing runs in the background via `waitUntil`, so the endpoint acknowledges immediately.
+  </Step>
+</Steps>
+
+Spectrum Cloud retries failed deliveries with backoff and delivers at-least-once — dedupe on `X-Spectrum-Webhook-Id` + `message.id` if you need exactly-once side effects.
+
+A webhook delivery carries no live connection, but your bot can still respond to a **DM**: the adapter rebuilds the thread from its address and sends, reacts, edits, and shows typing over spectrum-ts — no gateway needed.
+
+```ts
+bot.onNewMention(async (thread, message) => {
+  await thread.post("Got it!"); // works directly from a webhook delivery (DM)
+});
+```
+
+Replying into a **group** still requires that group to have been received over the gateway listener in the same session — see [Limitations](#limitations).
+
+### Gateway listener for serverless
+
+The gateway listener keeps a live spectrum-ts stream open. In serverless, run it on a cron so it reconnects before each window expires.
+
+<Steps>
+  <Step title="Create the gateway route">
+    ```ts
+    // app/api/imessage/gateway/route.ts
+    import { after } from "next/server";
+    import { bot } from "@/lib/bot";
+
+    export const maxDuration = 800;
+
+    export async function GET(request: Request): Promise<Response> {
+      const cronSecret = process.env.CRON_SECRET;
+      if (!cronSecret) {
+        return new Response("CRON_SECRET not configured", { status: 500 });
+      }
+
+      const authHeader = request.headers.get("authorization");
+      if (authHeader !== `Bearer ${cronSecret}`) {
+        return new Response("Unauthorized", { status: 401 });
+      }
+
+      const durationMs = 600 * 1000;
+
+      return bot.adapters.imessage.startGatewayListener(
+        { waitUntil: (task) => after(() => task) },
+        durationMs
+      );
+    }
+    ```
+  </Step>
+  <Step title="Configure Vercel Cron">
+    ```json
+    // vercel.json
+    {
+      "crons": [
+        {
+          "path": "/api/imessage/gateway",
+          "schedule": "*/9 * * * *"
+        }
+      ]
+    }
+    ```
+
+    This runs every 9 minutes, overlapping the 10-minute listener duration so the stream is never down. Vercel adds `CRON_SECRET` automatically when you configure cron jobs.
+  </Step>
+</Steps>
+
+## Feature support
+
+"Remote" below means cloud or self-hosted mode — anything other than `local: true`.
+
+<Accordion title="Feature support" description="Which Chat SDK capabilities the iMessage adapter implements, by mode.">
+  | Feature | Supported |
+  |---|---|
+  | Mentions | DMs only |
+  | DMs | Yes |
+  | File uploads | Yes (send) |
+  | Reactions (add) | Remote only |
+  | Reactions (remove) | No |
+  | Message editing | Remote only |
+  | Typing indicator | Remote only |
+  | Modals | Limited (remote only) |
+  | Message history | No |
+  | Thread/chat info | No |
+  | Cards | No |
+  | Streaming | No |
+  | Ephemeral messages | No |
+  | Webhooks | Yes (remote — Spectrum Cloud delivery) |
+</Accordion>
+
+## Modals
+
+Remote mode supports limited modals by mapping Chat SDK's `openModal()` to iMessage native polls. Only `Select` children are supported — the first `Select` in the modal becomes a poll:
+
+- `Modal.title` becomes the poll question.
+- `Select.options` become the poll choices (2–10 supported).
+- Votes trigger `onModalSubmit` with the selected option's `value`.
+
+```ts
+import { Chat, Modal, Select, SelectOption } from "chat";
+import { createiMessageAdapter } from "chat-adapter-imessage";
+
+const bot = new Chat({
+  userName: "mybot",
+  adapters: {
+    imessage: createiMessageAdapter({ local: false }),
+  },
+});
+
+bot.onNewMention(async (thread, message) => {
+  await message.openModal(
+    Modal({
+      callbackId: "fav-color",
+      title: "What is your favorite color?",
+      children: [
+        Select({
+          id: "color",
+          label: "Pick a color",
+          options: [
+            SelectOption({ label: "Red", value: "red" }),
+            SelectOption({ label: "Blue", value: "blue" }),
+            SelectOption({ label: "Green", value: "green" }),
+          ],
+        }),
+      ],
+    })
+  );
+});
+
+bot.onModalSubmit("fav-color", async (event) => {
+  const color = event.values.color; // "red", "blue", or "green"
+});
+```
+
+Polls in the same chat must have distinct titles — votes are matched back to the modal by title. Local mode throws `NotImplementedError`.
+
+<Note>
+  Not supported: `Select.placeholder`/`label`, `TextInput`, `RadioSelect`, `Modal.submitLabel`/`closeLabel`, more than one `Select`, and poll vote deselection.
+</Note>
+
+## Tapback reactions
+
+iMessage uses tapbacks instead of emoji reactions. The adapter maps standard emoji names to iMessage tapbacks.
+
+<Accordion title="Tapback mapping" description="Emoji names accepted by addReaction and the iMessage tapback each maps to.">
+  | Emoji name | Tapback |
+  |---|---|
+  | `love` / `heart` | Love |
+  | `like` / `thumbs_up` | Like |
+  | `dislike` / `thumbs_down` | Dislike |
+  | `laugh` | Laugh |
+  | `emphasize` / `exclamation` | Emphasize |
+  | `question` | Question |
+</Accordion>
+
+## Limitations
+
+- **DMs send cold; groups are session-bound.** For a **DM**, the adapter rebuilds the thread from its address over gRPC, so it can send, react, edit, and show typing even into a thread it hasn't seen this session — including a webhook delivery. A **group** has no by-id resolver, so addressing one requires it to have been received over the gateway/stream in the current session; cold sends to an unseen group throw `NotImplementedError`. Local mode cannot create spaces at all — it only replies to received messages.
+- **No message history.** `fetchMessages` is not supported — spectrum-ts exposes no paginated history API.
+- **No thread/chat info.** `fetchThread` is not supported.
+- **No reaction removal.** `removeReaction` is not supported.
+- **Local mode** supports sending and receiving, but not reactions, typing, editing, modals, history, or thread info.
+- **Formatting.** iMessage is plain-text only; Markdown formatting is stripped when sending, preserving the text content.
+- **Platform.** Local mode requires macOS. Cloud and self-host run anywhere.
+- **Cards.** iMessage has no structured card layouts.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="serverUrl is required when local is false">
+    Provide cloud credentials (`IMESSAGE_PROJECT_ID` + `IMESSAGE_PROJECT_SECRET`), or a self-host `IMESSAGE_SERVER_URL` + `IMESSAGE_API_KEY`.
+  </Accordion>
+  <Accordion title="Self-host connection issues">
+    Confirm `IMESSAGE_SERVER_URL` is a gRPC `host:port` (e.g. `imessage.example.com:443`), not an `https://` URL. Verify the token matches your server's credentials.
+  </Accordion>
+  <Accordion title="Local mode not receiving messages">
+    Verify **Full Disk Access** is granted to your terminal or application, and that iMessage is signed in and working on the Mac.
+  </Accordion>
+  <Accordion title="NotImplementedError from fetchMessages / fetchThread / removeReaction">
+    These are not supported by spectrum-ts. See [Limitations](#limitations).
+  </Accordion>
+</AccordionGroup>

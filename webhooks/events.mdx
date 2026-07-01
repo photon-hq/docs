@@ -1,0 +1,413 @@
+---
+title: Events
+description: The exact wire format Spectrum sends — headers, body, and what each field contains
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+
+
+
+
+In the [Quickstart](/webhooks/quickstart), a real delivery flew past in `console.log`. This page is the spec — every header and every field your handler will see on every request, slowed down and labelled.
+
+The body's `space`, `message`, `sender`, and `content` fields are the same shapes you'd see from the [`spectrum-ts` SDK](/spectrum-ts/messages) — with one important difference: function-typed properties (`.read()`, `.stream()`, `.reply()`, `.react()`, etc.) are stripped before serialization, since functions can't survive `JSON.stringify`. Every other own enumerable field declared by the platform's <TypeTooltip name="Space" type={`interface Space<_Def = unknown> {
+    readonly __platform: string;
+    avatar(input: string | URL, options?: {
+        mimeType?: string;
+    }): Promise<void>;
+    avatar(input: Buffer, options: {
+        mimeType: string;
+    }): Promise<void>;
+    edit(message: Message | undefined, newContent: ContentInput): Promise<void>;
+    getMessage(id: string): Promise<Message | undefined>;
+    readonly id: string;
+    read(message: Message): Promise<void>;
+    rename(displayName: string): Promise<void>;
+    responding<T>(fn: () => T | Promise<T>): Promise<T>;
+    send(content: ReactionBuilder): Promise<(Message<string, AgentSender> & {
+        content: Reaction;
+    }) | undefined>;
+    send(content: ContentInput): Promise<Message<string, AgentSender> | undefined>;
+    send(...content: [
+        ContentInput,
+        ContentInput,
+        ...ContentInput[]
+    ]): Promise<Message<string, AgentSender>[]>;
+    startTyping(): Promise<void>;
+    stopTyping(): Promise<void>;
+    unsend(message: Message | undefined): Promise<void>;
+}`} /> schema (e.g. iMessage's `phone` and `type`) is forwarded unchanged.
+
+## Anatomy of a delivery
+
+```http
+POST /your-webhook-path HTTP/1.1
+Host: your-app.com
+Content-Type: application/json
+User-Agent: spectrum-webhook/0.1.0
+X-Spectrum-Event: messages
+X-Spectrum-Webhook-Id: 60d6d04f-f9fa-4a7b-9c97-37c9c90ce91c
+X-Spectrum-Timestamp: 1747242392
+X-Spectrum-Signature: v0=fc9bf49ef3ba4122ba4be6e289f88ac692f5ce8e13f0415cb38d59428eae8a8c
+
+{
+  "event": "messages",
+  "space": {
+    "id": "any;-;+15550100",
+    "platform": "iMessage",
+    "type": "dm",
+    "phone": "+15551234567"
+  },
+  "message": {
+    "id": "spc-msg-00000000-0000-4000-8000-000000000001",
+    "platform": "iMessage",
+    "direction": "inbound",
+    "timestamp": "2026-05-14T19:06:32.000Z",
+    "sender": {
+      "id": "+15550100",
+      "platform": "iMessage"
+    },
+    "space": {
+      "id": "any;-;+15550100",
+      "platform": "iMessage",
+      "type": "dm",
+      "phone": "+15551234567"
+    },
+    "content": {
+      "type": "text",
+      "text": "hey, what time is dinner?"
+    }
+  }
+}
+```
+
+The exact ID formats and the `platform` value are decided by each provider — not by Spectrum. The example above is an iMessage delivery; WhatsApp Business and other platforms use their own conventions. Don't pattern-match on these strings; use them as opaque identifiers.
+
+## Headers
+
+| Header | Value | Notes |
+| --- | --- | --- |
+| `Content-Type` | `application/json` | Always. The body is UTF-8 JSON. |
+| `User-Agent` | `spectrum-webhook/<version>` | Identifies the worker. Useful for IP/UA allow-listing. |
+| `X-Spectrum-Event` | Event type, e.g. `messages` | Mirrors the `event` field in the body. Lets you route without parsing the body first. |
+| `X-Spectrum-Webhook-Id` | UUID of the registered webhook | Identifies *which* of your URLs this delivery is for. Useful with multiple registrations and required for idempotency keys. |
+| `X-Spectrum-Timestamp` | UNIX epoch seconds at signing time | Required to verify the signature. Also reject deliveries older than ~5 minutes for replay protection. |
+| `X-Spectrum-Signature` | `v0=<64-char hex>` | HMAC-SHA256 of `v0:{timestamp}:{rawBody}` keyed by the webhook's signing secret. See [Verifying signatures](/webhooks/verifying-signatures). |
+
+<Note>
+HTTP headers are case-insensitive. Most frameworks normalize to lowercase (`x-spectrum-event`); use whichever your framework returns.
+</Note>
+
+## Body shape
+
+The body is a JSON object. The `event` field is a discriminator — every other field's shape depends on which event you're handling.
+
+```ts
+type WebhookEventPayload =
+  | { event: 'messages'; space: SerializedSpace; message: SerializedInboundMessage };
+  // 'messages' is the only event today; new top-level events would extend this union
+```
+
+### `event: "messages"` payload
+
+This is the only event currently emitted. It fires once per inbound message that lands for your project. A reaction is **not** a separate event — it arrives inside this `messages` payload as a `message.content.type` arm (see [Content shapes](#content-shapes)). Branch on `content.type`, not `event`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `event` | `"messages"` | Discriminator. Always `"messages"` for this payload. |
+| `space` | `object` | The conversation context. Always carries `id` + `platform`; additional fields depend on the platform — see [Space](#space) below. |
+| `message` | `object` | The inbound message. See [Message](#message) below. |
+
+#### Space
+
+Every `space` object guarantees `id` and `platform`. Every other own enumerable field declared by the platform's [`Space`](/spectrum-ts/spaces-and-users) schema is forwarded inline — function-typed SDK methods (`send`, `edit`, `getMessage`, etc.) are the only thing stripped. The current per-platform fields are:
+
+<AccordionGroup>
+  <Accordion title="Common fields" description="Always present on every space, regardless of platform.">
+    | Field | Type | Description |
+    | --- | --- | --- |
+    | `id` | `string` | Opaque, stable identifier for the conversation. Format varies by platform and space type — treat it as a string you store and pass back unchanged. For iMessage DMs, looks like `any;-;+<E.164>`; for groups, a chat GUID. |
+    | `platform` | `string` | The platform that owns this space. See [Providers](/spectrum-ts/providers) for the current set of values; new platforms add new values without breaking existing payloads. |
+  </Accordion>
+  <Accordion title="iMessage-specific fields" description="Forwarded from the iMessage space schema (`type`, `phone`).">
+    | Field | Type | Description |
+    | --- | --- | --- |
+    | `type` | `"dm" \| "group"` | Conversation kind. `"dm"` is a 1:1 chat with one phone number; `"group"` is a multi-recipient chat. |
+    | `phone` | `string` | The iMessage line this conversation was received on. A **dedicated** line reports its E.164 number; a **shared** (pooled) line reports the literal `shared`. Treat it as an opaque label for which of your project's lines the message landed on. |
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+**Forward-compatible.** New platform schema fields are forwarded automatically without a webhook deploy. Read the fields you care about; ignore the rest.
+</Note>
+
+The `space.id` matches the `space.id` you'd see from the [`spectrum-ts` SDK](/spectrum-ts/spaces-and-users). There is no public HTTP send-message endpoint, and no "get space by id" call — to reply, run a separate SDK instance and either use the live `Space` yielded by its `messages` stream or rebuild the conversation from the sender (`imessage(app).space(await im.user(sender.id))`), then call `space.send(...)`.
+
+#### Message
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Stable opaque identifier — **treat it as opaque, don't parse it**. A plain message is `spc-msg-<uuid>`; a derived event carries a composite id (a reaction is `spc-msg-<uuid>:reaction:<seq>:<idx>`). Dedupe on it as-is. |
+| `platform` | `string` | The platform that sourced the message. Same value as `space.platform`. |
+| `direction` | `"inbound"` | Always `"inbound"` — outbound messages are not delivered as webhooks. |
+| `timestamp` | `string` | ISO 8601 UTC timestamp from the platform (when the user sent it). |
+| `sender` | `{ id, platform }` | The user who sent the message. The `id` format is platform-defined (for iMessage it's the E.164 phone number `+15551234567`; for WhatsApp Business it's the WA contact id). |
+| `space` | `object` | A copy of the top-level `space` field, denormalized for convenience. Same shape — see [Space](#space) above. |
+| `content` | object | The message content. Shape depends on the message type — see [Content shapes](#content-shapes) below. |
+
+#### Idempotency: the `message.id` rule
+
+A single inbound message **always carries the same `message.id` across every delivery it produces**, no matter how many webhook URLs you have registered. If you have two URLs registered for one project and a message arrives, both URLs receive a `POST` in parallel — and both bodies have the same `message.id`. If a delivery is retried (after a 5xx or timeout on your side), the retry also carries the same `message.id`.
+
+That makes `message.id` the right dedup key when one downstream consumer handles every webhook for the project:
+
+```ts
+const dedupeKey = payload.message.id;
+if (await store.exists(dedupeKey)) return new Response('ok', { status: 200 });
+await processOnce(payload);
+await store.set(dedupeKey, true, { ttl: 48 * 60 * 60 });
+```
+
+If different services consume different webhook URLs and each one needs its own dedup table, scope the key with the webhook id so the same message processed by service A doesn't suppress service B:
+
+```ts
+const dedupeKey = `${webhookId}:${payload.message.id}`;
+```
+
+#### Content shapes
+
+`content` is a discriminated union tagged by `type`. The <TypeTooltip name="Content" type={`type Content = z.infer<typeof contentSchema>;`} /> tooltip shows the SDK's *in-process* type — it carries method thunks (`read()`, `stream()`) and full nested `Message` targets. The wire is a projection of it: thunks and server-internal fields are dropped, and message targets are slimmed to a [ref](#target-refs). The `Content` union covers everything you can *send*; only a subset is delivered *inbound*. The two you'll see on the vast majority of deliveries are `text` and `attachment`:
+
+```ts
+type Content =
+  | { type: 'text'; text: string }
+  | {
+      type: 'attachment';
+      id: string;         // stable, provider-native id (iMessage GUID, Slack file id, WhatsApp media id) — pass to getAttachment() to fetch the bytes
+      name: string;       // original filename, e.g. "IMG_4127.HEIC"
+      mimeType: string;   // e.g. "image/heic", "audio/mp4", "application/pdf"
+      size?: number;      // bytes — present when the provider knows the size (always for iMessage; may be absent for some custom providers)
+    };
+  // more content arms — see the per-arm reference below
+```
+
+**Text** is what you'll see for the vast majority of inbound messages.
+
+**Attachment** is what you'll see for any non-text content from iMessage — photos, voice memos, audio files, videos, documents. The `mimeType` field is the discriminator for *what kind* of attachment it is:
+
+| `mimeType` prefix | Kind | Example values |
+| --- | --- | --- |
+| `image/*` | Photo or image attachment | `image/heic`, `image/jpeg`, `image/png` |
+| `audio/*` | Voice memo or audio file | `audio/mp4`, `audio/x-m4a` |
+| `video/*` | Video clip | `video/mp4`, `video/quicktime` |
+| `application/*` | Document or file | `application/pdf`, `application/zip` |
+
+<Warning>
+**Byte-bearing arms ship metadata, not bytes.** `attachment` and `contact.photo` both carry `mimeType` / `size` / filename — never the raw bytes themselves and never a download URL. The `attachment` arm carries an `id` you use to fetch the file out of band — see [Retrieving an attachment](#retrieving-an-attachment).
+</Warning>
+
+##### Retrieving an attachment
+
+The payload tells you a file *exists* and what it is — it never carries the bytes, and there's no HTTP endpoint to download them (the same constraint as [sending](#what-you-dont-get)). The `attachment` arm's `id` is a stable, provider-native identifier — an iMessage GUID here; a Slack file id or WhatsApp media id on those platforms. To pull the bytes, run a [`spectrum-ts`](/spectrum-ts/getting-started) instance — the same one you'd use to reply — and hand the `id` to the provider's `getAttachment`:
+
+```ts
+// `im` is the same iMessage instance you reply through: const im = imessage(app)
+// `content` is the attachment arm and `space` is the delivery's space — both from the payload.
+const file = await im.getAttachment(content.id, space.phone);
+
+if (file) {
+  const bytes = await file.read();    // the whole file, as a Buffer
+  // for large media, stream it instead of buffering:
+  // const stream = await file.stream();
+}
+```
+
+`getAttachment` resolves to the attachment with lazy byte accessors — `read()` buffers the whole file, `stream()` opens a byte stream — or `undefined` if the provider no longer has it. Pass `space.phone` so a pooled (shared) line resolves against the right account; on a dedicated line it's optional. Other providers expose their own retrieval keyed off the same `id` — see each [provider's guide](/spectrum-ts/providers).
+
+##### Per-arm wire reference
+
+The arms a current provider (iMessage, WhatsApp Business) delivers inbound today, with their post-projection wire fields:
+
+| `type` | What it is | Wire fields (post-projection) |
+| --- | --- | --- |
+| `text` | A plain text message — the most common arm. | `text: string` |
+| `attachment` | A file attachment — photo, video, audio, voice memo, or document. | `id: string`, `name: string`, `mimeType: string`, `size?: number` |
+| `contact` | A contact card — all fields optional. Full shape: [`Contact`](/spectrum-ts/content). | `name?: { formatted?, first?, last? }`, `phones?: [{ value, type? }]`, `photo?: { mimeType }`, `raw?` |
+| `richlink` | A link preview — URL only on the wire; OG metadata is not pre-fetched. | `url: string` |
+| `reaction` | An emoji reaction targeting another message. | `emoji: string`, [`target: MessageRef`](#target-refs) |
+| `group` | An **album** — multiple attachments (e.g. several photos) sent as one message. | [`items`](#message)`: SerializedInboundMessage[]` — each entry is a full inbound message with its own `content` (typically `attachment`), `id`, `sender`, `timestamp`. Albums don't nest. See example below. |
+
+A few cross-cutting points the table doesn't surface:
+
+- **Byte-bearing arms** (`attachment`, `contact.photo`) ship metadata only — see the [warning above](#content-shapes). The SDK's `read()` / `stream()` thunks and the internal filesystem `path` are dropped before delivery. iMessage voice memos arrive as `attachment` with an `audio/*` `mimeType`, not as a distinct arm.
+- **`target` on `reaction`** is the slim shape documented under [Target refs](#target-refs) below, not a full nested message.
+- **`richlink`** ships only `url` — OG fetches happen in your handler, since resolving them inline at delivery time would tie latency to the slowest target site.
+
+A `group` (album) nests each attachment as a full inbound message in `items` — here, two photos sent together:
+
+```json
+"content": {
+  "type": "group",
+  "items": [
+    {
+      "id": "p:0/spc-msg-00000000-0000-4000-8000-000000000001",
+      "direction": "inbound",
+      "platform": "iMessage",
+      "sender": { "id": "+15550100", "platform": "iMessage" },
+      "timestamp": "2026-05-14T19:06:32.000Z",
+      "content": { "type": "attachment", "id": "1A2B3C4D-0001-4ABC-9DEF-000000000001", "name": "IMG_4351.HEIC", "mimeType": "image/heic", "size": 1365240 }
+    },
+    {
+      "id": "p:1/spc-msg-00000000-0000-4000-8000-000000000001",
+      "direction": "inbound",
+      "platform": "iMessage",
+      "sender": { "id": "+15550100", "platform": "iMessage" },
+      "timestamp": "2026-05-14T19:06:32.000Z",
+      "content": { "type": "attachment", "id": "1A2B3C4D-0002-4ABC-9DEF-000000000002", "name": "IMG_4354.HEIC", "mimeType": "image/heic", "size": 1888241 }
+    }
+  ]
+}
+```
+
+Each item has the same shape as the top-level [`message`](#message) and carries its own `content`; for an album they're `attachment`s, and item ids are child ids (`p:<n>/spc-msg-<uuid>`).
+
+##### Arms you won't receive inbound
+
+Two arms you might expect arrive as something else: inbound **replies come as plain `text`** (there's no `reply` arm on the wire — the thread link isn't surfaced), and **voice memos come as `attachment`** (`audio/*`). Anything else in the SDK's [`Content`](/spectrum-ts/content) union is send-only or a rare provider-specific case — don't build on receiving it inbound.
+
+Don't branch on arms you can't receive — but always keep a `default:` case, so an arm a future SDK/provider bump starts delivering (forwarded generically as `type: string` plus its JSON-safe fields) can't break your handler.
+
+##### Target refs
+
+The `target` field on `reaction` — and on `reply` / `edit` if a future provider ever emits them inbound — doesn't recurse into the full referenced message. A reaction on a multi-KB photo would otherwise balloon a 200-byte ack into the entire ancestor tree. The wire ships a slim reference instead:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Stable opaque identifier of the referenced message. |
+| `platform` | `string` | Source platform — same value as the parent message's `platform`. |
+| `timestamp` | `string` | ISO 8601 UTC timestamp of the referenced message. |
+| `sender?` | `{ id, platform }` | The user who sent the referenced message, when known. |
+| `contentPreview?` | `string` | First 80 characters of the referenced message's text, with an ellipsis if truncated. Populated only when the target's content is `text`. |
+
+Look the target up in your own message store (keyed off `id`) when you need its full body; `contentPreview` is enough for "👍 on «hello»" UI strings without a second round-trip.
+
+A received reaction is just a `content` arm on a normal `messages` delivery — here, a ❤️ on the message from [Anatomy of a delivery](#anatomy-of-a-delivery):
+
+```json
+"content": {
+  "type": "reaction",
+  "emoji": "❤️",
+  "target": {
+    "id": "spc-msg-00000000-0000-4000-8000-000000000001",
+    "platform": "iMessage",
+    "timestamp": "2026-05-14T19:06:32.000Z",
+    "sender": { "id": "+15550100", "platform": "iMessage" },
+    "contentPreview": "hey, what time is dinner?"
+  }
+}
+```
+
+On a reaction delivery, `message.sender` is **who reacted**; `content.target.sender` is who sent the message they reacted to.
+
+<Tip>
+Always handle unknown `content.type` values gracefully — new content arms may be added without a breaking version bump, and the worker forwards them through the generic projection above. A `default:` arm in your switch that logs and moves on is enough.
+
+```ts
+switch (content.type) {
+  case 'text':
+    handleText(content.text);
+    break;
+  case 'attachment':
+    if (content.mimeType.startsWith('image/')) handleImage(content);
+    else if (content.mimeType.startsWith('audio/')) handleAudio(content);
+    else handleGenericAttachment(content);
+    break;
+  case 'reaction':
+    handleReaction(content.emoji, content.target.id);
+    break;
+  default:
+    console.warn('unknown content type:', content.type);
+    break;
+}
+```
+</Tip>
+
+## What you don't get
+
+A few things that may be in the SDK's <TypeTooltip name="Message" type={`interface Message<TPlatform extends string = string, TSender extends User = User, TSpace extends Space = Space> {
+    content: Content;
+    direction: "inbound" | "outbound";
+    edit(newContent: ContentInput): Promise<void>;
+    readonly id: string;
+    platform: TPlatform;
+    react(reaction: string): Promise<(Message<TPlatform, AgentSender, TSpace> & {
+        content: Reaction;
+    }) | undefined>;
+    read(): Promise<void>;
+    reply(content: ContentInput): Promise<Message<TPlatform, AgentSender, TSpace> | undefined>;
+    reply(...content: [
+        ContentInput,
+        ContentInput,
+        ...ContentInput[]
+    ]): Promise<Message<TPlatform, AgentSender, TSpace>[]>;
+    sender: TSender | undefined;
+    space: TSpace;
+    timestamp: Date;
+    unsend(): Promise<void>;
+}`} /> type but are intentionally **not** in the webhook payload:
+
+- **Methods like `.reply()` or `.react()`.** They depend on a live SDK connection. To respond, run [`spectrum-ts`](/spectrum-ts/getting-started) in a separate process and reply through a live `Space` (from its `messages` stream, or rebuilt from the sender). There is no HTTP send endpoint, and no "get space by id" call, yet.
+- **Internal provider state.** Things like raw protocol headers, retry hints, and message acknowledgements are stripped before serialization.
+- **Outbound messages.** Webhooks deliver inbound only. A message you sent does not echo back as a webhook.
+
+## Forward compatibility
+
+The set of events will grow. To stay forward-compatible:
+
+1. **Branch on `event` defensively.** Use a `switch` with a `default` arm that returns `2xx` and logs the unknown event. Never crash on unknown values.
+
+   ```ts
+   switch (payload.event) {
+     case 'messages':
+       handleMessage(payload);
+       break;
+     default:
+       console.warn('unknown webhook event', payload.event);
+       break;
+   }
+   return new Response('ok', { status: 200 });
+   ```
+
+2. **Treat extra fields as unknown but tolerable.** New optional fields may appear in existing payload shapes. They'll never repurpose existing fields.
+
+3. **Don't subscribe to specific event types.** Today every URL receives every event. If a `subscriptions` field lands in the future, the default will continue to be "all events" so existing webhooks keep working.
+
+## Quick reference card
+
+```text
+Required to verify a delivery
+   X-Spectrum-Timestamp + X-Spectrum-Signature + raw body bytes + your signingSecret
+
+Required to route a delivery
+   X-Spectrum-Event   (or body.event)
+
+Required for idempotency
+   X-Spectrum-Webhook-Id + body.message.id (for messages event)
+
+Always returns 2xx fast
+   Process asynchronously after acknowledging — see /webhooks/delivery
+```
+
+## Where to next
+
+You now know exactly what arrives at your URL. The next two chapters cover *trusting* it and *handling failures* when something goes wrong.
+
+<Columns cols={2}>
+  <Card title="Verifying signatures" icon="shield-halved" href="/webhooks/verifying-signatures">
+    The four details every verifier has to get exactly right, with copy-paste implementations in four languages.
+  </Card>
+  <Card title="Delivery and retries" icon="repeat" href="/webhooks/delivery">
+    Retry policy, timeouts, idempotency, and what HTTP status codes mean to the worker.
+  </Card>
+</Columns>

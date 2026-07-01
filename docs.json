@@ -1,0 +1,324 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "almond",
+  "name": "Photon",
+  "colors": {
+    "primary": "#47c6ed",
+    "light": "#47c6ed",
+    "dark": "#47c6ed"
+  },
+  "fonts": {
+    "heading": {
+      "family": "PolySansArabicVF",
+      "source": "/fonts/PolySansArabicVF.woff2",
+      "format": "woff2"
+    },
+    "body": {
+      "family": "PolySansArabicVF",
+      "source": "/fonts/PolySansArabicVF.woff2",
+      "format": "woff2"
+    }
+  },
+  "favicon": "/favicon-128x128.png",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Spectrum",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "spectrum-ts/introduction",
+              "spectrum-ts/getting-started"
+            ]
+          },
+          {
+            "group": "Core concepts",
+            "pages": [
+              "spectrum-ts/messages",
+              "spectrum-ts/spaces-and-users",
+              "spectrum-ts/reactions-and-replies",
+              "spectrum-ts/platform-narrowing",
+              "spectrum-ts/webhooks"
+            ]
+          },
+          {
+            "group": "Content",
+            "pages": [
+              "spectrum-ts/content",
+              "spectrum-ts/content/text",
+              "spectrum-ts/content/markdown",
+              "spectrum-ts/content/attachments",
+              "spectrum-ts/content/voice",
+              "spectrum-ts/content/contacts",
+              "spectrum-ts/content/rich-links",
+              "spectrum-ts/content/app",
+              "spectrum-ts/content/polls",
+              "spectrum-ts/content/groups",
+              "spectrum-ts/content/custom",
+              "spectrum-ts/content/replies",
+              "spectrum-ts/content/edits",
+              "spectrum-ts/content/unsend",
+              "spectrum-ts/content/typing-indicators",
+              "spectrum-ts/content/rename",
+              "spectrum-ts/content/avatar",
+              "spectrum-ts/content/composing-content"
+            ]
+          },
+          {
+            "group": "Providers",
+            "pages": [
+              "spectrum-ts/providers",
+              {
+                "group": "iMessage",
+                "icon": "comment",
+                "root": "spectrum-ts/providers/imessage",
+                "pages": [
+                  "spectrum-ts/providers/imessage/connection-and-routing",
+                  "spectrum-ts/providers/imessage/messaging-features"
+                ]
+              },
+              {
+                "group": "Terminal",
+                "icon": "terminal",
+                "root": "spectrum-ts/providers/terminal",
+                "pages": [
+                  "spectrum-ts/providers/terminal/setup-and-usage",
+                  "spectrum-ts/providers/terminal/interactions"
+                ]
+              },
+              {
+                "group": "WhatsApp Business",
+                "icon": "whatsapp",
+                "root": "spectrum-ts/providers/whatsapp-business",
+                "pages": [
+                  "spectrum-ts/providers/whatsapp-business/setup",
+                  "spectrum-ts/providers/whatsapp-business/conversations"
+                ]
+              },
+              {
+                "group": "Telegram",
+                "icon": "paper-plane",
+                "root": "spectrum-ts/providers/telegram",
+                "pages": [
+                  "spectrum-ts/providers/telegram/setup",
+                  "spectrum-ts/providers/telegram/conversations-and-features"
+                ]
+              },
+              {
+                "group": "Slack",
+                "icon": "hash",
+                "root": "spectrum-ts/providers/slack",
+                "pages": [
+                  "spectrum-ts/providers/slack/setup",
+                  "spectrum-ts/providers/slack/conversations-and-events"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "spectrum-ts/custom-events-and-lifecycle",
+              "spectrum-ts/custom-platforms"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "integrations/chat-sdk"
+            ]
+          },
+          {
+            "group": "Best Practices",
+            "pages": [
+              "best-practices/architecture",
+              "best-practices/inbound-pipeline",
+              "best-practices/recovery-and-state",
+              "best-practices/imessage-deliverability"
+            ]
+          },
+          {
+            "group": "Troubleshooting",
+            "pages": [
+              "spectrum-ts/troubleshooting/imessage"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "cli/overview",
+              "cli/installation",
+              "cli/authentication"
+            ]
+          },
+          {
+            "group": "Commands",
+            "pages": [
+              "cli/projects",
+              "cli/spectrum",
+              "cli/billing",
+              "cli/profile-and-utilities"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Webhooks",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "webhooks/overview",
+              "webhooks/quickstart",
+              "webhooks/events"
+            ]
+          },
+          {
+            "group": "Implementation",
+            "pages": [
+              "webhooks/verifying-signatures",
+              "webhooks/delivery",
+              "webhooks/managing-webhooks",
+              "webhooks/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Low-level SDKs",
+        "groups": [
+          {
+            "group": "Advanced Kits",
+            "pages": [
+              {
+                "group": "iMessage",
+                "icon": "apple",
+                "pages": [
+                  "advanced-kits/imessage/getting-started",
+                  "advanced-kits/imessage/messages",
+                  "advanced-kits/imessage/chats",
+                  "advanced-kits/imessage/groups",
+                  "advanced-kits/imessage/attachments",
+                  "advanced-kits/imessage/polls",
+                  "advanced-kits/imessage/addresses",
+                  "advanced-kits/imessage/locations",
+                  "advanced-kits/imessage/events",
+                  "advanced-kits/imessage/error-handling"
+                ]
+              },
+              {
+                "group": "WhatsApp Business",
+                "icon": "whatsapp",
+                "pages": [
+                  "advanced-kits/whatsapp/getting-started",
+                  "advanced-kits/whatsapp/messages",
+                  "advanced-kits/whatsapp/interactive-messages",
+                  "advanced-kits/whatsapp/templates",
+                  "advanced-kits/whatsapp/events",
+                  "advanced-kits/whatsapp/media",
+                  "advanced-kits/whatsapp/error-handling"
+                ]
+              },
+              {
+                "group": "Legacy",
+                "icon": "hat-cowboy",
+                "pages": [
+                  "legacy/imessage"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Opensource Kits",
+            "pages": [
+              "opensource/imessage-kit"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "utilities/heif2jpeg"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API reference",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "api-reference/introduction",
+              "api-reference/rate-limit"
+            ]
+          },
+          {
+            "group": "Dashboard API",
+            "openapi": "api-reference/dashboard-openapi.json"
+          },
+          {
+            "group": "Spectrum API",
+            "openapi": "https://spectrum.photon.codes/openapi/json"
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Blog",
+          "href": "https://photon.codes/blog",
+          "icon": "newspaper"
+        }
+      ]
+    }
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Contact",
+        "href": "https://photon.codes/contact"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Dashboard",
+      "href": "https://app.photon.codes"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
+  },
+  "footer": {
+    "socials": {
+      "x": "https://x.com/photon_hq",
+      "github": "https://github.com/photon-hq",
+      "linkedin": "https://www.linkedin.com/company/photonhq",
+      "discord": "https://discord.gg/4c3VJzDfNA"
+    }
+  },
+  "seo": {
+    "metatags": {
+      "canonical": "https://photon.codes/docs"
+    }
+  }
+}
