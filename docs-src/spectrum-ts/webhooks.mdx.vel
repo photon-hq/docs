@@ -181,7 +181,7 @@ All three adapters accept the same options:
 ## What the SDK handles
 
 - **Signature verification.** Native webhooks are verified with `HMAC-SHA256` over `v0:<timestamp>:<rawBody>`, with a 5-minute replay window. Bad signature returns `401`, missing headers return `400`.
-- **Payload deserialization.** Native webhook JSON is deserialized into normal `Message` / `Space` objects, including reactions and grouped items.
+- **Payload deserialization.** Native webhook JSON is deserialized into normal `Message` / `Space` objects, including reactions, replies, and grouped items.
 - **Attachment rehydration.** Native webhooks carry attachment metadata only. `read()` and `stream()` fetch the bytes lazily via the platform.
 - **Format detection.** Native vs Fusor is detected per request by payload shape — JSON for native, protobuf for Fusor.
 

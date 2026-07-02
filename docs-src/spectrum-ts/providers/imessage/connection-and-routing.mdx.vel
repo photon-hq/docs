@@ -34,7 +34,7 @@ Use this page to choose an iMessage connection mode and understand how Spectrum 
     ```
 
     <Note>
-      Local mode only supports sending text and attachments. Reactions, typing indicators, threaded replies, group creation, chat backgrounds, chat renaming, and group avatars are not available.
+      Local mode only supports sending text and attachments. Reactions, typing indicators, threaded replies, group chat creation, chat backgrounds, chat renaming, and group avatars are not available. DM space creation (`space.create`) and existing chat lookup (`space.get`) work offline.
     </Note>
   </Tab>
   <Tab title="Dedicated">
@@ -146,7 +146,7 @@ To look up an existing conversation by its chat GUID, use `space.get(id)`:
 const existing = await im.space.get("any;-;+15551111111");
 ```
 
-Space creation requires cloud or dedicated mode. In local mode `space.create()` throws because the local Messages database doesn't expose chat creation. Shared mode cannot create group chats. Use a dedicated number, or `space.get(chatGuid)` for an existing group.
+In local mode, `space.create()` supports DMs — pass a single user and the provider builds a deterministic chat GUID offline. Group creation (`space.create` with multiple users) is not available in local mode. `space.get(chatGuid)` works in local mode for both DM and group GUIDs. Shared mode cannot create group chats — use a dedicated number, or `space.get(chatGuid)` for an existing group.
 
 ### Per-phone routing
 
