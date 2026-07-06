@@ -1,14 +1,13 @@
 {
-  "$comment": "Doc sources aggregated into .vellum-src before `vellum build`. Each source mounts under .vellum-src/<mount>/ (mount == page-slug prefix). `docsDir` is the source repo's Mintlify-templates directory; we use `docs-site/` (NOT `docs/`, which several repos already use for internal dev notes). `package` is the installed npm package whose version selects the git tag (`<tagPrefix><version>`) to pull docs from, keeping prose aligned with the types vellum extracts. `local` is a path under this repo used as a fallback when the repo has no docs at that ref yet (transitional) or when forced via DOCS_SOURCE_MODE=local. Per-source ref override: DOCS_REF_<name> env (dots/dashes -> underscores).",
+  "$comment": "Doc sources aggregated into .vellum-src before `vellum build`. Each source mounts under .vellum-src/<mount>/ (mount == page-slug prefix). `docsDir` is the source repo's Mintlify-template directory. `ref` selects the source repo revision for authored docs; use main so prose fixes can ship without package releases. `package` records the installed npm package tied to the source; Vellum still extracts types from package.json dependencies. `local` is a path under this repo used as a fallback for offline local builds or when forced via DOCS_SOURCE_MODE=local. Per-source ref override: DOCS_REF_<name> env (dots/dashes -> underscores).",
   "sources": [
     {
       "name": "spectrum-ts",
       "mount": "spectrum-ts",
       "package": "spectrum-ts",
       "repo": "photon-hq/spectrum-ts",
-      "docsDir": "docs-site",
-      "tagPrefix": "v",
-      "ref": null,
+      "docsDir": "docs",
+      "ref": "main",
       "nav": "nav.json",
       "local": "docs-src/spectrum-ts"
     }
