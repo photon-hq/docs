@@ -10,6 +10,8 @@ import type {
   Chat,
   LocationRequestReceipt,
   Message,
+  MiniAppCardSession,
+  MiniAppMessageResult,
   Poll,
   UploadAttachmentResult,
 } from "@photon-ai/advanced-imessage";

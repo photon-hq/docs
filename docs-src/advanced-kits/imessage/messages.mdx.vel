@@ -22,7 +22,9 @@ Get a `chat.guid` before calling message APIs. `chat.guid` is the server's chat 
 | Add a message effect | `effect: MessageEffect.*` |
 | Format text | `formatting: [...]` |
 | Send an attachment | Upload with `im.attachments.upload(...)`, then call `im.messages.sendAttachment(...)` |
+| Send a server-managed Spectrum mini app card | `im.messages.sendMiniApp(chat.guid, message)` |
 | Send a card that opens your iMessage extension | `im.messages.sendCustomizedMiniApp(chat.guid, message)` |
+| Update a mini app card in place | `im.messages.updateMiniApp(session, message)` or `im.messages.updateCustomizedMiniApp(session, message)` |
 | Reply to a message | `replyTo` on `sendText(...)`, `sendAttachment(...)`, or `sendMultipart(...)` |
 | Send multipart content | `im.messages.sendMultipart(...)` |
 | Add or remove a reaction | `im.messages.setReaction(...)` |
@@ -186,6 +188,60 @@ await im.messages.sendAttachment(chat.guid, audio.attachment.guid, {
 
 ## Send Mini App Cards
 
+There are two kinds of mini app card:
+
+| Kind | Method | When to use |
+|---|---|---|
+| Server-managed | `sendMiniApp(...)` | Spectrum handles the iMessage extension identity. You supply a URL and a preview. |
+| Customized | `sendCustomizedMiniApp(...)` | You own the iMessage extension. You supply team, bundle, and layout details. |
+
+Both return a `MiniAppMessageResult`, which extends `Message` with a `miniAppCardSession` handle. Save `miniAppCardSession` to [update the card in place](#update-a-mini-app-card) later.
+
+### Server-Managed Cards
+
+`sendMiniApp(...)` sends a Spectrum mini app card. The server owns the iMessage extension identity and wraps `url` for the Spectrum mini-app host. You provide a `url` and a `preview` describing what the card looks like.
+
+```ts
+const sent = await im.messages.sendMiniApp(chat.guid, {
+  url: "https://example.com/card/42",
+  preview: {
+    title: "Card Title",
+    subtitle: "Subtitle text",
+    body: "Body text for the card",
+    caption: "Caption",
+  },
+});
+
+console.log(sent.guid);
+console.log(sent.miniAppCardSession.sessionId);
+```
+
+| Field | Meaning |
+|---|---|
+| `url` | Absolute HTTP or HTTPS URL opened from the card. |
+| `preview` | Visible card preview, covered in [Card Preview](#card-preview) below. |
+
+### Card Preview
+
+`preview` controls the visible content of a server-managed mini app card.
+
+| Slot | Meaning |
+|---|---|
+| `title` | Main title shown on the card. Always required — it is the static-card fallback. |
+| `subtitle` | Secondary text for the card template. |
+| `body` | Supporting body text for the card template. |
+| `caption` | Small label shown by the card template. |
+| `footer` | Secondary label shown by the card template. |
+| `detail` | Additional detail label shown by the card template. |
+| `imageJpeg` | JPEG preview image bytes. |
+| `summary` | Fallback text for surfaces that cannot render the full card. |
+
+<Warning>
+  `preview.imageJpeg` must be JPEG bytes. The server validates that the bytes decode as JPEG and rejects any other format. Convert PNG, WebP, HEIC, or anything else to JPEG before calling.
+</Warning>
+
+### Customized Cards
+
 `sendCustomizedMiniApp(...)` sends a card that, when tapped, opens your iMessage extension and hands it `url`. Use it to launch your own app with a structured payload; for plain link previews, just put the URL in `sendText(...)`.
 
 You need a published iMessage extension on the App Store before you can call this. `appName`, `teamId`, and `extensionBundleId` identify that extension so Messages.app can route the tap to it on the recipient's device. `appStoreId` is optional — when set, recipients without the extension installed see an App Store install prompt.
@@ -206,6 +262,7 @@ const sent = await im.messages.sendCustomizedMiniApp(chat.guid, {
 });
 
 console.log(sent.guid);
+console.log(sent.miniAppCardSession.sessionId);
 ```
 
 | Field | Meaning |
@@ -214,11 +271,11 @@ console.log(sent.guid);
 | `appStoreId` | Optional numeric App Store id, e.g. `1234567890` from `apps.apple.com/app/id1234567890`. When set, must be a positive integer. |
 | `teamId` | 10-character uppercase alphanumeric Apple Team ID. Find it in App Store Connect → Membership. |
 | `extensionBundleId` | Bundle identifier of the iMessage extension target inside your app. |
-| `url` | Absolute URL delivered to your extension when the recipient taps the card. |
+| `url` | Absolute HTTP or HTTPS URL delivered to your extension when the recipient taps the card. |
 | `layout` | What the card looks like in the conversation, covered in [Card Layout](#card-layout) below. |
 
 <Note>
-  This call does not accept `replyTo`, message effects, or `subject`. The only option you can pass in the final argument is `clientMessageId`, used as an idempotency key for job retries.
+  Mini app send calls do not accept `replyTo`, message effects, or `subject`. The only option you can pass in the final argument is `clientMessageId`, used as an idempotency key for job retries.
 </Note>
 
 ### Card Layout
@@ -243,8 +300,33 @@ The server enforces these rules at send time:
 - `imageSubtitle` requires `image`.
 
 <Warning>
-  `layout.image` must be JPEG bytes. The server checks the JPEG SOI marker (`FF D8`) and rejects any other format. Convert PNG, WebP, HEIC, or anything else to JPEG before calling.
+  `layout.image` must be JPEG bytes. The server validates that the bytes decode as JPEG and rejects any other format. Convert PNG, WebP, HEIC, or anything else to JPEG before calling.
 </Warning>
+
+### Update a Mini App Card
+
+Both `sendMiniApp(...)` and `sendCustomizedMiniApp(...)` return a `miniAppCardSession` handle. Pass it to the matching update method to replace the card content in place — the recipient sees the original bubble update rather than a new message.
+
+| Original send | Update method |
+|---|---|
+| `sendMiniApp(...)` | `updateMiniApp(session, message)` |
+| `sendCustomizedMiniApp(...)` | `updateCustomizedMiniApp(session, message)` |
+
+```ts
+const sent = await im.messages.sendMiniApp(chat.guid, {
+  url: "https://example.com/card/42",
+  preview: { title: "Processing..." },
+});
+
+const updated = await im.messages.updateMiniApp(sent.miniAppCardSession, {
+  url: "https://example.com/card/42",
+  preview: { title: "Done", body: "Your order is ready." },
+});
+
+console.log(updated.miniAppCardSession.sessionId);
+```
+
+The `session` argument must be the `miniAppCardSession` from the most recent send or update response. The `sessionId` stays stable across updates; `targetMessageGuid` identifies the original bubble being replaced.
 
 ## Reply to a Message
 
