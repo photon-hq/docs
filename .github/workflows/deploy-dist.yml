@@ -4,10 +4,12 @@ on:
   push:
     branches: [main]
   repository_dispatch:
-    types: [spectrum-cloud-release]
+    types: [spectrum-cloud-release, spectrum-ts-docs]
+  workflow_dispatch:
 
 jobs:
   deploy:
+    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Parse repository
@@ -23,7 +25,9 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ steps.parse-repo.outputs.owner }}
-          repositories: ${{ steps.parse-repo.outputs.name }}
+          repositories: |
+            ${{ steps.parse-repo.outputs.name }}
+            spectrum-ts
 
       - uses: actions/checkout@v4
         with:
@@ -40,11 +44,10 @@ jobs:
 
       - name: Generate docs from Vellum templates
         run: pnpm docs:generate
-        # sync-docs pulls per-source docs at the tag matching the installed
-        # package version. While a source still has a `local` fallback it stays
-        # offline; once a source is git-only, widen the app token's
-        # `repositories:` above to include that source repo so the clone can auth.
+        # sync-docs pulls per-source authored docs from the configured git ref
+        # while Vellum extracts types from the installed package versions.
         env:
+          DOCS_SOURCE_MODE: git
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Push to dist branch

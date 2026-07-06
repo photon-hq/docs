@@ -41,6 +41,8 @@ jobs:
 
       - name: Generate docs from Vellum templates
         run: pnpm docs:generate
+        env:
+          DOCS_SOURCE_MODE: git
 
       - name: Typecheck documentation code blocks
         run: pnpm typecheck:docs

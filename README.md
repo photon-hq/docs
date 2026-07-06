@@ -9,13 +9,13 @@ This repo is an **aggregator**: some doc areas are authored here in [`docs-src/`
 `scripts/sync-docs` assembles a single template tree (`.vellum-src/`, gitignored) before vellum runs, from two places:
 
 - **Local** — most areas still live in [`docs-src/`](docs-src/) in this repo.
-- **Source repos** — areas listed in [`scripts/sources.json`](scripts/sources.json) are pulled from their SDK repo's `docs-site/` directory, at the git tag matching the installed package version (so prose stays aligned with the types vellum extracts). Edit those in the SDK repo, not here. Until a source repo has its `docs-site/`, sync falls back to the `local` path in the manifest, so the pilot keeps building offline.
+- **Source repos** — areas listed in [`scripts/sources.json`](scripts/sources.json) are pulled from their SDK repo's configured docs directory, at the configured git ref. For Spectrum, that is `photon-hq/spectrum-ts` `main` and the `docs/` directory, so prose fixes can ship without an SDK release. Vellum still extracts types from the installed package versions in this repo, so source-repo docs must stay compatible with the released package. Edit those docs in the SDK repo, not here. Local builds can use the `local` fallback in the manifest, but CI and deploy use `DOCS_SOURCE_MODE=git`.
 
 Navigation works the same way: [`docs.json`](docs.json) is **generated** by `scripts/build-nav` from [`docs.base.json`](docs.base.json) (the site skeleton) plus a `nav.json` fragment contributed by each source. Don't edit `docs.json` directly — edit `docs.base.json` or the fragment.
 
 ## How to edit
 
-1. **Edit the source, not the output.** Sources are `.mdx.vel` files in [`docs-src/`](docs-src/) (this repo) or a source repo's `docs-site/`. The rendered `.mdx` files and `docs.json` at the repo root are build artifacts — gitignored on `main`, only present on the `dist` branch. Don't edit them directly; they get overwritten on every deploy.
+1. **Edit the source, not the output.** Sources are `.mdx.vel` files in [`docs-src/`](docs-src/) (this repo) or the source repo docs directory configured in [`scripts/sources.json`](scripts/sources.json). The rendered `.mdx` files and `docs.json` at the repo root are build artifacts — gitignored on `main`, only present on the `dist` branch. Don't edit them directly; they get overwritten on every deploy.
 
 2. **Render and preview locally:**
 
@@ -42,9 +42,13 @@ Push to `main` → [.github/workflows/deploy-dist.yml](.github/workflows/deploy-
 
 The Spectrum API reference is generated from a remote OpenAPI spec configured in [docs.json](docs.json), fetched at build time, so every rebuild picks up the latest API surface without a docs commit.
 
+Source-repo doc updates can also trigger deploy through `repository_dispatch` type `spectrum-ts-docs`. Use that when `photon-hq/spectrum-ts` changes `docs/**` without a package release.
+
 ## Auto-updates from SDK releases
 
-When a connected SDK ships a release (e.g., [`spectrum-ts`](https://github.com/photon-hq/spectrum-ts), [`advanced-imessage-ts`](https://github.com/photon-hq/advanced-imessage-ts)), its release workflow calls [`photon-hq/buildspace/.github/workflows/update-docs.yaml`](https://github.com/photon-hq/buildspace/blob/main/.github/workflows/update-docs.yaml). That workflow uses Claude Code to draft a `docs/update-{sdk}-v{version}` PR here, bumping the package and updating any prose or types that drifted. Older PRs for the same SDK are auto-closed by [.github/workflows/close-stale-version-prs.yml](.github/workflows/close-stale-version-prs.yml).
+When a connected SDK ships a release (e.g., [`spectrum-ts`](https://github.com/photon-hq/spectrum-ts), [`advanced-imessage-ts`](https://github.com/photon-hq/advanced-imessage-ts)), its release workflow calls [`photon-hq/buildspace/.github/workflows/update-docs.yaml`](https://github.com/photon-hq/buildspace/blob/main/.github/workflows/update-docs.yaml). That workflow uses Claude Code to draft a `docs/update-{sdk}-v{version}` PR here, bumping the package so Vellum extracts the new released types. Older PRs for the same SDK are auto-closed by [.github/workflows/close-stale-version-prs.yml](.github/workflows/close-stale-version-prs.yml).
+
+For docs-only edits in a source repo, merge the change to the source repo's `main` branch and dispatch `spectrum-ts-docs` here. Do not cut a package release just to fix prose.
 
 To enroll a new SDK, add `.github/workflows/update-docs.yaml` to its repo following the pattern in [advanced-imessage-ts](https://github.com/photon-hq/advanced-imessage-ts/blob/main/.github/workflows/update-docs.yaml).
 

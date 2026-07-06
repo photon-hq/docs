@@ -8,8 +8,8 @@ import process from 'node:process'
 //   1. local templates in docs-src/ (areas not yet migrated + site-owned prose),
 //      minus any subtree owned by a source mount, and
 //   2. each source in scripts/sources.json, pulled from its repo via git
-//      (sparse checkout of <docsDir> at the tag matching the installed package
-//      version) or copied from a local fallback path.
+//      (sparse checkout of <docsDir> at the configured ref, usually main)
+//      or copied from a local fallback path.
 //
 // Each source's nav fragment is copied to .vellum-src/.nav/<mount>.json for
 // build-nav to merge. See ENG-1742.
@@ -86,8 +86,9 @@ function gitFetch(src: Source, ref: string): string | null {
   return existsSync(dir) ? dir : null
 }
 
-// Resolve a source to its on-disk docs directory, honoring DOCS_SOURCE_MODE and
-// falling back from git to local when a repo has no docs at the ref yet.
+// Resolve a source to its on-disk docs directory, honoring DOCS_SOURCE_MODE.
+// In strict git mode, failures are fatal. Without an explicit mode, local
+// fallbacks keep development offline while source repos finish migrating.
 function resolveContentDir(src: Source): string {
   const mode = process.env.DOCS_SOURCE_MODE as Mode | undefined
   const localDir = src.local ? resolve(ROOT, src.local) : null
@@ -100,10 +101,19 @@ function resolveContentDir(src: Source): string {
     return localDir!
   }
 
-  const wantGit = mode === 'git' || !hasLocal
-  if (wantGit) {
+  if (mode === 'git') {
     if (!src.repo)
-      throw new Error(`source "${src.name}": git mode requested but no "repo" configured`)
+      throw new Error(`source "${src.name}": DOCS_SOURCE_MODE=git but no "repo" configured`)
+    const ref = resolveRef(src)
+    const dir = gitFetch(src, ref)
+    if (!dir)
+      throw new Error(`source "${src.name}": repo has no ${src.docsDir ?? 'docs'}/ at ${ref}`)
+    return dir
+  }
+
+  if (!hasLocal) {
+    if (!src.repo)
+      throw new Error(`source "${src.name}": no local fallback and no "repo" configured`)
     try {
       const dir = gitFetch(src, resolveRef(src))
       if (dir)
