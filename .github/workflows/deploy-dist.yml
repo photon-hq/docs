@@ -5,9 +5,11 @@ on:
     branches: [main]
   repository_dispatch:
     types: [spectrum-cloud-release, spectrum-ts-docs]
+  workflow_dispatch:
 
 jobs:
   deploy:
+    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Parse repository
