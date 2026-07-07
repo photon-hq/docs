@@ -23,6 +23,7 @@ Get a `chat.guid` before calling message APIs. `chat.guid` is the server's chat 
 | Format text | `formatting: [...]` |
 | Send an attachment | Upload with `im.attachments.upload(...)`, then call `im.messages.sendAttachment(...)` |
 | Send a card that opens your iMessage extension | `im.messages.sendCustomizedMiniApp(chat.guid, message)` |
+| Update a sent mini app card | `im.messages.updateCustomizedMiniApp(session, message)` |
 | Reply to a message | `replyTo` on `sendText(...)`, `sendAttachment(...)`, or `sendMultipart(...)` |
 | Send multipart content | `im.messages.sendMultipart(...)` |
 | Add or remove a reaction | `im.messages.setReaction(...)` |
@@ -216,6 +217,7 @@ console.log(sent.guid);
 | `extensionBundleId` | Bundle identifier of the iMessage extension target inside your app. |
 | `url` | Absolute URL delivered to your extension when the recipient taps the card. |
 | `layout` | What the card looks like in the conversation, covered in [Card Layout](#card-layout) below. |
+| `live` | Optional. When `true`, renders the installed extension's live UI (`MSMessageLiveLayout`) when available. Defaults to `false`. |
 
 <Note>
   This call does not accept `replyTo`, message effects, or `subject`. The only option you can pass in the final argument is `clientMessageId`, used as an idempotency key for job retries.
@@ -245,6 +247,50 @@ The server enforces these rules at send time:
 <Warning>
   `layout.image` must be JPEG bytes. The server checks the JPEG SOI marker (`FF D8`) and rejects any other format. Convert PNG, WebP, HEIC, or anything else to JPEG before calling.
 </Warning>
+
+### Live Layout
+
+Set `live: true` to render the installed extension's live UI when available. When the recipient has your extension installed, Messages.app uses `MSMessageLiveLayout` to display the extension's live view instead of the static card.
+
+```ts
+const sent = await im.messages.sendCustomizedMiniApp(chat.guid, {
+  appName: "MyGame",
+  teamId: "ABCDE12345",
+  extensionBundleId: "com.example.mygame.MessagesExtension",
+  url: "https://mygame.example.com/level/7",
+  live: true,
+  layout: {
+    caption: "Level 7",
+    subcaption: "Your turn",
+  },
+});
+```
+
+The static `layout` is still required — it serves as the fallback for recipients who do not have the extension installed or on surfaces that cannot render live content.
+
+### Update Mini App Cards
+
+`updateCustomizedMiniApp(...)` updates a previously sent mini app card in place. Pass the `miniAppCardSession` returned by `sendCustomizedMiniApp(...)` or by a previous update.
+
+```ts
+const result = await im.messages.sendCustomizedMiniApp(chat.guid, {
+  appName: "MyGame",
+  teamId: "ABCDE12345",
+  extensionBundleId: "com.example.mygame.MessagesExtension",
+  url: "https://mygame.example.com/level/7",
+  layout: { caption: "Level 7", subcaption: "Waiting..." },
+});
+
+const updated = await im.messages.updateCustomizedMiniApp(result.miniAppCardSession, {
+  appName: "MyGame",
+  teamId: "ABCDE12345",
+  extensionBundleId: "com.example.mygame.MessagesExtension",
+  url: "https://mygame.example.com/level/7",
+  layout: { caption: "Level 7", subcaption: "Your turn" },
+});
+```
+
+The update call takes the same message fields as `sendCustomizedMiniApp(...)` — `appName`, `teamId`, `extensionBundleId`, `url`, `layout`, and optionally `appStoreId` and `live`.
 
 ## Reply to a Message
 
