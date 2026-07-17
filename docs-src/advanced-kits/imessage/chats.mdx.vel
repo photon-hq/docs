@@ -209,6 +209,10 @@ Returns `void`. Removing a background is safe to repeat, even when no custom bac
 
 ## Chat Events
 
+<Note>
+  `subscribeEvents(...)` requires the gRPC client (`createGrpcClient` from `@photon-ai/advanced-imessage/grpc`). HTTP users should receive inbound events through webhooks.
+</Note>
+
 `subscribeEvents(...)` returns `TypedEventStream<ChatEvent>`. Use the stream to observe changes made by other people, other devices, or another part of your system. Immediately after your code calls a write method, use that method's return value or completion status.
 
 ### Scope

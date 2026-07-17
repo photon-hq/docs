@@ -124,7 +124,7 @@ Common codes by category:
 
 ## gRPC Status Mapping
 
-Most application code should not branch on `grpcCode`. Prefer error classes and `error.code`. Use this table when debugging transport-level behavior.
+`grpcCode` is only present when using the gRPC client. Most application code should not branch on `grpcCode`. Prefer error classes and `error.code`. Use this table when debugging transport-level behavior.
 
 | gRPC status | SDK error class |
 |---|---|
@@ -140,8 +140,8 @@ Most application code should not branch on `grpcCode`. Prefer error classes and 
 Set `retry` when creating the client. The SDK retries retryable unary requests automatically. Invalid input, missing resources, and permission failures do not become valid by retrying the same request.
 
 ```ts
-const im = createClient({
-  address: "imessage.example.com:443",
+const im = createHttpClient({
+  address: "imessage.example.com",
   token: process.env.IMESSAGE_TOKEN!,
   retry: {
     maxAttempts: 3,

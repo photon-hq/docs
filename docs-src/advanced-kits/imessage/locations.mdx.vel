@@ -151,6 +151,10 @@ The returned object looks like this:
 
 ## Watch Live Updates
 
+<Note>
+  `watch(...)` requires the gRPC client (`createGrpcClient` from `@photon-ai/advanced-imessage/grpc`). HTTP users should receive location updates through webhooks.
+</Note>
+
 ### Scope
 
 Watch every visible friend's location updates:

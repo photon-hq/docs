@@ -3,6 +3,10 @@ title: "Events"
 description: "Recover missed events after disconnects and consume SDK streams"
 ---
 
+<Note>
+  Live event streams (`subscribeEvents`, `catchUp`, `watch`) require the gRPC client. Create it with `createGrpcClient` from `@photon-ai/advanced-imessage/grpc`. HTTP users should receive inbound events through webhooks.
+</Note>
+
 The server keeps a durable event log for message, chat, group, and poll changes. Every event has an increasing `sequence`.
 
 Location updates are not in this log. They are delivered only through [`im.locations.watch(...)`](/advanced-kits/imessage/locations). Updates missed while disconnected cannot be recovered with `catchUp(...)`.

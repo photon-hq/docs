@@ -14,7 +14,8 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^4.19.0",
-    "@photon-ai/advanced-imessage": "^0.11.2",
+    "@grpc/grpc-js": "^1.14.4",
+    "@photon-ai/advanced-imessage": "^2.0.0",
     "@photon-ai/advanced-imessage-kit": "^1.14.3",
     "@photon-ai/imessage-kit": "^2.1.2",
     "@photon-ai/whatsapp-business": "^0.1.1",
@@ -28,6 +29,8 @@
     "eslint": "^9.39.4",
     "eslint-plugin-format": "^2.0.1",
     "husky": "^9.1.7",
+    "nice-grpc": "^2.1.16",
+    "nice-grpc-common": "^2.0.3",
     "oxfmt": "^0.44.0",
     "spectrum-ts": "5.2.0",
     "tsx": "^4.21.0",

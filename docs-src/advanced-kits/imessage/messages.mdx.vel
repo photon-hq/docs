@@ -562,6 +562,10 @@ console.log(media.mimeType, media.data.byteLength);
 
 ## Message Events
 
+<Note>
+  `subscribeEvents(...)` requires the gRPC client (`createGrpcClient` from `@photon-ai/advanced-imessage/grpc`). HTTP users should receive inbound events through webhooks.
+</Note>
+
 `subscribeEvents(...)` streams live message changes. To scope it to one chat, pass `{ chat: chat.guid }`:
 
 ```ts

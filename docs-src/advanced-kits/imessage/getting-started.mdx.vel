@@ -13,7 +13,7 @@ You need three things: a runtime, Photon credentials, and a recipient that can r
 
 ### Runtime
 
-Use Node.js `>=18.17` or Bun. If you are using Node, check your version first:
+The HTTP client works in Node.js `>=18.17`, Bun, Deno, Cloudflare Workers, and other fetch-compatible runtimes. If you are using Node, check your version first:
 
 ```bash
 node --version
@@ -25,10 +25,10 @@ Copy these two values:
 
 | Value | Format |
 |---|---|
-| Server address | `host:port`, for example `"imessage.example.com:443"` |
+| Server address | `host[:port]` or a full URL, for example `"imessage.example.com"` |
 | Bearer token | A token string for the server |
 
-The server address is only the host and port. Do not include `https://`. For the first working example, put the server address directly in `send.ts`.
+For the first working example, put the server address directly in `send.ts`.
 
 <Warning>
   Put the bearer token in an environment variable. Do not commit it to source control.
@@ -83,13 +83,13 @@ The first send has three steps:
 2. **Resolve the recipient** with `im.chats.create(...)`. This gives you a `chat.guid`.
 3. **Send text** with `im.messages.sendText(...)`.
 
-Create `send.ts`, then replace `imessage.example.com:443` and `alice@example.com`:
+Create `send.ts`, then replace `imessage.example.com` and `alice@example.com`:
 
 ```ts
-import { createClient } from "@photon-ai/advanced-imessage";
+import { createHttpClient } from "@photon-ai/advanced-imessage";
 
-const im = createClient({
-  address: "imessage.example.com:443",
+const im = createHttpClient({
+  address: "imessage.example.com",
   token: process.env.IMESSAGE_TOKEN!,
 });
 
@@ -117,6 +117,10 @@ Message APIs take `chat.guid`, not the raw email address or phone number:
 await im.messages.sendText(chat.guid, "Hello from the SDK");
 ```
 
+<Tip>
+  Need live event streams (`subscribeEvents`, `catchUp`, `watch`)? Use `createGrpcClient` from `@photon-ai/advanced-imessage/grpc` instead. The gRPC client requires Node.js or Bun and the peer dependencies `nice-grpc`, `nice-grpc-common`, and `@grpc/grpc-js`. HTTP users should receive inbound events through webhooks.
+</Tip>
+
 ### Run It
 
 Node.js can run TypeScript through [`tsx`](https://github.com/privatenumber/tsx). Bun runs `.ts` files directly.
@@ -143,15 +147,17 @@ On success, the script prints `message.guid`. Seeing that GUID means the message
 
 ## Client Options
 
-`createClient(...)` accepts these options:
+`createHttpClient(...)` accepts these options:
 
 | Option | Type | Required | Description |
 |---|---|---|---|
-| `address` | `string` | Yes | Server address in `host:port` format. Do not include `https://`. |
-| `token` | `string` | Yes | Bearer token. |
-| `tls` | `boolean` | No | Encrypt the gRPC connection. Defaults to `true`; keep the default for hosted servers. |
-| `timeout` | `number` | No | Timeout, in milliseconds, for unary requests. Streams stay open. |
-| `retry` | `boolean \| RetryOptions` | No | Retry retryable unary failures. Streams are not retried automatically. |
+| `address` | `string` | Yes | Server address as `host[:port]` or a full `http(s)://` URL. Bare addresses default to HTTPS. |
+| `token` | `string \| () => Promise<string>` | Yes | Bearer token, or async function that returns a fresh token per call. |
+| `server` | `string` | No | Dedicated iMessage instance id. When set, the SDK sends `x-photon-server` on every request. Omit to use the shared proxy. |
+| `tls` | `boolean` | No | Use HTTPS for bare addresses. Defaults to `true`; set `false` for local development. |
+| `timeout` | `number` | No | Default per-call timeout, in milliseconds. |
+| `retry` | `boolean \| RetryOptions` | No | Retry calls the server explicitly marked retryable. |
+| `autoIdempotency` | `boolean` | No | Adds an idempotency key to mutating calls. |
 
 ## SDK Overview
 
@@ -159,14 +165,14 @@ The client is organized by resource:
 
 | Namespace | What it does |
 |---|---|
-| `im.messages` | Send text, attachments, mini app cards, multipart messages, replies, reactions, stickers, edits, unsends, list queries, and message events |
-| `im.chats` | Create chats, read chat state, count chats, mark read, set typing, share contact cards, and manage chat backgrounds |
-| `im.groups` | Rename groups, manage participants, set group icons, and leave groups |
+| `im.messages` | Send text, attachments, mini app cards, multipart messages, replies, reactions, stickers, edits, unsends, and list queries. Live event streams are gRPC-only. |
+| `im.chats` | Create chats, read chat state, count chats, mark read, set typing, share contact cards, and manage chat backgrounds. Live event streams are gRPC-only. |
+| `im.groups` | Rename groups, manage participants, set group icons, and leave groups. Live event streams are gRPC-only. |
 | `im.attachments` | Upload files, read metadata, and stream downloads |
-| `im.polls` | Create polls, vote, unvote, add options, and subscribe to poll events |
+| `im.polls` | Create polls, vote, unvote, and add options. Live event streams are gRPC-only. |
 | `im.addresses` | Check address metadata, Focus silence state, and iMessage availability |
-| `im.locations` | Read Find My shared friend locations, request location sharing, and watch live updates |
-| `im.events` | Replay durable events after a disconnect |
+| `im.locations` | Read Find My shared friend locations and request location sharing. Live location streams are gRPC-only. |
+| `im.events` | Replay durable events after a disconnect (gRPC-only) |
 
 ## Next Steps
 

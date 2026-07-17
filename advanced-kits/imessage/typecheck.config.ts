@@ -5,7 +5,7 @@ const config: TypecheckConfig = {
   sdkPackage: '@photon-ai/advanced-imessage',
   importPreamble: `
 import type {
-  AdvancedIMessage,
+  GrpcAdvancedIMessage,
   AttachmentInfo,
   Chat,
   LocationRequestReceipt,
@@ -24,11 +24,11 @@ import {
   RateLimitError,
   TextEffect,
   ValidationError,
-  createClient,
+  createHttpClient,
 } from "@photon-ai/advanced-imessage";
 `.trim(),
   declarePreamble: `
-declare const im: AdvancedIMessage;
+declare const im: GrpcAdvancedIMessage;
 declare const chat: Chat;
 declare const group: Chat;
 declare const sent: Message;
