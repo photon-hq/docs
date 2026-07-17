@@ -168,22 +168,22 @@ type Content =
 
 **Text** is what you'll see for the vast majority of inbound messages.
 
-**Attachment** is what you'll see for any non-text content from iMessage — photos, voice memos, audio files, videos, documents. The `mimeType` field is the discriminator for *what kind* of attachment it is:
+**Attachment** is what you'll see for non-text file content from iMessage — photos, audio files, videos, documents. The `mimeType` field is the discriminator for *what kind* of attachment it is:
 
 | `mimeType` prefix | Kind | Example values |
 | --- | --- | --- |
 | `image/*` | Photo or image attachment | `image/heic`, `image/jpeg`, `image/png` |
-| `audio/*` | Voice memo or audio file | `audio/mp4`, `audio/x-m4a` |
+| `audio/*` | Audio file | `audio/mp4`, `audio/x-m4a` |
 | `video/*` | Video clip | `video/mp4`, `video/quicktime` |
 | `application/*` | Document or file | `application/pdf`, `application/zip` |
 
 <Warning>
-**Byte-bearing arms ship metadata, not bytes.** `attachment` and `contact.photo` both carry `mimeType` / `size` / filename — never the raw bytes themselves and never a download URL. The `attachment` arm carries an `id` you use to fetch the file out of band — see [Retrieving an attachment](#retrieving-an-attachment).
+**Byte-bearing arms ship metadata, not bytes.** `attachment`, `voice`, and `contact.photo` all carry `mimeType` / `size` / filename — never the raw bytes themselves and never a download URL. The `attachment` and `voice` arms carry an `id` you use to fetch the file out of band — see [Retrieving an attachment](#retrieving-an-attachment).
 </Warning>
 
 ##### Retrieving an attachment
 
-The payload tells you a file *exists* and what it is — it never carries the bytes, and there's no HTTP endpoint to download them (the same constraint as [sending](#what-you-dont-get)). The `attachment` arm's `id` is a stable, provider-native identifier — an iMessage GUID here; a Slack file id or WhatsApp media id on those platforms. To pull the bytes, run a [`spectrum-ts`](/spectrum-ts/getting-started) instance — the same one you'd use to reply — and hand the `id` to the provider's `getAttachment`:
+The payload tells you a file *exists* and what it is — it never carries the bytes, and there's no HTTP endpoint to download them (the same constraint as [sending](#what-you-dont-get)). The `attachment` and `voice` arms' `id` is a stable, provider-native identifier — an iMessage GUID here; a Slack file id or WhatsApp media id on those platforms. To pull the bytes, run a [`spectrum-ts`](/spectrum-ts/getting-started) instance — the same one you'd use to reply — and hand the `id` to the provider's `getAttachment`:
 
 ```ts
 // `im` is the same iMessage instance you reply through: const im = imessage(app)
@@ -206,7 +206,8 @@ The arms a current provider (iMessage, WhatsApp Business) delivers inbound today
 | `type` | What it is | Wire fields (post-projection) |
 | --- | --- | --- |
 | `text` | A plain text message — the most common arm. | `text: string` |
-| `attachment` | A file attachment — photo, video, audio, voice memo, or document. | `id: string`, `name: string`, `mimeType: string`, `size?: number` |
+| `attachment` | A file attachment — photo, video, audio, or document. | `id: string`, `name: string`, `mimeType: string`, `size?: number` |
+| `voice` | A voice message — native Apple voice memos on iMessage. | `id?: string`, `name?: string`, `mimeType: string`, `duration?: number`, `size?: number` |
 | `contact` | A contact card — all fields optional. Full shape: [`Contact`](/spectrum-ts/content). | `name?: { formatted?, first?, last? }`, `phones?: [{ value, type? }]`, `photo?: { mimeType }`, `raw?` |
 | `richlink` | A link preview — URL only on the wire; OG metadata is not pre-fetched. | `url: string` |
 | `reaction` | An emoji reaction targeting another message. | `emoji: string`, [`target: MessageRef`](#target-refs) |
@@ -214,7 +215,7 @@ The arms a current provider (iMessage, WhatsApp Business) delivers inbound today
 
 A few cross-cutting points the table doesn't surface:
 
-- **Byte-bearing arms** (`attachment`, `contact.photo`) ship metadata only — see the [warning above](#content-shapes). The SDK's `read()` / `stream()` thunks and the internal filesystem `path` are dropped before delivery. iMessage voice memos arrive as `attachment` with an `audio/*` `mimeType`, not as a distinct arm.
+- **Byte-bearing arms** (`attachment`, `voice`, `contact.photo`) ship metadata only — see the [warning above](#content-shapes). The SDK's `read()` / `stream()` thunks and the internal filesystem `path` are dropped before delivery.
 - **`target` on `reaction`** is the slim shape documented under [Target refs](#target-refs) below, not a full nested message.
 - **`richlink`** ships only `url` — OG fetches happen in your handler, since resolving them inline at delivery time would tie latency to the slowest target site.
 
@@ -248,7 +249,7 @@ Each item has the same shape as the top-level [`message`](#message) and carries 
 
 ##### Arms you won't receive inbound
 
-Two arms you might expect arrive as something else: inbound **replies come as plain `text`** (there's no `reply` arm on the wire — the thread link isn't surfaced), and **voice memos come as `attachment`** (`audio/*`). Anything else in the SDK's [`Content`](/spectrum-ts/content) union is send-only or a rare provider-specific case — don't build on receiving it inbound.
+One arm you might expect arrives as something else: inbound **replies come as plain `text`** (there's no `reply` arm on the wire — the thread link isn't surfaced). Anything else in the SDK's [`Content`](/spectrum-ts/content) union is send-only or a rare provider-specific case — don't build on receiving it inbound.
 
 Don't branch on arms you can't receive — but always keep a `default:` case, so an arm a future SDK/provider bump starts delivering (forwarded generically as `type: string` plus its JSON-safe fields) can't break your handler.
 
@@ -296,6 +297,9 @@ switch (content.type) {
     if (content.mimeType.startsWith('image/')) handleImage(content);
     else if (content.mimeType.startsWith('audio/')) handleAudio(content);
     else handleGenericAttachment(content);
+    break;
+  case 'voice':
+    handleVoice(content);
     break;
   case 'reaction':
     handleReaction(content.emoji, content.target.id);
