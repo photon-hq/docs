@@ -57,8 +57,8 @@ importers:
         specifier: ^0.44.0
         version: 0.44.0
       spectrum-ts:
-        specifier: 12.0.0
-        version: 12.0.0(typescript@5.9.3)
+        specifier: 12.1.0
+        version: 12.1.0(typescript@5.9.3)
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -1030,8 +1030,8 @@ packages:
   '@socket.io/component-emitter@3.1.2':
     resolution: {integrity: sha512-9BCxFwvbGg/RsZK9tjXd8s4UcwR0MWeFQ1XEKIQVVvAGJyINdrqKMcTRyLoK8Rse1GjzLV9cwjWV1olXRWEXVA==}
 
-  '@spectrum-ts/core@12.0.0':
-    resolution: {integrity: sha512-NdHLbYXHX5rAwOA8/ElGunrzl1gTiM+JrsPDi/mvJd+ixL3eO8LkkhqcjJxA8GLI2BQvzmYuuE77iFUM0/656A==}
+  '@spectrum-ts/core@12.1.0':
+    resolution: {integrity: sha512-w/spJmXVNF8xHBVVYqU+5OapVRO4kLvjpxl/VzxpKS9pEd+S+zj3+pLBaCOZEuaMstPwooeKg8MKkhC5fI8ULQ==}
     peerDependencies:
       ffmpeg-static: ^5
       typescript: ^5 || ^6.0.0
@@ -1039,32 +1039,32 @@ packages:
       ffmpeg-static:
         optional: true
 
-  '@spectrum-ts/imessage@12.0.0':
-    resolution: {integrity: sha512-Wfn+m7xnj5CWiT49dMcUZNFQ5FuVUab7AYGzFhrWk7Ch4JL2CxDkNT6XwU6EB+x91wELFn2fc94Azq7kgaYA/w==}
+  '@spectrum-ts/imessage@12.1.0':
+    resolution: {integrity: sha512-1eR9T5mEJhMXSYfA3N0Tc/pvn6ErkhT3LtvXu6lEHOxIJ1vWzXGgfM18F4nhv23V1FuN+tk+zw72LxTll5DC8Q==}
     peerDependencies:
       '@spectrum-ts/core': ^12.0.0
       typescript: ^5 || ^6.0.0
 
-  '@spectrum-ts/slack@12.0.0':
-    resolution: {integrity: sha512-2FmUI7OKLWVhrC8xxxluw8HBWBSM/iZp6h8w334hqUR929b8GSMnFzk7iuKtz49wyvaGcT30S5OVAnJav5LcCw==}
+  '@spectrum-ts/slack@12.1.0':
+    resolution: {integrity: sha512-QDY+v0slydM5jW8sFpNNFJAl8MqmTgHT+q33t692yM/w2EysSwZv6aatTPSoAjJNaiYB44LNTq+DSfPkgwm/1A==}
     peerDependencies:
       '@spectrum-ts/core': ^12.0.0
       typescript: ^5 || ^6.0.0
 
-  '@spectrum-ts/telegram@12.0.0':
-    resolution: {integrity: sha512-yV1UlP+RWB9eser9o/65SsZp6X7Gpgcq0Z9giUEj8xAS48Vfbg0XDrqp3iWLISbtbAFJTIQCEzWWXxvvVsg64g==}
+  '@spectrum-ts/telegram@12.1.0':
+    resolution: {integrity: sha512-iADav5SSBT6fQmWNQ7DgFXIgZPG2Jk+YosPVJkKf++akBYlGt9OCmj2G0IgtnmaWxuz1SZeD7xhotu1UOCsvwg==}
     peerDependencies:
       '@spectrum-ts/core': ^12.0.0
       typescript: ^5 || ^6.0.0
 
-  '@spectrum-ts/terminal@12.0.0':
-    resolution: {integrity: sha512-D2zMVyFSzl4oHYtg03R0DknyLlAPJD8QLtCEPyRjqbE/Ep+cJ/3QKNTkTjP4dBpUpNpb41U0ktUaH7maSAY3Rg==}
+  '@spectrum-ts/terminal@12.1.0':
+    resolution: {integrity: sha512-fF963WPvzj3GrXEBnXbh/LHuPySydj+4oHlfjlhjGI2lxrct0XrPPVKMQglZ2t5GPeQdhBiiec9wreLyHR5wlg==}
     peerDependencies:
       '@spectrum-ts/core': ^12.0.0
       typescript: ^5 || ^6.0.0
 
-  '@spectrum-ts/whatsapp-business@12.0.0':
-    resolution: {integrity: sha512-oeJw+ixE+V6Q1USAzQ6pWBz14OW20FnuZicMgm43EPFHVbWP/mlVmMwn2s1TOrzgWnQCQWwK0Y5IG1hgbKD1jQ==}
+  '@spectrum-ts/whatsapp-business@12.1.0':
+    resolution: {integrity: sha512-cJ8mieFvoHtTpS0Li5u//6coX/W7Kc+ZDWOrm3Y0pcjtA16fy9LG2ifzO1x6nyn42SKYzowqlipDLxI6yTwnEQ==}
     peerDependencies:
       '@spectrum-ts/core': ^12.0.0
       typescript: ^5 || ^6.0.0
@@ -2657,8 +2657,8 @@ packages:
   spdx-license-ids@3.0.23:
     resolution: {integrity: sha512-CWLcCCH7VLu13TgOH+r8p1O/Znwhqv/dbb6lqWy67G+pT1kHmeD/+V36AVb/vq8QMIQwVShJ6Ssl5FPh0fuSdw==}
 
-  spectrum-ts@12.0.0:
-    resolution: {integrity: sha512-UtKXdvlANNjQgvWLUVmcAJCz4wU3Kp6XnBGBk6OXJxTwWR9wBMqCp3ae0bS9ELI+UIDDrzgy9Hynzb+mgvSlfA==}
+  spectrum-ts@12.1.0:
+    resolution: {integrity: sha512-QNZMd6N1qco3UFDMC4EfRIVJUGO6aFnLYuYWW75BCcaRbeC1V2Vq+c+hWKE1SGJ8/wKKqfnF3L67OkmpjvxboQ==}
 
   string-width@4.2.3:
     resolution: {integrity: sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==}
@@ -3651,7 +3651,7 @@ snapshots:
 
   '@socket.io/component-emitter@3.1.2': {}
 
-  '@spectrum-ts/core@12.0.0(typescript@5.9.3)':
+  '@spectrum-ts/core@12.1.0(typescript@5.9.3)':
     dependencies:
       '@photon-ai/otel': 3.2.0(typescript@5.9.3)
       '@photon-ai/proto': 0.2.4
@@ -3665,11 +3665,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@spectrum-ts/imessage@12.0.0(@spectrum-ts/core@12.0.0(typescript@5.9.3))(typescript@5.9.3)':
+  '@spectrum-ts/imessage@12.1.0(@spectrum-ts/core@12.1.0(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
       '@photon-ai/advanced-imessage': 1.0.0
       '@photon-ai/otel': 3.2.0(typescript@5.9.3)
-      '@spectrum-ts/core': 12.0.0(typescript@5.9.3)
+      '@spectrum-ts/core': 12.1.0(typescript@5.9.3)
       lru-cache: 11.5.1
       marked: 18.0.5
       typescript: 5.9.3
@@ -3677,31 +3677,31 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@spectrum-ts/slack@12.0.0(@spectrum-ts/core@12.0.0(typescript@5.9.3))(typescript@5.9.3)':
+  '@spectrum-ts/slack@12.1.0(@spectrum-ts/core@12.1.0(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
       '@photon-ai/slack': 0.2.0
-      '@spectrum-ts/core': 12.0.0(typescript@5.9.3)
+      '@spectrum-ts/core': 12.1.0(typescript@5.9.3)
       typescript: 5.9.3
       zod: 4.4.3
 
-  '@spectrum-ts/telegram@12.0.0(@spectrum-ts/core@12.0.0(typescript@5.9.3))(typescript@5.9.3)':
+  '@spectrum-ts/telegram@12.1.0(@spectrum-ts/core@12.1.0(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
       '@photon-ai/telegram-ts': 10.0.0
-      '@spectrum-ts/core': 12.0.0(typescript@5.9.3)
+      '@spectrum-ts/core': 12.1.0(typescript@5.9.3)
       marked: 18.0.5
       typescript: 5.9.3
       zod: 4.4.3
 
-  '@spectrum-ts/terminal@12.0.0(@spectrum-ts/core@12.0.0(typescript@5.9.3))(typescript@5.9.3)':
+  '@spectrum-ts/terminal@12.1.0(@spectrum-ts/core@12.1.0(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
-      '@spectrum-ts/core': 12.0.0(typescript@5.9.3)
+      '@spectrum-ts/core': 12.1.0(typescript@5.9.3)
       typescript: 5.9.3
       zod: 4.4.3
 
-  '@spectrum-ts/whatsapp-business@12.0.0(@spectrum-ts/core@12.0.0(typescript@5.9.3))(typescript@5.9.3)':
+  '@spectrum-ts/whatsapp-business@12.1.0(@spectrum-ts/core@12.1.0(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
       '@photon-ai/whatsapp-business': 0.2.0
-      '@spectrum-ts/core': 12.0.0(typescript@5.9.3)
+      '@spectrum-ts/core': 12.1.0(typescript@5.9.3)
       mime-types: 3.0.2
       typescript: 5.9.3
       zod: 4.4.3
@@ -5720,14 +5720,14 @@ snapshots:
 
   spdx-license-ids@3.0.23: {}
 
-  spectrum-ts@12.0.0(typescript@5.9.3):
+  spectrum-ts@12.1.0(typescript@5.9.3):
     dependencies:
-      '@spectrum-ts/core': 12.0.0(typescript@5.9.3)
-      '@spectrum-ts/imessage': 12.0.0(@spectrum-ts/core@12.0.0(typescript@5.9.3))(typescript@5.9.3)
-      '@spectrum-ts/slack': 12.0.0(@spectrum-ts/core@12.0.0(typescript@5.9.3))(typescript@5.9.3)
-      '@spectrum-ts/telegram': 12.0.0(@spectrum-ts/core@12.0.0(typescript@5.9.3))(typescript@5.9.3)
-      '@spectrum-ts/terminal': 12.0.0(@spectrum-ts/core@12.0.0(typescript@5.9.3))(typescript@5.9.3)
-      '@spectrum-ts/whatsapp-business': 12.0.0(@spectrum-ts/core@12.0.0(typescript@5.9.3))(typescript@5.9.3)
+      '@spectrum-ts/core': 12.1.0(typescript@5.9.3)
+      '@spectrum-ts/imessage': 12.1.0(@spectrum-ts/core@12.1.0(typescript@5.9.3))(typescript@5.9.3)
+      '@spectrum-ts/slack': 12.1.0(@spectrum-ts/core@12.1.0(typescript@5.9.3))(typescript@5.9.3)
+      '@spectrum-ts/telegram': 12.1.0(@spectrum-ts/core@12.1.0(typescript@5.9.3))(typescript@5.9.3)
+      '@spectrum-ts/terminal': 12.1.0(@spectrum-ts/core@12.1.0(typescript@5.9.3))(typescript@5.9.3)
+      '@spectrum-ts/whatsapp-business': 12.1.0(@spectrum-ts/core@12.1.0(typescript@5.9.3))(typescript@5.9.3)
     transitivePeerDependencies:
       - ffmpeg-static
       - supports-color

@@ -29,22 +29,22 @@ X-Spectrum-Signature: v0=fc9bf49ef3ba4122ba4be6e289f88ac692f5ce8e13f0415cb38d594
   "event": "messages",
   "space": {
     "id": "any;-;+15550100",
-    "platform": "iMessage",
+    "platform": "imessage",
     "type": "dm",
     "phone": "+15551234567"
   },
   "message": {
     "id": "spc-msg-00000000-0000-4000-8000-000000000001",
-    "platform": "iMessage",
+    "platform": "imessage",
     "direction": "inbound",
     "timestamp": "2026-05-14T19:06:32.000Z",
     "sender": {
       "id": "+15550100",
-      "platform": "iMessage"
+      "platform": "imessage"
     },
     "space": {
       "id": "any;-;+15550100",
-      "platform": "iMessage",
+      "platform": "imessage",
       "type": "dm",
       "phone": "+15551234567"
     },
@@ -227,16 +227,16 @@ A `group` (album) nests each attachment as a full inbound message in `items` —
     {
       "id": "p:0/spc-msg-00000000-0000-4000-8000-000000000001",
       "direction": "inbound",
-      "platform": "iMessage",
-      "sender": { "id": "+15550100", "platform": "iMessage" },
+      "platform": "imessage",
+      "sender": { "id": "+15550100", "platform": "imessage" },
       "timestamp": "2026-05-14T19:06:32.000Z",
       "content": { "type": "attachment", "id": "1A2B3C4D-0001-4ABC-9DEF-000000000001", "name": "IMG_4351.HEIC", "mimeType": "image/heic", "size": 1365240 }
     },
     {
       "id": "p:1/spc-msg-00000000-0000-4000-8000-000000000001",
       "direction": "inbound",
-      "platform": "iMessage",
-      "sender": { "id": "+15550100", "platform": "iMessage" },
+      "platform": "imessage",
+      "sender": { "id": "+15550100", "platform": "imessage" },
       "timestamp": "2026-05-14T19:06:32.000Z",
       "content": { "type": "attachment", "id": "1A2B3C4D-0002-4ABC-9DEF-000000000002", "name": "IMG_4354.HEIC", "mimeType": "image/heic", "size": 1888241 }
     }
@@ -274,9 +274,9 @@ A received reaction is just a `content` arm on a normal `messages` delivery — 
   "emoji": "❤️",
   "target": {
     "id": "spc-msg-00000000-0000-4000-8000-000000000001",
-    "platform": "iMessage",
+    "platform": "imessage",
     "timestamp": "2026-05-14T19:06:32.000Z",
-    "sender": { "id": "+15550100", "platform": "iMessage" },
+    "sender": { "id": "+15550100", "platform": "imessage" },
     "contentPreview": "hey, what time is dinner?"
   }
 }
