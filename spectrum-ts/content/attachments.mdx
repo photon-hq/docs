@@ -1,0 +1,45 @@
+---
+title: "Attachments"
+description: "Send files from paths, URLs, or buffers with stable attachment IDs."
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+Use `attachment()` to send files. Pass a file path, a `URL`, or a `Buffer`. MIME types are detected from the file extension. Override with `options.mimeType` when you already have the bytes.
+
+```ts
+import { attachment } from "spectrum-ts";
+
+// From a file path - name and MIME type inferred
+await space.send(attachment("/path/to/photo.jpg"));
+
+// From a buffer - provide name and MIME type
+await space.send(attachment(buffer, {
+  name: "report.pdf",
+  mimeType: "application/pdf",
+}));
+```
+
+If the MIME type can't be inferred from the name and you didn't pass `options.mimeType`, `attachment()` throws when the content is built.
+
+## Attachment IDs
+
+Every resolved attachment carries a stable `id`. When the attachment originates from a provider, the ID preserves the provider-native identifier, such as an iMessage GUID, Slack file ID, or WhatsApp media ID.
+
+For outbound attachments built with `attachment()`, Spectrum assigns a random UUID unless you pass `options.id`:
+
+```ts
+await space.send(attachment(buffer, {
+  id: "custom-id",
+  name: "report.pdf",
+  mimeType: "application/pdf",
+}));
+```
+
+
+
+Use the resolved <TypeTooltip name="Attachment" type={`type Attachment = z.infer<typeof attachmentSchema>;`} /> and accepted <TypeTooltip name="AttachmentInput" type={`type AttachmentInput = string | Buffer | URL;`} /> input types in your own signatures:
+
+```ts
+import { type Attachment, type AttachmentInput } from "spectrum-ts";
+```

@@ -1,0 +1,174 @@
+---
+title: "iMessage troubleshooting"
+sidebarTitle: "iMessage"
+description: "Common iMessage problems on Spectrum, what they mean, and how to fix them."
+---
+
+If iMessage sends are failing and you've ruled out your code, this page is organized by the error you're seeing. Find the message in the headings below and follow the fix. Each section is self-contained, so you can land here from a search result and still get what you need.
+
+If your symptom isn't listed, jump to [Still stuck?](#still-stuck) for what to send us so we can trace it on our side.
+
+## "Object literal may only specify known properties, and 'local' does not exist"
+
+Local iMessage moved to its own package. `imessage.config({ local: true })` is
+no longer valid.
+
+```bash
+bun add @spectrum-ts/imessage-local
+```
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { localIMessage } from "@spectrum-ts/imessage-local";
+
+const app = await Spectrum({
+  providers: [localIMessage.config()],
+});
+```
+
+Use `@spectrum-ts/imessage` or `spectrum-ts/providers/imessage` for Spectrum
+Cloud. Use `@spectrum-ts/imessage-local` only on the Mac whose Messages database
+you need to access.
+
+## A cloud build is trying to install `better-sqlite3`
+
+Check the dependency and import used by the deployment. The batteries-included
+`spectrum-ts` package and cloud `@spectrum-ts/imessage` package do not depend on
+`imessage-kit` or `better-sqlite3`.
+
+```bash
+bun pm why @spectrum-ts/imessage-local
+bun pm why @photon-ai/imessage-kit
+bun pm why better-sqlite3
+```
+
+Remove `@spectrum-ts/imessage-local` from the deployed package's dependencies
+and make sure no shared entrypoint imports it. Keep Mac and cloud composition
+modules separate so the cloud bundler cannot reach the local dependency graph.
+
+## "Failed to load better-sqlite3" with the local package
+
+This applies only to `@spectrum-ts/imessage-local` under Node.js. Normally
+`imessage-kit` installs `better-sqlite3` as an optional dependency. If your
+package manager omits optional dependencies, install it explicitly:
+
+```bash
+npm install better-sqlite3
+```
+
+Bun uses its built-in SQLite implementation and does not load
+`better-sqlite3` at runtime.
+
+## Local messages fail with a database permission error
+
+Confirm all of the following:
+
+- The application is running on macOS.
+- The logged-in macOS account is signed into Messages.
+- The terminal, IDE, or executable running the application has **Full Disk
+  Access** under **System Settings → Privacy & Security**.
+- `~/Library/Messages/chat.db` exists for that user.
+
+Restart the terminal or IDE after granting Full Disk Access so macOS applies
+the permission to the new process.
+
+## An edge build reports `http2`, `async_hooks`, `tls`, or another Node module
+
+The package split removes the local SQLite dependency from cloud installs, but
+the current cloud iMessage transport still uses Node-compatible gRPC. Deploy it
+to a Node.js or Bun runtime. Strict browser/worker isolates without Node APIs
+are not supported yet.
+
+## "Target not allowed for this project"
+
+You're on the **Free** or **Pro** plan. On these plans your project sends through a [shared pool of lines](/spectrum-ts/providers/imessage/connection-and-routing#line-model), and a shared line will only message recipients you've registered as **users** of your project. Any other target is rejected with `Target not allowed for this project`.
+
+<Note>
+  This limit applies to shared-pool plans only. The **Business** plan uses a dedicated line and isn't subject to the allowlist — see [Line model](/spectrum-ts/providers/imessage/connection-and-routing#line-model).
+</Note>
+
+Two things cause this error.
+
+### 1. You haven't added yourself as a user
+
+The target you're messaging has to exist as a user on the project first. Add the number your iMessage is linked to:
+
+<Steps>
+  <Step title="Open the dashboard">
+    Go to the [Dashboard](https://app.photon.codes) and select your project.
+  </Step>
+  <Step title="Open the Users tab">
+    In the project, open **Users**.
+  </Step>
+  <Step title="Add yourself">
+    Add a user with the phone number (or email) your iMessage is linked to, then send again. The target is now allowlisted.
+  </Step>
+</Steps>
+
+### 2. The number you added isn't the one iMessage actually uses
+
+If you've added yourself and still get the error, the handle you entered probably doesn't match the one Apple actually sends iMessage from. This happens — Apple sometimes registers iMessage under a number or email you wouldn't expect, so the user you added never matches the inbound sender.
+
+To find the handle iMessage is really using:
+
+<Steps>
+  <Step title="Message the debug line">
+    Open [debug.photon.codes](https://debug.photon.codes). It opens an iMessage to our debug bot.
+  </Step>
+  <Step title="Read the handle it reports">
+    The debug bot replies with the exact handle (phone number or email) Apple is sending from for your device.
+  </Step>
+  <Step title="Add that handle">
+    Add **that** handle under **Users** in the [Dashboard](https://app.photon.codes), then retry.
+  </Step>
+</Steps>
+
+<Note>
+  **If the debug bot reports an email instead of a phone number**, your iPhone is starting iMessage conversations from your Apple Account email rather than your number. To switch it, open **Settings → Messages → Send & Receive** on your iPhone and pick your phone number under **Start new conversations from**. Apple's guide: [If your iPhone sends text messages from your email address](https://support.apple.com/en-us/101744).
+</Note>
+
+If the handle the debug bot reports isn't what you expect at all, the underlying issue is on Apple's side — iMessage isn't registered to the number you think it is. Apple's official guides for fixing iMessage registration and activation:
+
+- [If you can't turn on or sign in to iMessage or FaceTime on your iPhone](https://support.apple.com/en-us/119859) — phone-number verification and activation.
+- [If you can't send or receive messages on your iPhone or iPad](https://support.apple.com/en-us/118433) — general send/receive failures.
+- [Messages support](https://support.apple.com/messages) — Apple's full Messages support hub.
+
+## Photon receives different text than the sender sees in Messages
+
+In rare cases, especially when someone types and sends very quickly, the text
+Apple delivers to the Photon line can differ from the text shown in the
+sender's iMessage bubble. Spectrum exposes the payload received from Apple; it
+cannot recover or compare the text rendered only in the sender's Messages app.
+This mismatch happens upstream of Photon.
+
+Try the following on the sender's iPhone:
+
+- Update to the latest iOS version. Apple's [iOS 26.4 release
+  notes](https://support.apple.com/en-us/123075#a264) include improved keyboard
+  accuracy when typing quickly.
+- Pause briefly after typing before tapping **Send**.
+- If the mismatch continues, temporarily turn off **Auto-Correction** and
+  **Predictive Text** under **Settings → General → Keyboard**. See Apple's
+  [keyboard settings guide](https://support.apple.com/en-us/104995).
+
+Apple has not published a support article for this exact difference between the
+sender's bubble and the delivered payload. Related Apple Community reports
+describe [text changing when a message is
+submitted](https://discussions.apple.com/thread/252437975) and [autocorrection
+being applied when Send is
+tapped](https://discussions.apple.com/thread/255384316).
+
+If you report the issue to Photon, include the exact send time, the sender's iOS
+version, a screenshot of the sender's bubble, and the different text received by
+your application. This lets us confirm that the mismatch was already present in
+Apple's inbound payload.
+
+## Still stuck?
+
+Send us:
+
+- Your project id (from `photon projects show`).
+- The exact error string you're seeing.
+- The target handle you're trying to message and the handle the [debug line](https://debug.photon.codes) reports.
+
+We'll trace it on our side. Email us at [help@photon.codes](mailto:help@photon.codes) or ping us in the Discord linked in the footer.

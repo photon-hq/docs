@@ -1,0 +1,151 @@
+---
+title: "Outbound calls"
+description: "Configure a SIP application to place calls through a Spectrum iMessage line."
+---
+
+Outbound calling connects your SIP application to an iMessage line owned by
+your Spectrum project.
+
+<Note>
+  Business profile registration is recommended for production, but it is not
+  required. Outbound calls work without any business profile registration,
+  although they may be flagged.
+</Note>
+
+## Before you start
+
+You need:
+
+- A Spectrum project.
+- An iMessage line in that project.
+- The project's ID and secret.
+- A SIP client, PBX, or voice application that supports TCP transport.
+
+WhatsApp numbers cannot be used for Spectrum Voice.
+
+## Set up outbound calling
+
+<Steps>
+  <Step title="Find your project credentials">
+    Sign in to the [Spectrum dashboard](https://app.photon.codes), select the
+    project that owns your iMessage line, and open its settings.
+
+    Copy the **project ID** and **project secret**. You will use them as SIP
+    credentials:
+
+    - Project ID → SIP username
+    - Project secret → SIP password
+
+    Use the project ID, not the project's display name.
+  </Step>
+  <Step title="Add a SIP account or trunk">
+    In your SIP application, create an account or trunk with these exact
+    values:
+
+    | SIP setting | Value |
+    |---|---|
+    | Server or URI | `sip.spectrum.photon.codes` |
+    | Username | Your Spectrum project ID |
+    | Password | Your Spectrum project secret |
+    | Transport | `TCP` |
+
+    SIP products name these fields differently. The server field might be
+    called **SIP URI**, **domain**, **registrar**, **proxy**, or **host**. In
+    each case, use `sip.spectrum.photon.codes`.
+  </Step>
+  <Step title="Force TCP transport">
+    Select TCP explicitly. Do not leave transport on an automatic setting if
+    your SIP application might choose UDP or TLS.
+
+    Spectrum Voice currently supports only SIP over TCP. A `sips:` URI will
+    not work.
+  </Step>
+  <Step title="Connect and authenticate">
+    Start the SIP application and confirm that it connects successfully.
+
+    If authentication fails, check that the project ID and project secret are
+    from the same project and do not contain extra spaces or line breaks.
+  </Step>
+  <Step title="Place a test call">
+    Place a call through the configured SIP account. Confirm that the call uses
+    an iMessage line owned by the authenticated project.
+
+    Test call setup and two-way audio before using the connection in
+    production.
+  </Step>
+</Steps>
+
+## Example configuration
+
+These environment variable names are examples for your own application. They
+are not read automatically by `spectrum-ts`.
+
+```bash
+SPECTRUM_SIP_URI=sip.spectrum.photon.codes
+SPECTRUM_SIP_USERNAME=your-project-id
+SPECTRUM_SIP_PASSWORD=your-project-secret
+SPECTRUM_SIP_TRANSPORT=tcp
+```
+
+Keep the project secret in a secret manager or protected environment variable.
+Do not commit it to source control or send it to browser code.
+
+## Optional: register your business profile
+
+Outbound calling works without a registered business profile. Registration is
+still recommended because calls from an unregistered business may be flagged.
+
+To register:
+
+<Steps>
+  <Step title="Open the business profile">
+    In the dashboard, select the project that places the calls and open its
+    business profile.
+  </Step>
+  <Step title="Submit the business information">
+    Complete the requested business details and submit the profile. There is no
+    registration fee.
+  </Step>
+  <Step title="Wait for registration to finish">
+    Registration usually takes 1–2 business days. You can continue developing
+    and making outbound calls while it is being processed.
+  </Step>
+</Steps>
+
+Registration reduces the risk associated with unidentified outbound traffic,
+but it should not be treated as a guarantee that a call will never be flagged.
+
+## Before going live
+
+- The iMessage line belongs to the same project as the SIP credentials.
+- The server is exactly `sip.spectrum.photon.codes`.
+- The username is the project ID, not the project name.
+- The password is the current project secret.
+- The transport is TCP, not UDP or TLS.
+- A test call connects and has working two-way audio.
+- The business profile has been submitted if you want to reduce flagging risk.
+
+## Troubleshooting
+
+### The SIP application cannot connect
+
+Check the server spelling and force the transport to TCP. Disable automatic
+UDP or TLS selection. Also confirm that your network allows the SIP application
+to make an outbound TCP connection.
+
+### Authentication fails
+
+Use the project ID as the username and the project secret as the password. Make
+sure both came from the same project. If the secret was rotated, replace the
+old value in the SIP application.
+
+### The line is not available
+
+Confirm that the project owns an iMessage line. WhatsApp and voice-only lines
+are not currently supported for Spectrum Voice.
+
+### Calls are flagged
+
+Outbound calls can work without a registered business profile, but they may be
+flagged. Register the business profile in the dashboard and allow 1–2 business
+days for registration to complete.

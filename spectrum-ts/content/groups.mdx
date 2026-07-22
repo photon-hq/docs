@@ -1,0 +1,43 @@
+---
+title: "Groups"
+description: "Bundle multiple messages into one logical visual group."
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+Use `group()` to bundle multiple messages into one logical unit, such as an album of images or a multi-attachment reply.
+
+
+Each item is delivered as its own <TypeTooltip name="Message" type={`interface Message<TPlatform extends string = string, TSender extends User = User, TSpace extends Space = Space> {
+    content: Content;
+    direction: "inbound" | "outbound";
+    edit(newContent: ContentInput): Promise<void>;
+    readonly id: string;
+    platform: TPlatform;
+    react(reaction: string): Promise<(Message<TPlatform, AgentSender, TSpace> & {
+        content: Reaction;
+    }) | undefined>;
+    read(): Promise<void>;
+    reply(content: ContentInput): Promise<Message<TPlatform, AgentSender, TSpace> | undefined>;
+    reply(...content: [
+        ContentInput,
+        ContentInput,
+        ...ContentInput[]
+    ]): Promise<Message<TPlatform, AgentSender, TSpace>[]>;
+    sender: TSender | undefined;
+    space: TSpace;
+    timestamp: Date;
+    unsend(): Promise<void>;
+}`} /> envelope, but the items ship together so the receiving platform can render them as a single visual group when supported.
+
+```ts
+import { group, attachment } from "spectrum-ts";
+
+await space.send(group(
+  attachment("/path/to/photo-1.jpg"),
+  attachment("/path/to/photo-2.jpg"),
+  attachment("/path/to/photo-3.jpg"),
+));
+```
+
+Groups don't nest, and reactions can't be group members. The builder enforces both at construction time. Platforms that don't support grouping fall back to sending each item sequentially.

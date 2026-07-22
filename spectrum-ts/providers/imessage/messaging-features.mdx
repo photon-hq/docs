@@ -1,0 +1,2443 @@
+---
+title: "iMessage messaging features"
+sidebarTitle: "Messaging features"
+description: "Use iMessage effects, chat metadata, mini-app cards, contact cards, attachments, and tapbacks."
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+Use these provider-specific helpers after choosing the cloud or local package
+on the [iMessage provider](/spectrum-ts/providers/imessage) page. Unless noted,
+the rich operations on this page require the cloud package.
+
+## Message effects
+
+iMessage supports bubble effects, which animate the sent message bubble, and screen effects, which play a full-screen animation on receive. Wrap any content with `effect()`:
+
+```ts
+import { attachment } from "spectrum-ts";
+import { effect, imessage } from "spectrum-ts/providers/imessage";
+
+await space.send(effect("Happy birthday!", imessage.effect.message.celebration));
+await space.send(effect(attachment("/path/to/photo.jpg"), imessage.effect.message.confetti));
+```
+
+The wrapped content can be a string, `markdown(...)`, or any `attachment(...)`. Effects only apply on iMessage. Other platforms see the inner content unchanged.
+
+
+<Note>
+  Sending effects requires the cloud `@spectrum-ts/imessage` package. The local
+  package exports the helper for API consistency but rejects effect sends with
+  an <TypeTooltip name="UnsupportedError" type={`declare class UnsupportedError extends Error {
+    readonly kind: UnsupportedKind;
+    readonly platform?: string;
+    readonly contentType?: string;
+    readonly action?: string;
+    readonly detail?: string;
+    constructor(opts: UnsupportedErrorOptions);
+    static content(contentType: string, platform?: string, detail?: string): UnsupportedError;
+    static action(action: string, platform?: string, detail?: string): UnsupportedError;
+    withPlatform(platform: string): UnsupportedError;
+}`} />.
+</Note>
+
+
+<AccordionGroup>
+  <Accordion title="Bubble effects" description="Animate the sent message bubble.">
+    | Constant | Value |
+    |---|---|
+    | `imessage.effect.message.slam` | `"com.apple.MobileSMS.expressivesend.impact"` |
+    | `imessage.effect.message.loud` | `"com.apple.MobileSMS.expressivesend.loud"` |
+    | `imessage.effect.message.gentle` | `"com.apple.MobileSMS.expressivesend.gentle"` |
+    | `imessage.effect.message.invisible` | `"com.apple.MobileSMS.expressivesend.invisibleink"` |
+    
+  </Accordion>
+  <Accordion title="Screen effects" description="Play a full-screen animation on the recipient's device when the message arrives.">
+    | Constant | Value |
+    |---|---|
+    | `imessage.effect.message.confetti` | `"com.apple.messages.effect.CKConfettiEffect"` |
+    | `imessage.effect.message.fireworks` | `"com.apple.messages.effect.CKFireworksEffect"` |
+    | `imessage.effect.message.balloons` | `"com.apple.messages.effect.CKBalloonEffect"` |
+    | `imessage.effect.message.heart` | `"com.apple.messages.effect.CKHeartEffect"` |
+    | `imessage.effect.message.lasers` | `"com.apple.messages.effect.CKLasersEffect"` |
+    | `imessage.effect.message.celebration` | `"com.apple.messages.effect.CKHappyBirthdayEffect"` |
+    | `imessage.effect.message.sparkles` | `"com.apple.messages.effect.CKSparklesEffect"` |
+    | `imessage.effect.message.spotlight` | `"com.apple.messages.effect.CKSpotlightEffect"` |
+    | `imessage.effect.message.echo` | `"com.apple.messages.effect.CKEchoEffect"` |
+    
+  </Accordion>
+</AccordionGroup>
+
+## Chat renaming
+
+Rename a group chat using `space.rename()` or the canonical `rename()` content builder:
+
+```ts
+import { rename } from "spectrum-ts";
+
+// Sugar
+await space.rename("Book Club");
+
+// Canonical
+await space.send(rename("Book Club"));
+```
+
+Renaming requires `@spectrum-ts/imessage` and only works on group chats. With
+`@spectrum-ts/imessage-local`, or on a DM, `rename()` throws an
+<TypeTooltip name="UnsupportedError" type={`declare class UnsupportedError extends Error {
+    readonly kind: UnsupportedKind;
+    readonly platform?: string;
+    readonly contentType?: string;
+    readonly action?: string;
+    readonly detail?: string;
+    constructor(opts: UnsupportedErrorOptions);
+    static content(contentType: string, platform?: string, detail?: string): UnsupportedError;
+    static action(action: string, platform?: string, detail?: string): UnsupportedError;
+    withPlatform(platform: string): UnsupportedError;
+}`} />.
+
+## Group avatars
+
+Set or clear the group chat icon using `space.avatar()` or the canonical `avatar()` content builder:
+
+```ts
+import { avatar } from "spectrum-ts";
+
+// Sugar - set from a file path
+await space.avatar("./icon.png");
+
+// Sugar - clear the current avatar
+await space.avatar("clear");
+
+// Canonical
+await space.send(avatar("./icon.png"));
+```
+
+
+Read the current icon back with `space.getAvatar()`. It resolves to <TypeTooltip name="AvatarData" type={`interface AvatarData {
+    data: Buffer;
+    mimeType: string;
+}`} /> or `undefined` when the group has no icon. The result round-trips into the setter:
+
+```ts
+const icon = await space.getAvatar();
+if (icon) {
+  await otherGroup.avatar(icon.data, { mimeType: icon.mimeType });
+}
+```
+
+Group avatars require `@spectrum-ts/imessage` and only work on group chats.
+With `@spectrum-ts/imessage-local`, or on a DM, `avatar()` and `getAvatar()`
+throw an <TypeTooltip name="UnsupportedError" type={`declare class UnsupportedError extends Error {
+    readonly kind: UnsupportedKind;
+    readonly platform?: string;
+    readonly contentType?: string;
+    readonly action?: string;
+    readonly detail?: string;
+    constructor(opts: UnsupportedErrorOptions);
+    static content(contentType: string, platform?: string, detail?: string): UnsupportedError;
+    static action(action: string, platform?: string, detail?: string): UnsupportedError;
+    withPlatform(platform: string): UnsupportedError;
+}`} />.
+
+## Group membership
+
+Add or remove members with `space.add()` / `space.remove()`, or leave the group with `space.leave()` — or use the canonical `addMember()` / `removeMember()` / `leaveSpace()` content builders:
+
+```ts
+import { addMember, leaveSpace, removeMember } from "spectrum-ts";
+
+// Sugar
+await space.add("+15553333333");
+await space.add([alice, "carol@example.com"]); // batches land in one call
+await space.remove("+15553333333");
+await space.leave();
+
+// Canonical
+await space.send(addMember("+15553333333"));
+await space.send(removeMember("+15553333333"));
+await space.send(leaveSpace());
+```
+
+Members are E.164 phone numbers or emails — the same handles `space.create` accepts.
+
+List the current roster with `space.getMembers()`. Each entry's `id` is the canonical address, so the results feed straight back into `add()` / `remove()` / `space.create()`; the agent's own number is excluded:
+
+```ts
+const members = await space.getMembers();
+await space.remove(members.filter((m) => m.id.endsWith("@example.com")));
+
+// Typed extras (address/country/service) via the narrowed instance
+const im = imessage(app);
+const detailed = await im.getMembers(space);
+for (const member of detailed) {
+  console.log(member.address, member.service);
+}
+```
+
+Membership management requires `@spectrum-ts/imessage` and only works on group
+chats. With `@spectrum-ts/imessage-local`, or on a DM, it throws an
+<TypeTooltip name="UnsupportedError" type={`declare class UnsupportedError extends Error {
+    readonly kind: UnsupportedKind;
+    readonly platform?: string;
+    readonly contentType?: string;
+    readonly action?: string;
+    readonly detail?: string;
+    constructor(opts: UnsupportedErrorOptions);
+    static content(contentType: string, platform?: string, detail?: string): UnsupportedError;
+    static action(action: string, platform?: string, detail?: string): UnsupportedError;
+    withPlatform(platform: string): UnsupportedError;
+}`} /> — a DM cannot be converted into a group, so create a new
+group with `space.create` instead. `getMembers()` has the same constraints.
+
+## Inbound group events
+
+Inbound group events require a dedicated cloud line, available on the Business plan. Group changes made by other members then arrive as inbound messages on `app.messages`, carrying the same content types you send:
+
+<Warning>
+  Shared-pool cloud lines and `@spectrum-ts/imessage-local` do not subscribe to
+  the group-event stream. Your app will not receive membership or
+  group-metadata changes through `app.messages` in either case. Calling
+  `space.get(chatGuid)` does not enable group events.
+</Warning>
+
+| Someone… | `content.type` | `message.sender` |
+|---|---|---|
+| adds a member | `"addMember"` (`members` = who was added) | who added them |
+| removes a member | `"removeMember"` (`members` = who was removed) | who removed them |
+| leaves the group | `"leaveSpace"` | the leaver |
+| renames the group | `"rename"` (`displayName`) | who renamed it |
+| changes the icon | `"avatar"` (`action.kind === "set"`, bytes behind `action.read()`) | who changed it |
+| clears the icon | `"avatar"` (`action.kind === "clear"`) | who cleared it |
+
+```ts
+for await (const [space, message] of app.messages) {
+  if (message.content.type === "addMember") {
+    console.log(`${message.sender?.id ?? "someone"} added ${message.content.members.join(", ")}`);
+  }
+}
+```
+
+Semantics to rely on:
+
+- `message.sender` may be `undefined` — Apple does not always record the actor. The affected member is always present (in `members`, or as the sender for `leaveSpace`).
+- The agent's own actions never echo back: `space.add(...)`, `space.rename(...)`, and friends are suppressed from the inbound stream, matching how self-sent messages behave.
+- Icon-change events carry a snapshot of the icon fetched at event time; an icon that was already replaced or removed by then is skipped (the follow-up event carries the current state).
+- On dedicated lines, group events ride the same durable catch-up log as messages and polls, so changes that happen while the app is down are replayed on reconnect. After a cursor gap, reconcile with `space.getMembers()` / `space.getAvatar()`.
+
+## Chat backgrounds
+
+Set or clear the chat background image. Import `background` from the iMessage provider and use the sugar method on a narrowed space:
+
+```ts
+import { background, imessage } from "spectrum-ts/providers/imessage";
+
+const im = imessage(space);
+
+// Set from a file path - MIME type inferred from the extension
+await im.background("./wallpaper.jpg");
+
+// Set from a buffer - mimeType is required
+await im.background(buffer, { mimeType: "image/jpeg" });
+
+// Clear the current background
+await im.background("clear");
+```
+
+`space.background(...)` is sugar for `space.send(background(...))`. The canonical form works on any space reference:
+
+```ts
+await space.send(background("./wallpaper.jpg"));
+await space.send(background("clear"));
+```
+
+After a successful set, the background usually syncs to other users' devices within `30s`. The background asset is uploaded to iCloud and then distributed to the other members of the conversation. Display time is not a hard SLA: network state, iCloud state, and the Messages client state can all affect when the UI appears.
+
+| Stage | What happens |
+|---|---|
+| Before `background(...)` resolves | The provider waits until the background asset reaches a distributable state. |
+| After `background(...)` resolves | The conversation has accepted the background change; iCloud distributes the asset to other members. |
+| Other members' devices | The background appears after the device receives the iCloud distribution. |
+
+Background UI may not appear in these cases:
+
+| Case | Result |
+|---|---|
+| The recipient's network, iCloud, or Messages state is unhealthy | The background may appear late, often after reopening Messages. |
+| A group member has never spoken, interacted, or is treated by the system as unknown or untrusted | Apple may not show the background UI to that member. |
+
+<Note>
+  The second case is an Apple Messages display limit, not a Spectrum option. If one group member never sees the background, have that member send a message in the group, mark the sender as known, or reopen Messages before retrying the background change.
+</Note>
+
+<Note>
+  Chat backgrounds require `@spectrum-ts/imessage`. With
+  `@spectrum-ts/imessage-local`, `background()` throws an <TypeTooltip name="UnsupportedError" type={`declare class UnsupportedError extends Error {
+    readonly kind: UnsupportedKind;
+    readonly platform?: string;
+    readonly contentType?: string;
+    readonly action?: string;
+    readonly detail?: string;
+    constructor(opts: UnsupportedErrorOptions);
+    static content(contentType: string, platform?: string, detail?: string): UnsupportedError;
+    static action(action: string, platform?: string, detail?: string): UnsupportedError;
+    withPlatform(platform: string): UnsupportedError;
+}`} />.
+</Note>
+
+<Note>
+  The string `"clear"` is a reserved sentinel. If you have a file literally named `clear` with no extension, pass `"./clear"` or load it as a `Buffer`.
+</Note>
+
+## Mini-app cards
+
+Send a customized iMessage mini-app card: a remote-only rich bubble that shows app metadata, a deep link, and a visual layout. Import `customizedMiniApp` from the iMessage provider:
+
+```ts
+import { customizedMiniApp } from "spectrum-ts/providers/imessage";
+
+const sent = await space.send(customizedMiniApp({
+  appName: "My App",
+  extensionBundleId: "com.example.myapp.imessage",
+  teamId: "ABCDE12345",
+  url: "https://example.com/deep-link",
+  layout: {
+    caption: "Check this out",
+    subcaption: "Tap to open",
+  },
+}));
+```
+
+`space.send(customizedMiniApp(...))` returns the sent message record. Unlike `background` and `read`, mini-app cards are real outbound messages.
+
+`appStoreId` is optional. Omit it to send a card whose extension isn't published on the App Store. When set, recipients without the extension are directed to its App Store entry.
+
+Set `live: true` when you want Messages to render the installed extension's live UI instead of only showing the static layout preview:
+
+```ts
+const sent = await space.send(customizedMiniApp({
+  appName: "My App",
+  extensionBundleId: "com.example.myapp.imessage",
+  live: true,
+  teamId: "ABCDE12345",
+  url: "https://example.com/live",
+  layout: {
+    caption: "Open live dashboard",
+  },
+}));
+```
+
+The recipient must have the matching iMessage extension installed. Omit `live`, or set it to `false`, to keep the static layout preview.
+
+
+
+
+
+`customizedMiniApp()` accepts a <TypeTooltip name="CustomizedMiniAppInput" type={``} />. Its `layout` field uses <TypeTooltip name="CustomizedMiniAppLayout" type={``} />.
+
+<AccordionGroup>
+  <Accordion title="CustomizedMiniAppInput" description="Fields for building a mini-app card.">
+    | Field | Type | Description |
+    |---|---|---|
+    | `appName` | `string` | Display name of the owning app, shown by Messages fallback UI. |
+    | `appStoreId` | `number` (optional) | Apple App Store numeric id of the owning app. When set, must be a positive integer. |
+    | `extensionBundleId` | `string` | Bundle identifier of the iMessage extension target. Must not contain `:`. |
+    | `layout` | `MiniAppLayout` | Visible card layout. |
+    | `teamId` | `string` | 10-character uppercase alphanumeric Apple Team ID. |
+    | `url` | `string` | Absolute URL delivered to the installed extension on tap. |
+    
+  </Accordion>
+  <Accordion title="CustomizedMiniAppLayout" description="Visible layout of an iMessage mini-app card. Mirrors Apple's `MSMessageTemplateLayout`. At least one of `caption`, `subcaption`, `trailingCaption`, `trailingSubcaption`, or `image` must be set; an entirely empty layout renders as a blank bubble and is rejected.">
+    | Field | Type | Description |
+    |---|---|---|
+    | `caption` | `string` (optional) | Top-left, bold. The most prominent text slot. |
+    | `image` | `Uint8Array` (optional) | JPEG preview image bytes. |
+    | `imageSubtitle` | `string` (optional) | Overlay text shown below `imageTitle`. Requires `image`. |
+    | `imageTitle` | `string` (optional) | Overlay text shown above the image. Must be set together with `image`. |
+    | `subcaption` | `string` (optional) | Below `caption`, on the left. |
+    | `summary` | `string` (optional) | Fallback text for surfaces that cannot render the full card. |
+    | `trailingCaption` | `string` (optional) | Top-right. |
+    | `trailingSubcaption` | `string` (optional) | Below `trailingCaption`, on the right. |
+    
+  </Accordion>
+</AccordionGroup>
+
+### Update a customized mini-app card
+
+Keep the message returned by the original send and use it as the target of `edit()`. The following example updates the card's URL, caption, and rendering mode without sending a new bubble:
+
+```ts
+import { edit } from "spectrum-ts";
+import { customizedMiniApp } from "spectrum-ts/providers/imessage";
+
+const cardIdentity = {
+  appName: "My App",
+  extensionBundleId: "com.example.myapp.imessage",
+  teamId: "ABCDE12345",
+};
+
+const card = await space.send(customizedMiniApp({
+  ...cardIdentity,
+  url: "https://example.com/order/123",
+  layout: {
+    caption: "Preparing order",
+  },
+}));
+
+await space.send(edit(customizedMiniApp({
+  ...cardIdentity,
+  live: true,
+  url: "https://example.com/order/123?status=ready",
+  layout: {
+    caption: "Ready for pickup",
+  },
+}), card));
+```
+
+`card` includes the `miniAppCardSession` metadata required for the update. Spectrum manages and refreshes that session automatically, so reuse `card` for later updates instead of constructing the metadata yourself. The edit operation returns `undefined`.
+
+<Note>
+  Mini-app cards require `@spectrum-ts/imessage`. With
+  `@spectrum-ts/imessage-local`, `customizedMiniApp()` throws an
+  <TypeTooltip name="UnsupportedError" type={`declare class UnsupportedError extends Error {
+    readonly kind: UnsupportedKind;
+    readonly platform?: string;
+    readonly contentType?: string;
+    readonly action?: string;
+    readonly detail?: string;
+    constructor(opts: UnsupportedErrorOptions);
+    static content(contentType: string, platform?: string, detail?: string): UnsupportedError;
+    static action(action: string, platform?: string, detail?: string): UnsupportedError;
+    withPlatform(platform: string): UnsupportedError;
+}`} />.
+</Note>
+
+## Native contact card sharing
+
+Share the bot account's own iMessage contact card directly in a chat. Use `nativeContactCard()` to build the content, or the `space.shareContactCard()` sugar method on a narrowed iMessage space:
+
+<Tabs>
+  <Tab title="Sugar (space.shareContactCard)">
+    ```ts
+    import { imessage } from "spectrum-ts/providers/imessage";
+
+    const im = imessage(space);
+    await im.shareContactCard();
+    ```
+  </Tab>
+  <Tab title="Canonical (space.send)">
+    ```ts
+    import { nativeContactCard } from "spectrum-ts/providers/imessage";
+
+    await space.send(nativeContactCard());
+    ```
+  </Tab>
+</Tabs>
+
+This shares the bot's own contact card as it appears in iMessage. Recipients can tap it to save the contact. Use it in onboarding flows where you want users to add your bot to their contacts.
+
+<Note>
+  Native contact card sharing requires `@spectrum-ts/imessage`. With
+  `@spectrum-ts/imessage-local`, `nativeContactCard()` throws an
+  <TypeTooltip name="UnsupportedError" type={`declare class UnsupportedError extends Error {
+    readonly kind: UnsupportedKind;
+    readonly platform?: string;
+    readonly contentType?: string;
+    readonly action?: string;
+    readonly detail?: string;
+    constructor(opts: UnsupportedErrorOptions);
+    static content(contentType: string, platform?: string, detail?: string): UnsupportedError;
+    static action(action: string, platform?: string, detail?: string): UnsupportedError;
+    withPlatform(platform: string): UnsupportedError;
+}`} />.
+</Note>
+
+## Fetching attachments
+
+
+Retrieve an attachment by its iMessage GUID using `getAttachment` on the narrowed platform instance. The returned <TypeTooltip name="Attachment" type={`type Attachment = z.infer<typeof attachmentSchema>;`} /> is lazy. `.read()` and `.stream()` each trigger an independent download, so cache `.read()` if you need the bytes more than once.
+
+```ts
+import { imessage } from "spectrum-ts/providers/imessage";
+
+const im = imessage(app);
+const att = await im.getAttachment("p:0/GUID");
+
+if (att) {
+  console.log(att.name, att.mimeType, att.size);
+  const bytes = await att.read();
+}
+```
+
+In multi-phone mode, pass the phone number as the second argument to route the request through the correct instance:
+
+```ts
+const att = await im.getAttachment("p:0/GUID", "+15559999999");
+```
+
+When only one phone is configured, or in shared-pool mode, the phone parameter is optional.
+
+<Note>
+  `getAttachment` requires `@spectrum-ts/imessage`. With
+  `@spectrum-ts/imessage-local`, it throws an <TypeTooltip name="UnsupportedError" type={`declare class UnsupportedError extends Error {
+    readonly kind: UnsupportedKind;
+    readonly platform?: string;
+    readonly contentType?: string;
+    readonly action?: string;
+    readonly detail?: string;
+    constructor(opts: UnsupportedErrorOptions);
+    static content(contentType: string, platform?: string, detail?: string): UnsupportedError;
+    static action(action: string, platform?: string, detail?: string): UnsupportedError;
+    withPlatform(platform: string): UnsupportedError;
+}`} />. Local inbound
+  attachments are still available through each incoming message's content.
+</Note>
+
+## Tapback reactions
+
+
+iMessage converts six universal <TypeTooltip name="Emoji" type={`const Emoji: {
+  readonly love: "❤️";
+  readonly like: "👍";
+  readonly dislike: "👎";
+  readonly laugh: "😂";
+  readonly emphasize: "‼️";
+  readonly question: "❓";
+  readonly _1stPlaceMedal: "🥇";
+  readonly _2ndPlaceMedal: "🥈";
+  readonly _3rdPlaceMedal: "🥉";
+  readonly abacus: "🧮";
+  readonly abButton: "🆎";
+  readonly aButton: "🅰️";
+  readonly accordion: "🪗";
+  readonly adhesiveBandage: "🩹";
+  readonly admissionTickets: "🎟️";
+  readonly aerialTramway: "🚡";
+  readonly airplane: "✈️";
+  readonly airplaneArrival: "🛬";
+  readonly airplaneDeparture: "🛫";
+  readonly alarmClock: "⏰";
+  readonly alembic: "⚗️";
+  readonly alien: "👽";
+  readonly alienMonster: "👾";
+  readonly ambulance: "🚑";
+  readonly americanFootball: "🏈";
+  readonly amphora: "🏺";
+  readonly anatomicalHeart: "🫀";
+  readonly anchor: "⚓";
+  readonly angerSymbol: "💢";
+  readonly angryFace: "😠";
+  readonly angryFaceWithHorns: "👿";
+  readonly anguishedFace: "😧";
+  readonly ant: "🐜";
+  readonly antennaBars: "📶";
+  readonly anxiousFaceWithSweat: "😰";
+  readonly aquarius: "♒";
+  readonly aries: "♈";
+  readonly articulatedLorry: "🚛";
+  readonly artist: "🧑‍🎨";
+  readonly artistPalette: "🎨";
+  readonly astonishedFace: "😲";
+  readonly astronaut: "🧑‍🚀";
+  readonly atmSign: "🏧";
+  readonly atomSymbol: "⚛️";
+  readonly automobile: "🚗";
+  readonly autoRickshaw: "🛺";
+  readonly avocado: "🥑";
+  readonly axe: "🪓";
+  readonly baby: "👶";
+  readonly babyAngel: "👼";
+  readonly babyBottle: "🍼";
+  readonly babyChick: "🐤";
+  readonly babySymbol: "🚼";
+  readonly backArrow: "🔙";
+  readonly backhandIndexPointingDown: "👇";
+  readonly backhandIndexPointingLeft: "👈";
+  readonly backhandIndexPointingRight: "👉";
+  readonly backhandIndexPointingUp: "👆";
+  readonly backpack: "🎒";
+  readonly bacon: "🥓";
+  readonly badger: "🦡";
+  readonly badminton: "🏸";
+  readonly bagel: "🥯";
+  readonly baggageClaim: "🛄";
+  readonly baguetteBread: "🥖";
+  readonly balanceScale: "⚖️";
+  readonly balletDancer: "🧑‍🩰";
+  readonly balletShoes: "🩰";
+  readonly balloon: "🎈";
+  readonly ballotBoxWithBallot: "🗳️";
+  readonly banana: "🍌";
+  readonly banjo: "🪕";
+  readonly bank: "🏦";
+  readonly barberPole: "💈";
+  readonly barChart: "📊";
+  readonly baseball: "⚾";
+  readonly basket: "🧺";
+  readonly basketball: "🏀";
+  readonly bat: "🦇";
+  readonly bathtub: "🛁";
+  readonly battery: "🔋";
+  readonly bButton: "🅱️";
+  readonly beachWithUmbrella: "🏖️";
+  readonly beamingFaceWithSmilingEyes: "😁";
+  readonly beans: "🫘";
+  readonly bear: "🐻";
+  readonly beatingHeart: "💓";
+  readonly beaver: "🦫";
+  readonly bed: "🛏️";
+  readonly beerMug: "🍺";
+  readonly beetle: "🪲";
+  readonly bell: "🔔";
+  readonly bellhopBell: "🛎️";
+  readonly bellPepper: "🫑";
+  readonly bellWithSlash: "🔕";
+  readonly bentoBox: "🍱";
+  readonly beverageBox: "🧃";
+  readonly bicycle: "🚲";
+  readonly bikini: "👙";
+  readonly billedCap: "🧢";
+  readonly biohazard: "☣️";
+  readonly bird: "🐦";
+  readonly birthdayCake: "🎂";
+  readonly bison: "🦬";
+  readonly bitingLip: "🫦";
+  readonly blackBird: "🐦‍⬛";
+  readonly blackCat: "🐈‍⬛";
+  readonly blackCircle: "⚫";
+  readonly blackFlag: "🏴";
+  readonly blackHeart: "🖤";
+  readonly blackLargeSquare: "⬛";
+  readonly blackMediumSmallSquare: "◾";
+  readonly blackMediumSquare: "◼️";
+  readonly blackNib: "✒️";
+  readonly blackSmallSquare: "▪️";
+  readonly blackSquareButton: "🔲";
+  readonly blossom: "🌼";
+  readonly blowfish: "🐡";
+  readonly blueberries: "🫐";
+  readonly blueBook: "📘";
+  readonly blueCircle: "🔵";
+  readonly blueHeart: "💙";
+  readonly blueSquare: "🟦";
+  readonly boar: "🐗";
+  readonly bomb: "💣";
+  readonly bone: "🦴";
+  readonly bookmark: "🔖";
+  readonly bookmarkTabs: "📑";
+  readonly books: "📚";
+  readonly boomerang: "🪃";
+  readonly bottleWithPoppingCork: "🍾";
+  readonly bouquet: "💐";
+  readonly bowAndArrow: "🏹";
+  readonly bowling: "🎳";
+  readonly bowlWithSpoon: "🥣";
+  readonly boxingGlove: "🥊";
+  readonly boy: "👦";
+  readonly brain: "🧠";
+  readonly bread: "🍞";
+  readonly breastFeeding: "🤱";
+  readonly brick: "🧱";
+  readonly bridgeAtNight: "🌉";
+  readonly briefcase: "💼";
+  readonly briefs: "🩲";
+  readonly brightButton: "🔆";
+  readonly broccoli: "🥦";
+  readonly brokenChain: "⛓️‍💥";
+  readonly brokenHeart: "💔";
+  readonly broom: "🧹";
+  readonly brownCircle: "🟤";
+  readonly brownHeart: "🤎";
+  readonly brownMushroom: "🍄‍🟫";
+  readonly brownSquare: "🟫";
+  readonly bubbles: "🫧";
+  readonly bubbleTea: "🧋";
+  readonly bucket: "🪣";
+  readonly bug: "🐛";
+  readonly buildingConstruction: "🏗️";
+  readonly bulletTrain: "🚅";
+  readonly bullseye: "🎯";
+  readonly burrito: "🌯";
+  readonly bus: "🚌";
+  readonly busStop: "🚏";
+  readonly bustInSilhouette: "👤";
+  readonly bustsInSilhouette: "👥";
+  readonly butter: "🧈";
+  readonly butterfly: "🦋";
+  readonly cactus: "🌵";
+  readonly calendar: "📅";
+  readonly callMeHand: "🤙";
+  readonly camel: "🐪";
+  readonly camera: "📷";
+  readonly cameraWithFlash: "📸";
+  readonly camping: "🏕️";
+  readonly cancer: "♋";
+  readonly candle: "🕯️";
+  readonly candy: "🍬";
+  readonly cannedFood: "🥫";
+  readonly canoe: "🛶";
+  readonly capricorn: "♑";
+  readonly cardFileBox: "🗃️";
+  readonly cardIndex: "📇";
+  readonly cardIndexDividers: "🗂️";
+  readonly carouselHorse: "🎠";
+  readonly carpentrySaw: "🪚";
+  readonly carpStreamer: "🎏";
+  readonly carrot: "🥕";
+  readonly castle: "🏰";
+  readonly cat: "🐈";
+  readonly catFace: "🐱";
+  readonly catWithTearsOfJoy: "😹";
+  readonly catWithWrySmile: "😼";
+  readonly chains: "⛓️";
+  readonly chair: "🪑";
+  readonly chartDecreasing: "📉";
+  readonly chartIncreasing: "📈";
+  readonly chartIncreasingWithYen: "💹";
+  readonly checkBoxWithCheck: "☑️";
+  readonly checkMark: "✔️";
+  readonly checkMarkButton: "✅";
+  readonly cheeseWedge: "🧀";
+  readonly chequeredFlag: "🏁";
+  readonly cherries: "🍒";
+  readonly cherryBlossom: "🌸";
+  readonly chessPawn: "♟️";
+  readonly chestnut: "🌰";
+  readonly chicken: "🐔";
+  readonly child: "🧒";
+  readonly childrenCrossing: "🚸";
+  readonly chipmunk: "🐿️";
+  readonly chocolateBar: "🍫";
+  readonly chopsticks: "🥢";
+  readonly christmasTree: "🎄";
+  readonly church: "⛪";
+  readonly cigarette: "🚬";
+  readonly cinema: "🎦";
+  readonly circledM: "Ⓜ️";
+  readonly circusTent: "🎪";
+  readonly cityscape: "🏙️";
+  readonly cityscapeAtDusk: "🌆";
+  readonly clamp: "🗜️";
+  readonly clapperBoard: "🎬";
+  readonly clappingHands: "👏";
+  readonly classicalBuilding: "🏛️";
+  readonly clButton: "🆑";
+  readonly clinkingBeerMugs: "🍻";
+  readonly clinkingGlasses: "🥂";
+  readonly clipboard: "📋";
+  readonly clockwiseVerticalArrows: "🔃";
+  readonly closedBook: "📕";
+  readonly closedMailboxWithLoweredFlag: "📪";
+  readonly closedMailboxWithRaisedFlag: "📫";
+  readonly closedUmbrella: "🌂";
+  readonly cloud: "☁️";
+  readonly cloudWithLightning: "🌩️";
+  readonly cloudWithLightningAndRain: "⛈️";
+  readonly cloudWithRain: "🌧️";
+  readonly cloudWithSnow: "🌨️";
+  readonly clownFace: "🤡";
+  readonly clubSuit: "♣️";
+  readonly clutchBag: "👝";
+  readonly coat: "🧥";
+  readonly cockroach: "🪳";
+  readonly cocktailGlass: "🍸";
+  readonly coconut: "🥥";
+  readonly coffin: "⚰️";
+  readonly coin: "🪙";
+  readonly coldFace: "🥶";
+  readonly collision: "💥";
+  readonly comet: "☄️";
+  readonly compass: "🧭";
+  readonly computerDisk: "💽";
+  readonly computerMouse: "🖱️";
+  readonly confettiBall: "🎊";
+  readonly confoundedFace: "😖";
+  readonly confusedFace: "😕";
+  readonly construction: "🚧";
+  readonly constructionWorker: "👷";
+  readonly controlKnobs: "🎛️";
+  readonly convenienceStore: "🏪";
+  readonly cook: "🧑‍🍳";
+  readonly cookedRice: "🍚";
+  readonly cookie: "🍪";
+  readonly cooking: "🍳";
+  readonly coolButton: "🆒";
+  readonly copyright: "©️";
+  readonly coral: "🪸";
+  readonly couchAndLamp: "🛋️";
+  readonly counterclockwiseArrowsButton: "🔄";
+  readonly coupleWithHeart: "💑";
+  readonly coupleWithHeartManMan: "👨‍❤️‍👨";
+  readonly coupleWithHeartWomanMan: "👩‍❤️‍👨";
+  readonly coupleWithHeartWomanWoman: "👩‍❤️‍👩";
+  readonly cow: "🐄";
+  readonly cowboyHatFace: "🤠";
+  readonly cowFace: "🐮";
+  readonly crab: "🦀";
+  readonly crayon: "🖍️";
+  readonly creditCard: "💳";
+  readonly crescentMoon: "🌙";
+  readonly cricket: "🦗";
+  readonly cricketGame: "🏏";
+  readonly crocodile: "🐊";
+  readonly croissant: "🥐";
+  readonly crossedFingers: "🤞";
+  readonly crossedFlags: "🎌";
+  readonly crossedSwords: "⚔️";
+  readonly crossMark: "❌";
+  readonly crossMarkButton: "❎";
+  readonly crown: "👑";
+  readonly crutch: "🩼";
+  readonly cryingCat: "😿";
+  readonly cryingFace: "😢";
+  readonly crystalBall: "🔮";
+  readonly cucumber: "🥒";
+  readonly cupcake: "🧁";
+  readonly cupWithStraw: "🥤";
+  readonly curlingStone: "🥌";
+  readonly curlyLoop: "➰";
+  readonly currencyExchange: "💱";
+  readonly curryRice: "🍛";
+  readonly custard: "🍮";
+  readonly customs: "🛃";
+  readonly cutOfMeat: "🥩";
+  readonly cyclone: "🌀";
+  readonly dagger: "🗡️";
+  readonly dango: "🍡";
+  readonly dashingAway: "💨";
+  readonly deafMan: "🧏‍♂️";
+  readonly deafPerson: "🧏";
+  readonly deafWoman: "🧏‍♀️";
+  readonly deciduousTree: "🌳";
+  readonly deer: "🦌";
+  readonly deliveryTruck: "🚚";
+  readonly departmentStore: "🏬";
+  readonly derelictHouse: "🏚️";
+  readonly desert: "🏜️";
+  readonly desertIsland: "🏝️";
+  readonly desktopComputer: "🖥️";
+  readonly detective: "🕵️";
+  readonly diamondSuit: "♦️";
+  readonly diamondWithADot: "💠";
+  readonly dimButton: "🔅";
+  readonly disappointedFace: "😞";
+  readonly disguisedFace: "🥸";
+  readonly distortedFace: "🫪";
+  readonly divide: "➗";
+  readonly divingMask: "🤿";
+  readonly diyaLamp: "🪔";
+  readonly dizzy: "💫";
+  readonly dna: "🧬";
+  readonly dodo: "🦤";
+  readonly dog: "🐕";
+  readonly dogFace: "🐶";
+  readonly dollarBanknote: "💵";
+  readonly dolphin: "🐬";
+  readonly donkey: "🫏";
+  readonly door: "🚪";
+  readonly dottedLineFace: "🫥";
+  readonly dottedSixPointedStar: "🔯";
+  readonly doubleCurlyLoop: "➿";
+  readonly doubleExclamationMark: "‼️";
+  readonly doughnut: "🍩";
+  readonly dove: "🕊️";
+  readonly downArrow: "⬇️";
+  readonly downcastFaceWithSweat: "😓";
+  readonly downLeftArrow: "↙️";
+  readonly downRightArrow: "↘️";
+  readonly downwardsButton: "🔽";
+  readonly dragon: "🐉";
+  readonly dragonFace: "🐲";
+  readonly dress: "👗";
+  readonly droolingFace: "🤤";
+  readonly droplet: "💧";
+  readonly dropOfBlood: "🩸";
+  readonly drum: "🥁";
+  readonly duck: "🦆";
+  readonly dumpling: "🥟";
+  readonly dvd: "📀";
+  readonly eagle: "🦅";
+  readonly ear: "👂";
+  readonly earOfCorn: "🌽";
+  readonly earWithHearingAid: "🦻";
+  readonly egg: "🥚";
+  readonly eggplant: "🍆";
+  readonly eightOClock: "🕗";
+  readonly eightPointedStar: "✴️";
+  readonly eightSpokedAsterisk: "✳️";
+  readonly eightThirty: "🕣";
+  readonly ejectButton: "⏏️";
+  readonly electricPlug: "🔌";
+  readonly elephant: "🐘";
+  readonly elevator: "🛗";
+  readonly elevenOClock: "🕚";
+  readonly elevenThirty: "🕦";
+  readonly elf: "🧝";
+  readonly eMail: "📧";
+  readonly emptyNest: "🪹";
+  readonly endArrow: "🔚";
+  readonly enragedFace: "😡";
+  readonly envelope: "✉️";
+  readonly envelopeWithArrow: "📩";
+  readonly euroBanknote: "💶";
+  readonly evergreenTree: "🌲";
+  readonly ewe: "🐑";
+  readonly exclamationQuestionMark: "⁉️";
+  readonly explodingHead: "🤯";
+  readonly expressionlessFace: "😑";
+  readonly eye: "👁️";
+  readonly eyeInSpeechBubble: "👁️‍🗨️";
+  readonly eyes: "👀";
+  readonly faceBlowingAKiss: "😘";
+  readonly faceExhaling: "😮‍💨";
+  readonly faceHoldingBackTears: "🥹";
+  readonly faceInClouds: "😶‍🌫️";
+  readonly faceSavoringFood: "😋";
+  readonly faceScreamingInFear: "😱";
+  readonly faceVomiting: "🤮";
+  readonly faceWithBagsUnderEyes: "🫩";
+  readonly faceWithCrossedOutEyes: "😵";
+  readonly faceWithDiagonalMouth: "🫤";
+  readonly faceWithHandOverMouth: "🤭";
+  readonly faceWithHeadBandage: "🤕";
+  readonly faceWithMedicalMask: "😷";
+  readonly faceWithMonocle: "🧐";
+  readonly faceWithOpenEyesAndHandOverMouth: "🫢";
+  readonly faceWithOpenMouth: "😮";
+  readonly faceWithoutMouth: "😶";
+  readonly faceWithPeekingEye: "🫣";
+  readonly faceWithRaisedEyebrow: "🤨";
+  readonly faceWithRollingEyes: "🙄";
+  readonly faceWithSpiralEyes: "😵‍💫";
+  readonly faceWithSteamFromNose: "😤";
+  readonly faceWithSymbolsOnMouth: "🤬";
+  readonly faceWithTearsOfJoy: "😂";
+  readonly faceWithThermometer: "🤒";
+  readonly faceWithTongue: "😛";
+  readonly factory: "🏭";
+  readonly factoryWorker: "🧑‍🏭";
+  readonly fairy: "🧚";
+  readonly falafel: "🧆";
+  readonly fallenLeaf: "🍂";
+  readonly family: "👪";
+  readonly familyAdultAdultChild: "🧑‍🧑‍🧒";
+  readonly familyAdultAdultChildChild: "🧑‍🧑‍🧒‍🧒";
+  readonly familyAdultChild: "🧑‍🧒";
+  readonly familyAdultChildChild: "🧑‍🧒‍🧒";
+  readonly familyManBoy: "👨‍👦";
+  readonly familyManBoyBoy: "👨‍👦‍👦";
+  readonly familyManGirl: "👨‍👧";
+  readonly familyManGirlBoy: "👨‍👧‍👦";
+  readonly familyManGirlGirl: "👨‍👧‍👧";
+  readonly familyManManBoy: "👨‍👨‍👦";
+  readonly familyManManBoyBoy: "👨‍👨‍👦‍👦";
+  readonly familyManManGirl: "👨‍👨‍👧";
+  readonly familyManManGirlBoy: "👨‍👨‍👧‍👦";
+  readonly familyManManGirlGirl: "👨‍👨‍👧‍👧";
+  readonly familyManWomanBoy: "👨‍👩‍👦";
+  readonly familyManWomanBoyBoy: "👨‍👩‍👦‍👦";
+  readonly familyManWomanGirl: "👨‍👩‍👧";
+  readonly familyManWomanGirlBoy: "👨‍👩‍👧‍👦";
+  readonly familyManWomanGirlGirl: "👨‍👩‍👧‍👧";
+  readonly familyWomanBoy: "👩‍👦";
+  readonly familyWomanBoyBoy: "👩‍👦‍👦";
+  readonly familyWomanGirl: "👩‍👧";
+  readonly familyWomanGirlBoy: "👩‍👧‍👦";
+  readonly familyWomanGirlGirl: "👩‍👧‍👧";
+  readonly familyWomanWomanBoy: "👩‍👩‍👦";
+  readonly familyWomanWomanBoyBoy: "👩‍👩‍👦‍👦";
+  readonly familyWomanWomanGirl: "👩‍👩‍👧";
+  readonly familyWomanWomanGirlBoy: "👩‍👩‍👧‍👦";
+  readonly familyWomanWomanGirlGirl: "👩‍👩‍👧‍👧";
+  readonly farmer: "🧑‍🌾";
+  readonly fastDownButton: "⏬";
+  readonly fastForwardButton: "⏩";
+  readonly fastReverseButton: "⏪";
+  readonly fastUpButton: "⏫";
+  readonly faxMachine: "📠";
+  readonly fearfulFace: "😨";
+  readonly feather: "🪶";
+  readonly femaleSign: "♀️";
+  readonly ferrisWheel: "🎡";
+  readonly ferry: "⛴️";
+  readonly fieldHockey: "🏑";
+  readonly fightCloud: "🫯";
+  readonly fileCabinet: "🗄️";
+  readonly fileFolder: "📁";
+  readonly filmFrames: "🎞️";
+  readonly filmProjector: "📽️";
+  readonly fingerprint: "🫆";
+  readonly fire: "🔥";
+  readonly firecracker: "🧨";
+  readonly fireEngine: "🚒";
+  readonly fireExtinguisher: "🧯";
+  readonly firefighter: "🧑‍🚒";
+  readonly fireworks: "🎆";
+  readonly firstQuarterMoon: "🌓";
+  readonly firstQuarterMoonFace: "🌛";
+  readonly fish: "🐟";
+  readonly fishCakeWithSwirl: "🍥";
+  readonly fishingPole: "🎣";
+  readonly fiveOClock: "🕔";
+  readonly fiveThirty: "🕠";
+  readonly flagAfghanistan: "🇦🇫";
+  readonly flagAlandIslands: "🇦🇽";
+  readonly flagAlbania: "🇦🇱";
+  readonly flagAlgeria: "🇩🇿";
+  readonly flagAmericanSamoa: "🇦🇸";
+  readonly flagAndorra: "🇦🇩";
+  readonly flagAngola: "🇦🇴";
+  readonly flagAnguilla: "🇦🇮";
+  readonly flagAntarctica: "🇦🇶";
+  readonly flagAntiguaBarbuda: "🇦🇬";
+  readonly flagArgentina: "🇦🇷";
+  readonly flagArmenia: "🇦🇲";
+  readonly flagAruba: "🇦🇼";
+  readonly flagAscensionIsland: "🇦🇨";
+  readonly flagAustralia: "🇦🇺";
+  readonly flagAustria: "🇦🇹";
+  readonly flagAzerbaijan: "🇦🇿";
+  readonly flagBahamas: "🇧🇸";
+  readonly flagBahrain: "🇧🇭";
+  readonly flagBangladesh: "🇧🇩";
+  readonly flagBarbados: "🇧🇧";
+  readonly flagBelarus: "🇧🇾";
+  readonly flagBelgium: "🇧🇪";
+  readonly flagBelize: "🇧🇿";
+  readonly flagBenin: "🇧🇯";
+  readonly flagBermuda: "🇧🇲";
+  readonly flagBhutan: "🇧🇹";
+  readonly flagBolivia: "🇧🇴";
+  readonly flagBosniaHerzegovina: "🇧🇦";
+  readonly flagBotswana: "🇧🇼";
+  readonly flagBouvetIsland: "🇧🇻";
+  readonly flagBrazil: "🇧🇷";
+  readonly flagBritishIndianOceanTerritory: "🇮🇴";
+  readonly flagBritishVirginIslands: "🇻🇬";
+  readonly flagBrunei: "🇧🇳";
+  readonly flagBulgaria: "🇧🇬";
+  readonly flagBurkinaFaso: "🇧🇫";
+  readonly flagBurundi: "🇧🇮";
+  readonly flagCambodia: "🇰🇭";
+  readonly flagCameroon: "🇨🇲";
+  readonly flagCanada: "🇨🇦";
+  readonly flagCanaryIslands: "🇮🇨";
+  readonly flagCapeVerde: "🇨🇻";
+  readonly flagCaribbeanNetherlands: "🇧🇶";
+  readonly flagCaymanIslands: "🇰🇾";
+  readonly flagCentralAfricanRepublic: "🇨🇫";
+  readonly flagCeutaMelilla: "🇪🇦";
+  readonly flagChad: "🇹🇩";
+  readonly flagChile: "🇨🇱";
+  readonly flagChina: "🇨🇳";
+  readonly flagChristmasIsland: "🇨🇽";
+  readonly flagClippertonIsland: "🇨🇵";
+  readonly flagCocosIslands: "🇨🇨";
+  readonly flagColombia: "🇨🇴";
+  readonly flagComoros: "🇰🇲";
+  readonly flagCongoBrazzaville: "🇨🇬";
+  readonly flagCongoKinshasa: "🇨🇩";
+  readonly flagCookIslands: "🇨🇰";
+  readonly flagCostaRica: "🇨🇷";
+  readonly flagCoteDIvoire: "🇨🇮";
+  readonly flagCroatia: "🇭🇷";
+  readonly flagCuba: "🇨🇺";
+  readonly flagCuracao: "🇨🇼";
+  readonly flagCyprus: "🇨🇾";
+  readonly flagCzechia: "🇨🇿";
+  readonly flagDenmark: "🇩🇰";
+  readonly flagDiegoGarcia: "🇩🇬";
+  readonly flagDjibouti: "🇩🇯";
+  readonly flagDominica: "🇩🇲";
+  readonly flagDominicanRepublic: "🇩🇴";
+  readonly flagEcuador: "🇪🇨";
+  readonly flagEgypt: "🇪🇬";
+  readonly flagElSalvador: "🇸🇻";
+  readonly flagEngland: "🏴󠁧󠁢󠁥󠁮󠁧󠁿";
+  readonly flagEquatorialGuinea: "🇬🇶";
+  readonly flagEritrea: "🇪🇷";
+  readonly flagEstonia: "🇪🇪";
+  readonly flagEswatini: "🇸🇿";
+  readonly flagEthiopia: "🇪🇹";
+  readonly flagEuropeanUnion: "🇪🇺";
+  readonly flagFalklandIslands: "🇫🇰";
+  readonly flagFaroeIslands: "🇫🇴";
+  readonly flagFiji: "🇫🇯";
+  readonly flagFinland: "🇫🇮";
+  readonly flagFrance: "🇫🇷";
+  readonly flagFrenchGuiana: "🇬🇫";
+  readonly flagFrenchPolynesia: "🇵🇫";
+  readonly flagFrenchSouthernTerritories: "🇹🇫";
+  readonly flagGabon: "🇬🇦";
+  readonly flagGambia: "🇬🇲";
+  readonly flagGeorgia: "🇬🇪";
+  readonly flagGermany: "🇩🇪";
+  readonly flagGhana: "🇬🇭";
+  readonly flagGibraltar: "🇬🇮";
+  readonly flagGreece: "🇬🇷";
+  readonly flagGreenland: "🇬🇱";
+  readonly flagGrenada: "🇬🇩";
+  readonly flagGuadeloupe: "🇬🇵";
+  readonly flagGuam: "🇬🇺";
+  readonly flagGuatemala: "🇬🇹";
+  readonly flagGuernsey: "🇬🇬";
+  readonly flagGuinea: "🇬🇳";
+  readonly flagGuineaBissau: "🇬🇼";
+  readonly flagGuyana: "🇬🇾";
+  readonly flagHaiti: "🇭🇹";
+  readonly flagHeardMcdonaldIslands: "🇭🇲";
+  readonly flagHonduras: "🇭🇳";
+  readonly flagHongKongSarChina: "🇭🇰";
+  readonly flagHungary: "🇭🇺";
+  readonly flagIceland: "🇮🇸";
+  readonly flagIndia: "🇮🇳";
+  readonly flagIndonesia: "🇮🇩";
+  readonly flagInHole: "⛳";
+  readonly flagIran: "🇮🇷";
+  readonly flagIraq: "🇮🇶";
+  readonly flagIreland: "🇮🇪";
+  readonly flagIsleOfMan: "🇮🇲";
+  readonly flagIsrael: "🇮🇱";
+  readonly flagItaly: "🇮🇹";
+  readonly flagJamaica: "🇯🇲";
+  readonly flagJapan: "🇯🇵";
+  readonly flagJersey: "🇯🇪";
+  readonly flagJordan: "🇯🇴";
+  readonly flagKazakhstan: "🇰🇿";
+  readonly flagKenya: "🇰🇪";
+  readonly flagKiribati: "🇰🇮";
+  readonly flagKosovo: "🇽🇰";
+  readonly flagKuwait: "🇰🇼";
+  readonly flagKyrgyzstan: "🇰🇬";
+  readonly flagLaos: "🇱🇦";
+  readonly flagLatvia: "🇱🇻";
+  readonly flagLebanon: "🇱🇧";
+  readonly flagLesotho: "🇱🇸";
+  readonly flagLiberia: "🇱🇷";
+  readonly flagLibya: "🇱🇾";
+  readonly flagLiechtenstein: "🇱🇮";
+  readonly flagLithuania: "🇱🇹";
+  readonly flagLuxembourg: "🇱🇺";
+  readonly flagMacaoSarChina: "🇲🇴";
+  readonly flagMadagascar: "🇲🇬";
+  readonly flagMalawi: "🇲🇼";
+  readonly flagMalaysia: "🇲🇾";
+  readonly flagMaldives: "🇲🇻";
+  readonly flagMali: "🇲🇱";
+  readonly flagMalta: "🇲🇹";
+  readonly flagMarshallIslands: "🇲🇭";
+  readonly flagMartinique: "🇲🇶";
+  readonly flagMauritania: "🇲🇷";
+  readonly flagMauritius: "🇲🇺";
+  readonly flagMayotte: "🇾🇹";
+  readonly flagMexico: "🇲🇽";
+  readonly flagMicronesia: "🇫🇲";
+  readonly flagMoldova: "🇲🇩";
+  readonly flagMonaco: "🇲🇨";
+  readonly flagMongolia: "🇲🇳";
+  readonly flagMontenegro: "🇲🇪";
+  readonly flagMontserrat: "🇲🇸";
+  readonly flagMorocco: "🇲🇦";
+  readonly flagMozambique: "🇲🇿";
+  readonly flagMyanmar: "🇲🇲";
+  readonly flagNamibia: "🇳🇦";
+  readonly flagNauru: "🇳🇷";
+  readonly flagNepal: "🇳🇵";
+  readonly flagNetherlands: "🇳🇱";
+  readonly flagNewCaledonia: "🇳🇨";
+  readonly flagNewZealand: "🇳🇿";
+  readonly flagNicaragua: "🇳🇮";
+  readonly flagNiger: "🇳🇪";
+  readonly flagNigeria: "🇳🇬";
+  readonly flagNiue: "🇳🇺";
+  readonly flagNorfolkIsland: "🇳🇫";
+  readonly flagNorthernMarianaIslands: "🇲🇵";
+  readonly flagNorthKorea: "🇰🇵";
+  readonly flagNorthMacedonia: "🇲🇰";
+  readonly flagNorway: "🇳🇴";
+  readonly flagOman: "🇴🇲";
+  readonly flagPakistan: "🇵🇰";
+  readonly flagPalau: "🇵🇼";
+  readonly flagPalestinianTerritories: "🇵🇸";
+  readonly flagPanama: "🇵🇦";
+  readonly flagPapuaNewGuinea: "🇵🇬";
+  readonly flagParaguay: "🇵🇾";
+  readonly flagPeru: "🇵🇪";
+  readonly flagPhilippines: "🇵🇭";
+  readonly flagPitcairnIslands: "🇵🇳";
+  readonly flagPoland: "🇵🇱";
+  readonly flagPortugal: "🇵🇹";
+  readonly flagPuertoRico: "🇵🇷";
+  readonly flagQatar: "🇶🇦";
+  readonly flagReunion: "🇷🇪";
+  readonly flagRomania: "🇷🇴";
+  readonly flagRussia: "🇷🇺";
+  readonly flagRwanda: "🇷🇼";
+  readonly flagSamoa: "🇼🇸";
+  readonly flagSanMarino: "🇸🇲";
+  readonly flagSaoTomePrincipe: "🇸🇹";
+  readonly flagSark: "🇨🇶";
+  readonly flagSaudiArabia: "🇸🇦";
+  readonly flagScotland: "🏴󠁧󠁢󠁳󠁣󠁴󠁿";
+  readonly flagSenegal: "🇸🇳";
+  readonly flagSerbia: "🇷🇸";
+  readonly flagSeychelles: "🇸🇨";
+  readonly flagSierraLeone: "🇸🇱";
+  readonly flagSingapore: "🇸🇬";
+  readonly flagSintMaarten: "🇸🇽";
+  readonly flagSlovakia: "🇸🇰";
+  readonly flagSlovenia: "🇸🇮";
+  readonly flagSolomonIslands: "🇸🇧";
+  readonly flagSomalia: "🇸🇴";
+  readonly flagSouthAfrica: "🇿🇦";
+  readonly flagSouthGeorgiaSouthSandwichIslands: "🇬🇸";
+  readonly flagSouthKorea: "🇰🇷";
+  readonly flagSouthSudan: "🇸🇸";
+  readonly flagSpain: "🇪🇸";
+  readonly flagSriLanka: "🇱🇰";
+  readonly flagStBarthelemy: "🇧🇱";
+  readonly flagStHelena: "🇸🇭";
+  readonly flagStKittsNevis: "🇰🇳";
+  readonly flagStLucia: "🇱🇨";
+  readonly flagStMartin: "🇲🇫";
+  readonly flagStPierreMiquelon: "🇵🇲";
+  readonly flagStVincentGrenadines: "🇻🇨";
+  readonly flagSudan: "🇸🇩";
+  readonly flagSuriname: "🇸🇷";
+  readonly flagSvalbardJanMayen: "🇸🇯";
+  readonly flagSweden: "🇸🇪";
+  readonly flagSwitzerland: "🇨🇭";
+  readonly flagSyria: "🇸🇾";
+  readonly flagTaiwan: "🇹🇼";
+  readonly flagTajikistan: "🇹🇯";
+  readonly flagTanzania: "🇹🇿";
+  readonly flagThailand: "🇹🇭";
+  readonly flagTimorLeste: "🇹🇱";
+  readonly flagTogo: "🇹🇬";
+  readonly flagTokelau: "🇹🇰";
+  readonly flagTonga: "🇹🇴";
+  readonly flagTrinidadTobago: "🇹🇹";
+  readonly flagTristanDaCunha: "🇹🇦";
+  readonly flagTunisia: "🇹🇳";
+  readonly flagTurkiye: "🇹🇷";
+  readonly flagTurkmenistan: "🇹🇲";
+  readonly flagTurksCaicosIslands: "🇹🇨";
+  readonly flagTuvalu: "🇹🇻";
+  readonly flagUganda: "🇺🇬";
+  readonly flagUkraine: "🇺🇦";
+  readonly flagUnitedArabEmirates: "🇦🇪";
+  readonly flagUnitedKingdom: "🇬🇧";
+  readonly flagUnitedNations: "🇺🇳";
+  readonly flagUnitedStates: "🇺🇸";
+  readonly flagUruguay: "🇺🇾";
+  readonly flagUSOutlyingIslands: "🇺🇲";
+  readonly flagUSVirginIslands: "🇻🇮";
+  readonly flagUzbekistan: "🇺🇿";
+  readonly flagVanuatu: "🇻🇺";
+  readonly flagVaticanCity: "🇻🇦";
+  readonly flagVenezuela: "🇻🇪";
+  readonly flagVietnam: "🇻🇳";
+  readonly flagWales: "🏴󠁧󠁢󠁷󠁬󠁳󠁿";
+  readonly flagWallisFutuna: "🇼🇫";
+  readonly flagWesternSahara: "🇪🇭";
+  readonly flagYemen: "🇾🇪";
+  readonly flagZambia: "🇿🇲";
+  readonly flagZimbabwe: "🇿🇼";
+  readonly flamingo: "🦩";
+  readonly flashlight: "🔦";
+  readonly flatbread: "🫓";
+  readonly flatShoe: "🥿";
+  readonly fleurDeLis: "⚜️";
+  readonly flexedBiceps: "💪";
+  readonly floppyDisk: "💾";
+  readonly flowerPlayingCards: "🎴";
+  readonly flushedFace: "😳";
+  readonly flute: "🪈";
+  readonly fly: "🪰";
+  readonly flyingDisc: "🥏";
+  readonly flyingSaucer: "🛸";
+  readonly fog: "🌫️";
+  readonly foggy: "🌁";
+  readonly foldedHands: "🙏";
+  readonly foldingHandFan: "🪭";
+  readonly fondue: "🫕";
+  readonly foot: "🦶";
+  readonly footprints: "👣";
+  readonly forkAndKnife: "🍴";
+  readonly forkAndKnifeWithPlate: "🍽️";
+  readonly fortuneCookie: "🥠";
+  readonly fountain: "⛲";
+  readonly fountainPen: "🖋️";
+  readonly fourLeafClover: "🍀";
+  readonly fourOClock: "🕓";
+  readonly fourThirty: "🕟";
+  readonly fox: "🦊";
+  readonly framedPicture: "🖼️";
+  readonly freeButton: "🆓";
+  readonly frenchFries: "🍟";
+  readonly friedShrimp: "🍤";
+  readonly frog: "🐸";
+  readonly frontFacingBabyChick: "🐥";
+  readonly frowningFace: "☹️";
+  readonly frowningFaceWithOpenMouth: "😦";
+  readonly fuelPump: "⛽";
+  readonly fullMoon: "🌕";
+  readonly fullMoonFace: "🌝";
+  readonly funeralUrn: "⚱️";
+  readonly gameDie: "🎲";
+  readonly garlic: "🧄";
+  readonly gear: "⚙️";
+  readonly gemini: "♊";
+  readonly gemStone: "💎";
+  readonly genie: "🧞";
+  readonly ghost: "👻";
+  readonly gingerRoot: "🫚";
+  readonly giraffe: "🦒";
+  readonly girl: "👧";
+  readonly glasses: "👓";
+  readonly glassOfMilk: "🥛";
+  readonly globeShowingAmericas: "🌎";
+  readonly globeShowingAsiaAustralia: "🌏";
+  readonly globeShowingEuropeAfrica: "🌍";
+  readonly globeWithMeridians: "🌐";
+  readonly gloves: "🧤";
+  readonly glowingStar: "🌟";
+  readonly goalNet: "🥅";
+  readonly goat: "🐐";
+  readonly goblin: "👺";
+  readonly goggles: "🥽";
+  readonly goose: "🪿";
+  readonly gorilla: "🦍";
+  readonly graduationCap: "🎓";
+  readonly grapes: "🍇";
+  readonly greenApple: "🍏";
+  readonly greenBook: "📗";
+  readonly greenCircle: "🟢";
+  readonly greenHeart: "💚";
+  readonly greenSalad: "🥗";
+  readonly greenSquare: "🟩";
+  readonly greyHeart: "🩶";
+  readonly grimacingFace: "😬";
+  readonly grinningCat: "😺";
+  readonly grinningCatWithSmilingEyes: "😸";
+  readonly grinningFace: "😀";
+  readonly grinningFaceWithBigEyes: "😃";
+  readonly grinningFaceWithSmilingEyes: "😄";
+  readonly grinningFaceWithSweat: "😅";
+  readonly grinningSquintingFace: "😆";
+  readonly growingHeart: "💗";
+  readonly guard: "💂";
+  readonly guideDog: "🦮";
+  readonly guitar: "🎸";
+  readonly hairPick: "🪮";
+  readonly hairyCreature: "🫈";
+  readonly hamburger: "🍔";
+  readonly hammer: "🔨";
+  readonly hammerAndPick: "⚒️";
+  readonly hammerAndWrench: "🛠️";
+  readonly hamsa: "🪬";
+  readonly hamster: "🐹";
+  readonly handbag: "👜";
+  readonly handshake: "🤝";
+  readonly handWithFingersSplayed: "🖐️";
+  readonly handWithIndexFingerAndThumbCrossed: "🫰";
+  readonly harp: "🪉";
+  readonly hatchingChick: "🐣";
+  readonly headphone: "🎧";
+  readonly headShakingHorizontally: "🙂‍↔️";
+  readonly headShakingVertically: "🙂‍↕️";
+  readonly headstone: "🪦";
+  readonly healthWorker: "🧑‍⚕️";
+  readonly hearNoEvilMonkey: "🙉";
+  readonly heartDecoration: "💟";
+  readonly heartExclamation: "❣️";
+  readonly heartHands: "🫶";
+  readonly heartOnFire: "❤️‍🔥";
+  readonly heartSuit: "♥️";
+  readonly heartWithArrow: "💘";
+  readonly heartWithRibbon: "💝";
+  readonly heavyDollarSign: "💲";
+  readonly heavyEqualsSign: "🟰";
+  readonly hedgehog: "🦔";
+  readonly helicopter: "🚁";
+  readonly herb: "🌿";
+  readonly hibiscus: "🌺";
+  readonly highHeeledShoe: "👠";
+  readonly highSpeedTrain: "🚄";
+  readonly highVoltage: "⚡";
+  readonly hikingBoot: "🥾";
+  readonly hinduTemple: "🛕";
+  readonly hippopotamus: "🦛";
+  readonly hole: "🕳️";
+  readonly hollowRedCircle: "⭕";
+  readonly honeybee: "🐝";
+  readonly honeyPot: "🍯";
+  readonly hook: "🪝";
+  readonly horizontalTrafficLight: "🚥";
+  readonly horse: "🐎";
+  readonly horseFace: "🐴";
+  readonly horseRacing: "🏇";
+  readonly hospital: "🏥";
+  readonly hotBeverage: "☕";
+  readonly hotDog: "🌭";
+  readonly hotel: "🏨";
+  readonly hotFace: "🥵";
+  readonly hotPepper: "🌶️";
+  readonly hotSprings: "♨️";
+  readonly hourglassDone: "⌛";
+  readonly hourglassNotDone: "⏳";
+  readonly house: "🏠";
+  readonly houses: "🏘️";
+  readonly houseWithGarden: "🏡";
+  readonly hundredPoints: "💯";
+  readonly hushedFace: "😯";
+  readonly hut: "🛖";
+  readonly hyacinth: "🪻";
+  readonly ice: "🧊";
+  readonly iceCream: "🍨";
+  readonly iceHockey: "🏒";
+  readonly iceSkate: "⛸️";
+  readonly idButton: "🆔";
+  readonly identificationCard: "🪪";
+  readonly inboxTray: "📥";
+  readonly incomingEnvelope: "📨";
+  readonly indexPointingAtTheViewer: "🫵";
+  readonly indexPointingUp: "☝️";
+  readonly infinity: "♾️";
+  readonly information: "ℹ️";
+  readonly inputLatinLetters: "🔤";
+  readonly inputLatinLowercase: "🔡";
+  readonly inputLatinUppercase: "🔠";
+  readonly inputNumbers: "🔢";
+  readonly inputSymbols: "🔣";
+  readonly jackOLantern: "🎃";
+  readonly japaneseAcceptableButton: "🉑";
+  readonly japaneseApplicationButton: "🈸";
+  readonly japaneseBargainButton: "🉐";
+  readonly japaneseCastle: "🏯";
+  readonly japaneseCongratulationsButton: "㊗️";
+  readonly japaneseDiscountButton: "🈹";
+  readonly japaneseDolls: "🎎";
+  readonly japaneseFreeOfChargeButton: "🈚";
+  readonly japaneseHereButton: "🈁";
+  readonly japaneseMonthlyAmountButton: "🈷️";
+  readonly japaneseNotFreeOfChargeButton: "🈶";
+  readonly japaneseNoVacancyButton: "🈵";
+  readonly japaneseOpenForBusinessButton: "🈺";
+  readonly japanesePassingGradeButton: "🈴";
+  readonly japanesePostOffice: "🏣";
+  readonly japaneseProhibitedButton: "🈲";
+  readonly japaneseReservedButton: "🈯";
+  readonly japaneseSecretButton: "㊙️";
+  readonly japaneseServiceChargeButton: "🈂️";
+  readonly japaneseSymbolForBeginner: "🔰";
+  readonly japaneseVacancyButton: "🈳";
+  readonly jar: "🫙";
+  readonly jeans: "👖";
+  readonly jellyfish: "🪼";
+  readonly joker: "🃏";
+  readonly joystick: "🕹️";
+  readonly judge: "🧑‍⚖️";
+  readonly kaaba: "🕋";
+  readonly kangaroo: "🦘";
+  readonly key: "🔑";
+  readonly keyboard: "⌨️";
+  readonly keycap0: "0️⃣";
+  readonly keycap1: "1️⃣";
+  readonly keycap10: "🔟";
+  readonly keycap2: "2️⃣";
+  readonly keycap3: "3️⃣";
+  readonly keycap4: "4️⃣";
+  readonly keycap5: "5️⃣";
+  readonly keycap6: "6️⃣";
+  readonly keycap7: "7️⃣";
+  readonly keycap8: "8️⃣";
+  readonly keycap9: "9️⃣";
+  readonly keycapAsterisk: "*️⃣";
+  readonly keycapNumberSign: "#️⃣";
+  readonly khanda: "🪯";
+  readonly kickScooter: "🛴";
+  readonly kimono: "👘";
+  readonly kiss: "💏";
+  readonly kissingCat: "😽";
+  readonly kissingFace: "😗";
+  readonly kissingFaceWithClosedEyes: "😚";
+  readonly kissingFaceWithSmilingEyes: "😙";
+  readonly kissManMan: "👨‍❤️‍💋‍👨";
+  readonly kissMark: "💋";
+  readonly kissWomanMan: "👩‍❤️‍💋‍👨";
+  readonly kissWomanWoman: "👩‍❤️‍💋‍👩";
+  readonly kitchenKnife: "🔪";
+  readonly kite: "🪁";
+  readonly kiwiFruit: "🥝";
+  readonly knot: "🪢";
+  readonly koala: "🐨";
+  readonly labCoat: "🥼";
+  readonly label: "🏷️";
+  readonly lacrosse: "🥍";
+  readonly ladder: "🪜";
+  readonly ladyBeetle: "🐞";
+  readonly landslide: "🛘";
+  readonly laptop: "💻";
+  readonly largeBlueDiamond: "🔷";
+  readonly largeOrangeDiamond: "🔶";
+  readonly lastQuarterMoon: "🌗";
+  readonly lastQuarterMoonFace: "🌜";
+  readonly lastTrackButton: "⏮️";
+  readonly latinCross: "✝️";
+  readonly leafFlutteringInWind: "🍃";
+  readonly leaflessTree: "🪾";
+  readonly leafyGreen: "🥬";
+  readonly ledger: "📒";
+  readonly leftArrow: "⬅️";
+  readonly leftArrowCurvingRight: "↪️";
+  readonly leftFacingFist: "🤛";
+  readonly leftLuggage: "🛅";
+  readonly leftRightArrow: "↔️";
+  readonly leftSpeechBubble: "🗨️";
+  readonly leftwardsHand: "🫲";
+  readonly leftwardsPushingHand: "🫷";
+  readonly leg: "🦵";
+  readonly lemon: "🍋";
+  readonly leo: "♌";
+  readonly leopard: "🐆";
+  readonly levelSlider: "🎚️";
+  readonly libra: "♎";
+  readonly lightBlueHeart: "🩵";
+  readonly lightBulb: "💡";
+  readonly lightRail: "🚈";
+  readonly lime: "🍋‍🟩";
+  readonly link: "🔗";
+  readonly linkedPaperclips: "🖇️";
+  readonly lion: "🦁";
+  readonly lipstick: "💄";
+  readonly litterInBinSign: "🚮";
+  readonly lizard: "🦎";
+  readonly llama: "🦙";
+  readonly lobster: "🦞";
+  readonly locked: "🔒";
+  readonly lockedWithKey: "🔐";
+  readonly lockedWithPen: "🔏";
+  readonly locomotive: "🚂";
+  readonly lollipop: "🍭";
+  readonly longDrum: "🪘";
+  readonly lotionBottle: "🧴";
+  readonly lotus: "🪷";
+  readonly loudlyCryingFace: "😭";
+  readonly loudspeaker: "📢";
+  readonly loveHotel: "🏩";
+  readonly loveLetter: "💌";
+  readonly loveYouGesture: "🤟";
+  readonly lowBattery: "🪫";
+  readonly luggage: "🧳";
+  readonly lungs: "🫁";
+  readonly lyingFace: "🤥";
+  readonly mage: "🧙";
+  readonly magicWand: "🪄";
+  readonly magnet: "🧲";
+  readonly magnifyingGlassTiltedLeft: "🔍";
+  readonly magnifyingGlassTiltedRight: "🔎";
+  readonly mahjongRedDragon: "🀄";
+  readonly maleSign: "♂️";
+  readonly mammoth: "🦣";
+  readonly man: "👨";
+  readonly manArtist: "👨‍🎨";
+  readonly manAstronaut: "👨‍🚀";
+  readonly manBald: "👨‍🦲";
+  readonly manBeard: "🧔‍♂️";
+  readonly manBiking: "🚴‍♂️";
+  readonly manBlondHair: "👱‍♂️";
+  readonly manBouncingBall: "⛹️‍♂️";
+  readonly manBowing: "🙇‍♂️";
+  readonly manCartwheeling: "🤸‍♂️";
+  readonly manClimbing: "🧗‍♂️";
+  readonly manConstructionWorker: "👷‍♂️";
+  readonly manCook: "👨‍🍳";
+  readonly manCurlyHair: "👨‍🦱";
+  readonly manDancing: "🕺";
+  readonly manDetective: "🕵️‍♂️";
+  readonly manElf: "🧝‍♂️";
+  readonly manFacepalming: "🤦‍♂️";
+  readonly manFactoryWorker: "👨‍🏭";
+  readonly manFairy: "🧚‍♂️";
+  readonly manFarmer: "👨‍🌾";
+  readonly manFeedingBaby: "👨‍🍼";
+  readonly manFirefighter: "👨‍🚒";
+  readonly manFrowning: "🙍‍♂️";
+  readonly manGenie: "🧞‍♂️";
+  readonly manGesturingNo: "🙅‍♂️";
+  readonly manGesturingOk: "🙆‍♂️";
+  readonly manGettingHaircut: "💇‍♂️";
+  readonly manGettingMassage: "💆‍♂️";
+  readonly mango: "🥭";
+  readonly manGolfing: "🏌️‍♂️";
+  readonly manGuard: "💂‍♂️";
+  readonly manHealthWorker: "👨‍⚕️";
+  readonly manInLotusPosition: "🧘‍♂️";
+  readonly manInManualWheelchair: "👨‍🦽";
+  readonly manInManualWheelchairFacingRight: "👨‍🦽‍➡️";
+  readonly manInMotorizedWheelchair: "👨‍🦼";
+  readonly manInMotorizedWheelchairFacingRight: "👨‍🦼‍➡️";
+  readonly manInSteamyRoom: "🧖‍♂️";
+  readonly manInTuxedo: "🤵‍♂️";
+  readonly manJudge: "👨‍⚖️";
+  readonly manJuggling: "🤹‍♂️";
+  readonly manKneeling: "🧎‍♂️";
+  readonly manKneelingFacingRight: "🧎‍♂️‍➡️";
+  readonly manLiftingWeights: "🏋️‍♂️";
+  readonly manMage: "🧙‍♂️";
+  readonly manMechanic: "👨‍🔧";
+  readonly manMountainBiking: "🚵‍♂️";
+  readonly manOfficeWorker: "👨‍💼";
+  readonly manPilot: "👨‍✈️";
+  readonly manPlayingHandball: "🤾‍♂️";
+  readonly manPlayingWaterPolo: "🤽‍♂️";
+  readonly manPoliceOfficer: "👮‍♂️";
+  readonly manPouting: "🙎‍♂️";
+  readonly manRaisingHand: "🙋‍♂️";
+  readonly manRedHair: "👨‍🦰";
+  readonly manRowingBoat: "🚣‍♂️";
+  readonly manRunning: "🏃‍♂️";
+  readonly manRunningFacingRight: "🏃‍♂️‍➡️";
+  readonly manScientist: "👨‍🔬";
+  readonly manShrugging: "🤷‍♂️";
+  readonly manSinger: "👨‍🎤";
+  readonly manSShoe: "👞";
+  readonly manStanding: "🧍‍♂️";
+  readonly manStudent: "👨‍🎓";
+  readonly manSuperhero: "🦸‍♂️";
+  readonly manSupervillain: "🦹‍♂️";
+  readonly manSurfing: "🏄‍♂️";
+  readonly manSwimming: "🏊‍♂️";
+  readonly manTeacher: "👨‍🏫";
+  readonly manTechnologist: "👨‍💻";
+  readonly mantelpieceClock: "🕰️";
+  readonly manTippingHand: "💁‍♂️";
+  readonly manualWheelchair: "🦽";
+  readonly manVampire: "🧛‍♂️";
+  readonly manWalking: "🚶‍♂️";
+  readonly manWalkingFacingRight: "🚶‍♂️‍➡️";
+  readonly manWearingTurban: "👳‍♂️";
+  readonly manWhiteHair: "👨‍🦳";
+  readonly manWithVeil: "👰‍♂️";
+  readonly manWithWhiteCane: "👨‍🦯";
+  readonly manWithWhiteCaneFacingRight: "👨‍🦯‍➡️";
+  readonly manZombie: "🧟‍♂️";
+  readonly mapleLeaf: "🍁";
+  readonly mapOfJapan: "🗾";
+  readonly maracas: "🪇";
+  readonly martialArtsUniform: "🥋";
+  readonly mate: "🧉";
+  readonly meatOnBone: "🍖";
+  readonly mechanic: "🧑‍🔧";
+  readonly mechanicalArm: "🦾";
+  readonly mechanicalLeg: "🦿";
+  readonly medicalSymbol: "⚕️";
+  readonly megaphone: "📣";
+  readonly melon: "🍈";
+  readonly meltingFace: "🫠";
+  readonly memo: "📝";
+  readonly mendingHeart: "❤️‍🩹";
+  readonly menHoldingHands: "👬";
+  readonly menorah: "🕎";
+  readonly menSRoom: "🚹";
+  readonly menWithBunnyEars: "👯‍♂️";
+  readonly menWrestling: "🤼‍♂️";
+  readonly mermaid: "🧜‍♀️";
+  readonly merman: "🧜‍♂️";
+  readonly merperson: "🧜";
+  readonly metro: "🚇";
+  readonly microbe: "🦠";
+  readonly microphone: "🎤";
+  readonly microscope: "🔬";
+  readonly middleFinger: "🖕";
+  readonly militaryHelmet: "🪖";
+  readonly militaryMedal: "🎖️";
+  readonly milkyWay: "🌌";
+  readonly minibus: "🚐";
+  readonly minus: "➖";
+  readonly mirror: "🪞";
+  readonly mirrorBall: "🪩";
+  readonly moai: "🗿";
+  readonly mobilePhone: "📱";
+  readonly mobilePhoneOff: "📴";
+  readonly mobilePhoneWithArrow: "📲";
+  readonly moneyBag: "💰";
+  readonly moneyMouthFace: "🤑";
+  readonly moneyWithWings: "💸";
+  readonly monkey: "🐒";
+  readonly monkeyFace: "🐵";
+  readonly monorail: "🚝";
+  readonly moonCake: "🥮";
+  readonly moonViewingCeremony: "🎑";
+  readonly moose: "🫎";
+  readonly mosque: "🕌";
+  readonly mosquito: "🦟";
+  readonly motorBoat: "🛥️";
+  readonly motorcycle: "🏍️";
+  readonly motorizedWheelchair: "🦼";
+  readonly motorScooter: "🛵";
+  readonly motorway: "🛣️";
+  readonly mountain: "⛰️";
+  readonly mountainCableway: "🚠";
+  readonly mountainRailway: "🚞";
+  readonly mountFuji: "🗻";
+  readonly mouse: "🐁";
+  readonly mouseFace: "🐭";
+  readonly mouseTrap: "🪤";
+  readonly mouth: "👄";
+  readonly movieCamera: "🎥";
+  readonly mrsClaus: "🤶";
+  readonly multiply: "✖️";
+  readonly mushroom: "🍄";
+  readonly musicalKeyboard: "🎹";
+  readonly musicalNote: "🎵";
+  readonly musicalNotes: "🎶";
+  readonly musicalScore: "🎼";
+  readonly mutedSpeaker: "🔇";
+  readonly mxClaus: "🧑‍🎄";
+  readonly nailPolish: "💅";
+  readonly nameBadge: "📛";
+  readonly nationalPark: "🏞️";
+  readonly nauseatedFace: "🤢";
+  readonly nazarAmulet: "🧿";
+  readonly necktie: "👔";
+  readonly nerdFace: "🤓";
+  readonly nestingDolls: "🪆";
+  readonly nestWithEggs: "🪺";
+  readonly neutralFace: "😐";
+  readonly newButton: "🆕";
+  readonly newMoon: "🌑";
+  readonly newMoonFace: "🌚";
+  readonly newspaper: "📰";
+  readonly nextTrackButton: "⏭️";
+  readonly ngButton: "🆖";
+  readonly nightWithStars: "🌃";
+  readonly nineOClock: "🕘";
+  readonly nineThirty: "🕤";
+  readonly ninja: "🥷";
+  readonly noBicycles: "🚳";
+  readonly noEntry: "⛔";
+  readonly noLittering: "🚯";
+  readonly noMobilePhones: "📵";
+  readonly nonPotableWater: "🚱";
+  readonly noOneUnderEighteen: "🔞";
+  readonly noPedestrians: "🚷";
+  readonly nose: "👃";
+  readonly noSmoking: "🚭";
+  readonly notebook: "📓";
+  readonly notebookWithDecorativeCover: "📔";
+  readonly nutAndBolt: "🔩";
+  readonly oButton: "🅾️";
+  readonly octopus: "🐙";
+  readonly oden: "🍢";
+  readonly officeBuilding: "🏢";
+  readonly officeWorker: "🧑‍💼";
+  readonly ogre: "👹";
+  readonly oilDrum: "🛢️";
+  readonly okButton: "🆗";
+  readonly okHand: "👌";
+  readonly olderPerson: "🧓";
+  readonly oldKey: "🗝️";
+  readonly oldMan: "👴";
+  readonly oldWoman: "👵";
+  readonly olive: "🫒";
+  readonly om: "🕉️";
+  readonly onArrow: "🔛";
+  readonly oncomingAutomobile: "🚘";
+  readonly oncomingBus: "🚍";
+  readonly oncomingFist: "👊";
+  readonly oncomingPoliceCar: "🚔";
+  readonly oncomingTaxi: "🚖";
+  readonly oneOClock: "🕐";
+  readonly onePieceSwimsuit: "🩱";
+  readonly oneThirty: "🕜";
+  readonly onion: "🧅";
+  readonly openBook: "📖";
+  readonly openFileFolder: "📂";
+  readonly openHands: "👐";
+  readonly openMailboxWithLoweredFlag: "📭";
+  readonly openMailboxWithRaisedFlag: "📬";
+  readonly ophiuchus: "⛎";
+  readonly opticalDisk: "💿";
+  readonly orangeBook: "📙";
+  readonly orangeCircle: "🟠";
+  readonly orangeHeart: "🧡";
+  readonly orangeSquare: "🟧";
+  readonly orangutan: "🦧";
+  readonly orca: "🫍";
+  readonly orthodoxCross: "☦️";
+  readonly otter: "🦦";
+  readonly outboxTray: "📤";
+  readonly owl: "🦉";
+  readonly ox: "🐂";
+  readonly oyster: "🦪";
+  readonly package_: "📦";
+  readonly pageFacingUp: "📄";
+  readonly pager: "📟";
+  readonly pageWithCurl: "📃";
+  readonly paintbrush: "🖌️";
+  readonly palmDownHand: "🫳";
+  readonly palmsUpTogether: "🤲";
+  readonly palmTree: "🌴";
+  readonly palmUpHand: "🫴";
+  readonly pancakes: "🥞";
+  readonly panda: "🐼";
+  readonly paperclip: "📎";
+  readonly parachute: "🪂";
+  readonly parrot: "🦜";
+  readonly partAlternationMark: "〽️";
+  readonly partyingFace: "🥳";
+  readonly partyPopper: "🎉";
+  readonly passengerShip: "🛳️";
+  readonly passportControl: "🛂";
+  readonly pauseButton: "⏸️";
+  readonly pawPrints: "🐾";
+  readonly pButton: "🅿️";
+  readonly peaceSymbol: "☮️";
+  readonly peach: "🍑";
+  readonly peacock: "🦚";
+  readonly peanuts: "🥜";
+  readonly peaPod: "🫛";
+  readonly pear: "🍐";
+  readonly pen: "🖊️";
+  readonly pencil: "✏️";
+  readonly penguin: "🐧";
+  readonly pensiveFace: "😔";
+  readonly peopleHoldingHands: "🧑‍🤝‍🧑";
+  readonly peopleHugging: "🫂";
+  readonly peopleWithBunnyEars: "👯";
+  readonly peopleWrestling: "🤼";
+  readonly performingArts: "🎭";
+  readonly perseveringFace: "😣";
+  readonly person: "🧑";
+  readonly personBald: "🧑‍🦲";
+  readonly personBeard: "🧔";
+  readonly personBiking: "🚴";
+  readonly personBlondHair: "👱";
+  readonly personBouncingBall: "⛹️";
+  readonly personBowing: "🙇";
+  readonly personCartwheeling: "🤸";
+  readonly personClimbing: "🧗";
+  readonly personCurlyHair: "🧑‍🦱";
+  readonly personFacepalming: "🤦";
+  readonly personFeedingBaby: "🧑‍🍼";
+  readonly personFencing: "🤺";
+  readonly personFrowning: "🙍";
+  readonly personGesturingNo: "🙅";
+  readonly personGesturingOk: "🙆";
+  readonly personGettingHaircut: "💇";
+  readonly personGettingMassage: "💆";
+  readonly personGolfing: "🏌️";
+  readonly personInBed: "🛌";
+  readonly personInLotusPosition: "🧘";
+  readonly personInManualWheelchair: "🧑‍🦽";
+  readonly personInManualWheelchairFacingRight: "🧑‍🦽‍➡️";
+  readonly personInMotorizedWheelchair: "🧑‍🦼";
+  readonly personInMotorizedWheelchairFacingRight: "🧑‍🦼‍➡️";
+  readonly personInSteamyRoom: "🧖";
+  readonly personInSuitLevitating: "🕴️";
+  readonly personInTuxedo: "🤵";
+  readonly personJuggling: "🤹";
+  readonly personKneeling: "🧎";
+  readonly personKneelingFacingRight: "🧎‍➡️";
+  readonly personLiftingWeights: "🏋️";
+  readonly personMountainBiking: "🚵";
+  readonly personPlayingHandball: "🤾";
+  readonly personPlayingWaterPolo: "🤽";
+  readonly personPouting: "🙎";
+  readonly personRaisingHand: "🙋";
+  readonly personRedHair: "🧑‍🦰";
+  readonly personRowingBoat: "🚣";
+  readonly personRunning: "🏃";
+  readonly personRunningFacingRight: "🏃‍➡️";
+  readonly personShrugging: "🤷";
+  readonly personStanding: "🧍";
+  readonly personSurfing: "🏄";
+  readonly personSwimming: "🏊";
+  readonly personTakingBath: "🛀";
+  readonly personTippingHand: "💁";
+  readonly personWalking: "🚶";
+  readonly personWalkingFacingRight: "🚶‍➡️";
+  readonly personWearingTurban: "👳";
+  readonly personWhiteHair: "🧑‍🦳";
+  readonly personWithCrown: "🫅";
+  readonly personWithSkullcap: "👲";
+  readonly personWithVeil: "👰";
+  readonly personWithWhiteCane: "🧑‍🦯";
+  readonly personWithWhiteCaneFacingRight: "🧑‍🦯‍➡️";
+  readonly petriDish: "🧫";
+  readonly phoenix: "🐦‍🔥";
+  readonly pick: "⛏️";
+  readonly pickupTruck: "🛻";
+  readonly pie: "🥧";
+  readonly pig: "🐖";
+  readonly pigFace: "🐷";
+  readonly pigNose: "🐽";
+  readonly pileOfPoo: "💩";
+  readonly pill: "💊";
+  readonly pilot: "🧑‍✈️";
+  readonly pinata: "🪅";
+  readonly pinchedFingers: "🤌";
+  readonly pinchingHand: "🤏";
+  readonly pineapple: "🍍";
+  readonly pineDecoration: "🎍";
+  readonly pingPong: "🏓";
+  readonly pinkHeart: "🩷";
+  readonly pirateFlag: "🏴‍☠️";
+  readonly pisces: "♓";
+  readonly pizza: "🍕";
+  readonly placard: "🪧";
+  readonly placeOfWorship: "🛐";
+  readonly playButton: "▶️";
+  readonly playgroundSlide: "🛝";
+  readonly playOrPauseButton: "⏯️";
+  readonly pleadingFace: "🥺";
+  readonly plunger: "🪠";
+  readonly plus: "➕";
+  readonly polarBear: "🐻‍❄️";
+  readonly policeCar: "🚓";
+  readonly policeCarLight: "🚨";
+  readonly policeOfficer: "👮";
+  readonly poodle: "🐩";
+  readonly pool8Ball: "🎱";
+  readonly popcorn: "🍿";
+  readonly postalHorn: "📯";
+  readonly postbox: "📮";
+  readonly postOffice: "🏤";
+  readonly potableWater: "🚰";
+  readonly potato: "🥔";
+  readonly potOfFood: "🍲";
+  readonly pottedPlant: "🪴";
+  readonly poultryLeg: "🍗";
+  readonly poundBanknote: "💷";
+  readonly pouringLiquid: "🫗";
+  readonly poutingCat: "😾";
+  readonly prayerBeads: "📿";
+  readonly pregnantMan: "🫃";
+  readonly pregnantPerson: "🫄";
+  readonly pregnantWoman: "🤰";
+  readonly pretzel: "🥨";
+  readonly prince: "🤴";
+  readonly princess: "👸";
+  readonly printer: "🖨️";
+  readonly prohibited: "🚫";
+  readonly purpleCircle: "🟣";
+  readonly purpleHeart: "💜";
+  readonly purpleSquare: "🟪";
+  readonly purse: "👛";
+  readonly pushpin: "📌";
+  readonly puzzlePiece: "🧩";
+  readonly rabbit: "🐇";
+  readonly rabbitFace: "🐰";
+  readonly raccoon: "🦝";
+  readonly racingCar: "🏎️";
+  readonly radio: "📻";
+  readonly radioactive: "☢️";
+  readonly radioButton: "🔘";
+  readonly railwayCar: "🚃";
+  readonly railwayTrack: "🛤️";
+  readonly rainbow: "🌈";
+  readonly rainbowFlag: "🏳️‍🌈";
+  readonly raisedBackOfHand: "🤚";
+  readonly raisedFist: "✊";
+  readonly raisedHand: "✋";
+  readonly raisingHands: "🙌";
+  readonly ram: "🐏";
+  readonly rat: "🐀";
+  readonly razor: "🪒";
+  readonly receipt: "🧾";
+  readonly recordButton: "⏺️";
+  readonly recyclingSymbol: "♻️";
+  readonly redApple: "🍎";
+  readonly redCircle: "🔴";
+  readonly redEnvelope: "🧧";
+  readonly redExclamationMark: "❗";
+  readonly redHeart: "❤️";
+  readonly redPaperLantern: "🏮";
+  readonly redQuestionMark: "❓";
+  readonly redSquare: "🟥";
+  readonly redTrianglePointedDown: "🔻";
+  readonly redTrianglePointedUp: "🔺";
+  readonly registered: "®️";
+  readonly relievedFace: "😌";
+  readonly reminderRibbon: "🎗️";
+  readonly repeatButton: "🔁";
+  readonly repeatSingleButton: "🔂";
+  readonly rescueWorkerSHelmet: "⛑️";
+  readonly restroom: "🚻";
+  readonly reverseButton: "◀️";
+  readonly revolvingHearts: "💞";
+  readonly rhinoceros: "🦏";
+  readonly ribbon: "🎀";
+  readonly riceBall: "🍙";
+  readonly riceCracker: "🍘";
+  readonly rightAngerBubble: "🗯️";
+  readonly rightArrow: "➡️";
+  readonly rightArrowCurvingDown: "⤵️";
+  readonly rightArrowCurvingLeft: "↩️";
+  readonly rightArrowCurvingUp: "⤴️";
+  readonly rightFacingFist: "🤜";
+  readonly rightwardsHand: "🫱";
+  readonly rightwardsPushingHand: "🫸";
+  readonly ring: "💍";
+  readonly ringBuoy: "🛟";
+  readonly ringedPlanet: "🪐";
+  readonly roastedSweetPotato: "🍠";
+  readonly robot: "🤖";
+  readonly rock: "🪨";
+  readonly rocket: "🚀";
+  readonly rolledUpNewspaper: "🗞️";
+  readonly rollerCoaster: "🎢";
+  readonly rollerSkate: "🛼";
+  readonly rollingOnTheFloorLaughing: "🤣";
+  readonly rollOfPaper: "🧻";
+  readonly rooster: "🐓";
+  readonly rootVegetable: "🫜";
+  readonly rose: "🌹";
+  readonly rosette: "🏵️";
+  readonly roundPushpin: "📍";
+  readonly rugbyFootball: "🏉";
+  readonly runningShirt: "🎽";
+  readonly runningShoe: "👟";
+  readonly sadButRelievedFace: "😥";
+  readonly safetyPin: "🧷";
+  readonly safetyVest: "🦺";
+  readonly sagittarius: "♐";
+  readonly sailboat: "⛵";
+  readonly sake: "🍶";
+  readonly salt: "🧂";
+  readonly salutingFace: "🫡";
+  readonly sandwich: "🥪";
+  readonly santaClaus: "🎅";
+  readonly sari: "🥻";
+  readonly satellite: "🛰️";
+  readonly satelliteAntenna: "📡";
+  readonly sauropod: "🦕";
+  readonly saxophone: "🎷";
+  readonly scarf: "🧣";
+  readonly school: "🏫";
+  readonly scientist: "🧑‍🔬";
+  readonly scissors: "✂️";
+  readonly scorpio: "♏";
+  readonly scorpion: "🦂";
+  readonly screwdriver: "🪛";
+  readonly scroll: "📜";
+  readonly seal: "🦭";
+  readonly seat: "💺";
+  readonly seedling: "🌱";
+  readonly seeNoEvilMonkey: "🙈";
+  readonly selfie: "🤳";
+  readonly serviceDog: "🐕‍🦺";
+  readonly sevenOClock: "🕖";
+  readonly sevenThirty: "🕢";
+  readonly sewingNeedle: "🪡";
+  readonly shakingFace: "🫨";
+  readonly shallowPanOfFood: "🥘";
+  readonly shamrock: "☘️";
+  readonly shark: "🦈";
+  readonly shavedIce: "🍧";
+  readonly sheafOfRice: "🌾";
+  readonly shield: "🛡️";
+  readonly shintoShrine: "⛩️";
+  readonly ship: "🚢";
+  readonly shootingStar: "🌠";
+  readonly shoppingBags: "🛍️";
+  readonly shoppingCart: "🛒";
+  readonly shortcake: "🍰";
+  readonly shorts: "🩳";
+  readonly shovel: "🪏";
+  readonly shower: "🚿";
+  readonly shrimp: "🦐";
+  readonly shuffleTracksButton: "🔀";
+  readonly shushingFace: "🤫";
+  readonly signOfTheHorns: "🤘";
+  readonly singer: "🧑‍🎤";
+  readonly sixOClock: "🕕";
+  readonly sixThirty: "🕡";
+  readonly skateboard: "🛹";
+  readonly skier: "⛷️";
+  readonly skis: "🎿";
+  readonly skull: "💀";
+  readonly skullAndCrossbones: "☠️";
+  readonly skunk: "🦨";
+  readonly sled: "🛷";
+  readonly sleepingFace: "😴";
+  readonly sleepyFace: "😪";
+  readonly slightlyFrowningFace: "🙁";
+  readonly slightlySmilingFace: "🙂";
+  readonly sloth: "🦥";
+  readonly slotMachine: "🎰";
+  readonly smallAirplane: "🛩️";
+  readonly smallBlueDiamond: "🔹";
+  readonly smallOrangeDiamond: "🔸";
+  readonly smilingCatWithHeartEyes: "😻";
+  readonly smilingFace: "☺️";
+  readonly smilingFaceWithHalo: "😇";
+  readonly smilingFaceWithHeartEyes: "😍";
+  readonly smilingFaceWithHearts: "🥰";
+  readonly smilingFaceWithHorns: "😈";
+  readonly smilingFaceWithOpenHands: "🤗";
+  readonly smilingFaceWithSmilingEyes: "😊";
+  readonly smilingFaceWithSunglasses: "😎";
+  readonly smilingFaceWithTear: "🥲";
+  readonly smirkingFace: "😏";
+  readonly snail: "🐌";
+  readonly snake: "🐍";
+  readonly sneezingFace: "🤧";
+  readonly snowboarder: "🏂";
+  readonly snowCappedMountain: "🏔️";
+  readonly snowflake: "❄️";
+  readonly snowman: "☃️";
+  readonly snowmanWithoutSnow: "⛄";
+  readonly soap: "🧼";
+  readonly soccerBall: "⚽";
+  readonly socks: "🧦";
+  readonly softball: "🥎";
+  readonly softIceCream: "🍦";
+  readonly soonArrow: "🔜";
+  readonly sosButton: "🆘";
+  readonly spadeSuit: "♠️";
+  readonly spaghetti: "🍝";
+  readonly sparkle: "❇️";
+  readonly sparkler: "🎇";
+  readonly sparkles: "✨";
+  readonly sparklingHeart: "💖";
+  readonly speakerHighVolume: "🔊";
+  readonly speakerLowVolume: "🔈";
+  readonly speakerMediumVolume: "🔉";
+  readonly speakingHead: "🗣️";
+  readonly speakNoEvilMonkey: "🙊";
+  readonly speechBalloon: "💬";
+  readonly speedboat: "🚤";
+  readonly spider: "🕷️";
+  readonly spiderWeb: "🕸️";
+  readonly spiralCalendar: "🗓️";
+  readonly spiralNotepad: "🗒️";
+  readonly spiralShell: "🐚";
+  readonly splatter: "🫟";
+  readonly sponge: "🧽";
+  readonly spoon: "🥄";
+  readonly sportsMedal: "🏅";
+  readonly sportUtilityVehicle: "🚙";
+  readonly spoutingWhale: "🐳";
+  readonly squid: "🦑";
+  readonly squintingFaceWithTongue: "😝";
+  readonly stadium: "🏟️";
+  readonly star: "⭐";
+  readonly starAndCrescent: "☪️";
+  readonly starOfDavid: "✡️";
+  readonly starStruck: "🤩";
+  readonly station: "🚉";
+  readonly statueOfLiberty: "🗽";
+  readonly steamingBowl: "🍜";
+  readonly stethoscope: "🩺";
+  readonly stopButton: "⏹️";
+  readonly stopSign: "🛑";
+  readonly stopwatch: "⏱️";
+  readonly straightRuler: "📏";
+  readonly strawberry: "🍓";
+  readonly student: "🧑‍🎓";
+  readonly studioMicrophone: "🎙️";
+  readonly stuffedFlatbread: "🥙";
+  readonly sun: "☀️";
+  readonly sunBehindCloud: "⛅";
+  readonly sunBehindLargeCloud: "🌥️";
+  readonly sunBehindRainCloud: "🌦️";
+  readonly sunBehindSmallCloud: "🌤️";
+  readonly sunflower: "🌻";
+  readonly sunglasses: "🕶️";
+  readonly sunrise: "🌅";
+  readonly sunriseOverMountains: "🌄";
+  readonly sunset: "🌇";
+  readonly sunWithFace: "🌞";
+  readonly superhero: "🦸";
+  readonly supervillain: "🦹";
+  readonly sushi: "🍣";
+  readonly suspensionRailway: "🚟";
+  readonly swan: "🦢";
+  readonly sweatDroplets: "💦";
+  readonly synagogue: "🕍";
+  readonly syringe: "💉";
+  readonly taco: "🌮";
+  readonly takeoutBox: "🥡";
+  readonly tamale: "🫔";
+  readonly tanabataTree: "🎋";
+  readonly tangerine: "🍊";
+  readonly taurus: "♉";
+  readonly taxi: "🚕";
+  readonly teacher: "🧑‍🏫";
+  readonly teacupWithoutHandle: "🍵";
+  readonly teapot: "🫖";
+  readonly tearOffCalendar: "📆";
+  readonly technologist: "🧑‍💻";
+  readonly teddyBear: "🧸";
+  readonly telephone: "☎️";
+  readonly telephoneReceiver: "📞";
+  readonly telescope: "🔭";
+  readonly television: "📺";
+  readonly tennis: "🎾";
+  readonly tenOClock: "🕙";
+  readonly tent: "⛺";
+  readonly tenThirty: "🕥";
+  readonly testTube: "🧪";
+  readonly thermometer: "🌡️";
+  readonly thinkingFace: "🤔";
+  readonly thongSandal: "🩴";
+  readonly thoughtBalloon: "💭";
+  readonly thread: "🧵";
+  readonly threeOClock: "🕒";
+  readonly threeThirty: "🕞";
+  readonly thumbsDown: "👎";
+  readonly thumbsUp: "👍";
+  readonly ticket: "🎫";
+  readonly tiger: "🐅";
+  readonly tigerFace: "🐯";
+  readonly timerClock: "⏲️";
+  readonly tiredFace: "😫";
+  readonly toilet: "🚽";
+  readonly tokyoTower: "🗼";
+  readonly tomato: "🍅";
+  readonly tongue: "👅";
+  readonly toolbox: "🧰";
+  readonly tooth: "🦷";
+  readonly toothbrush: "🪥";
+  readonly topArrow: "🔝";
+  readonly topHat: "🎩";
+  readonly tornado: "🌪️";
+  readonly trackball: "🖲️";
+  readonly tractor: "🚜";
+  readonly tradeMark: "™️";
+  readonly train: "🚆";
+  readonly tram: "🚊";
+  readonly tramCar: "🚋";
+  readonly transgenderFlag: "🏳️‍⚧️";
+  readonly transgenderSymbol: "⚧️";
+  readonly treasureChest: "🪎";
+  readonly tRex: "🦖";
+  readonly triangularFlag: "🚩";
+  readonly triangularRuler: "📐";
+  readonly tridentEmblem: "🔱";
+  readonly troll: "🧌";
+  readonly trolleybus: "🚎";
+  readonly trombone: "🪊";
+  readonly trophy: "🏆";
+  readonly tropicalDrink: "🍹";
+  readonly tropicalFish: "🐠";
+  readonly trumpet: "🎺";
+  readonly tShirt: "👕";
+  readonly tulip: "🌷";
+  readonly tumblerGlass: "🥃";
+  readonly turkey: "🦃";
+  readonly turtle: "🐢";
+  readonly twelveOClock: "🕛";
+  readonly twelveThirty: "🕧";
+  readonly twoHearts: "💕";
+  readonly twoHumpCamel: "🐫";
+  readonly twoOClock: "🕑";
+  readonly twoThirty: "🕝";
+  readonly umbrella: "☂️";
+  readonly umbrellaOnGround: "⛱️";
+  readonly umbrellaWithRainDrops: "☔";
+  readonly unamusedFace: "😒";
+  readonly unicorn: "🦄";
+  readonly unlocked: "🔓";
+  readonly upArrow: "⬆️";
+  readonly upButton: "🆙";
+  readonly upDownArrow: "↕️";
+  readonly upLeftArrow: "↖️";
+  readonly upRightArrow: "↗️";
+  readonly upsideDownFace: "🙃";
+  readonly upwardsButton: "🔼";
+  readonly vampire: "🧛";
+  readonly verticalTrafficLight: "🚦";
+  readonly vibrationMode: "📳";
+  readonly victoryHand: "✌️";
+  readonly videoCamera: "📹";
+  readonly videocassette: "📼";
+  readonly videoGame: "🎮";
+  readonly violin: "🎻";
+  readonly virgo: "♍";
+  readonly volcano: "🌋";
+  readonly volleyball: "🏐";
+  readonly vsButton: "🆚";
+  readonly vulcanSalute: "🖖";
+  readonly waffle: "🧇";
+  readonly waningCrescentMoon: "🌘";
+  readonly waningGibbousMoon: "🌖";
+  readonly warning: "⚠️";
+  readonly wastebasket: "🗑️";
+  readonly watch: "⌚";
+  readonly waterBuffalo: "🐃";
+  readonly waterCloset: "🚾";
+  readonly watermelon: "🍉";
+  readonly waterPistol: "🔫";
+  readonly waterWave: "🌊";
+  readonly wavingHand: "👋";
+  readonly wavyDash: "〰️";
+  readonly waxingCrescentMoon: "🌒";
+  readonly waxingGibbousMoon: "🌔";
+  readonly wearyCat: "🙀";
+  readonly wearyFace: "😩";
+  readonly wedding: "💒";
+  readonly whale: "🐋";
+  readonly wheel: "🛞";
+  readonly wheelchairSymbol: "♿";
+  readonly wheelOfDharma: "☸️";
+  readonly whiteCane: "🦯";
+  readonly whiteCircle: "⚪";
+  readonly whiteExclamationMark: "❕";
+  readonly whiteFlag: "🏳️";
+  readonly whiteFlower: "💮";
+  readonly whiteHeart: "🤍";
+  readonly whiteLargeSquare: "⬜";
+  readonly whiteMediumSmallSquare: "◽";
+  readonly whiteMediumSquare: "◻️";
+  readonly whiteQuestionMark: "❔";
+  readonly whiteSmallSquare: "▫️";
+  readonly whiteSquareButton: "🔳";
+  readonly wiltedFlower: "🥀";
+  readonly windChime: "🎐";
+  readonly windFace: "🌬️";
+  readonly window: "🪟";
+  readonly wineGlass: "🍷";
+  readonly wing: "🪽";
+  readonly winkingFace: "😉";
+  readonly winkingFaceWithTongue: "😜";
+  readonly wireless: "🛜";
+  readonly wolf: "🐺";
+  readonly woman: "👩";
+  readonly womanAndManHoldingHands: "👫";
+  readonly womanArtist: "👩‍🎨";
+  readonly womanAstronaut: "👩‍🚀";
+  readonly womanBald: "👩‍🦲";
+  readonly womanBeard: "🧔‍♀️";
+  readonly womanBiking: "🚴‍♀️";
+  readonly womanBlondHair: "👱‍♀️";
+  readonly womanBouncingBall: "⛹️‍♀️";
+  readonly womanBowing: "🙇‍♀️";
+  readonly womanCartwheeling: "🤸‍♀️";
+  readonly womanClimbing: "🧗‍♀️";
+  readonly womanConstructionWorker: "👷‍♀️";
+  readonly womanCook: "👩‍🍳";
+  readonly womanCurlyHair: "👩‍🦱";
+  readonly womanDancing: "💃";
+  readonly womanDetective: "🕵️‍♀️";
+  readonly womanElf: "🧝‍♀️";
+  readonly womanFacepalming: "🤦‍♀️";
+  readonly womanFactoryWorker: "👩‍🏭";
+  readonly womanFairy: "🧚‍♀️";
+  readonly womanFarmer: "👩‍🌾";
+  readonly womanFeedingBaby: "👩‍🍼";
+  readonly womanFirefighter: "👩‍🚒";
+  readonly womanFrowning: "🙍‍♀️";
+  readonly womanGenie: "🧞‍♀️";
+  readonly womanGesturingNo: "🙅‍♀️";
+  readonly womanGesturingOk: "🙆‍♀️";
+  readonly womanGettingHaircut: "💇‍♀️";
+  readonly womanGettingMassage: "💆‍♀️";
+  readonly womanGolfing: "🏌️‍♀️";
+  readonly womanGuard: "💂‍♀️";
+  readonly womanHealthWorker: "👩‍⚕️";
+  readonly womanInLotusPosition: "🧘‍♀️";
+  readonly womanInManualWheelchair: "👩‍🦽";
+  readonly womanInManualWheelchairFacingRight: "👩‍🦽‍➡️";
+  readonly womanInMotorizedWheelchair: "👩‍🦼";
+  readonly womanInMotorizedWheelchairFacingRight: "👩‍🦼‍➡️";
+  readonly womanInSteamyRoom: "🧖‍♀️";
+  readonly womanInTuxedo: "🤵‍♀️";
+  readonly womanJudge: "👩‍⚖️";
+  readonly womanJuggling: "🤹‍♀️";
+  readonly womanKneeling: "🧎‍♀️";
+  readonly womanKneelingFacingRight: "🧎‍♀️‍➡️";
+  readonly womanLiftingWeights: "🏋️‍♀️";
+  readonly womanMage: "🧙‍♀️";
+  readonly womanMechanic: "👩‍🔧";
+  readonly womanMountainBiking: "🚵‍♀️";
+  readonly womanOfficeWorker: "👩‍💼";
+  readonly womanPilot: "👩‍✈️";
+  readonly womanPlayingHandball: "🤾‍♀️";
+  readonly womanPlayingWaterPolo: "🤽‍♀️";
+  readonly womanPoliceOfficer: "👮‍♀️";
+  readonly womanPouting: "🙎‍♀️";
+  readonly womanRaisingHand: "🙋‍♀️";
+  readonly womanRedHair: "👩‍🦰";
+  readonly womanRowingBoat: "🚣‍♀️";
+  readonly womanRunning: "🏃‍♀️";
+  readonly womanRunningFacingRight: "🏃‍♀️‍➡️";
+  readonly womanSBoot: "👢";
+  readonly womanScientist: "👩‍🔬";
+  readonly womanSClothes: "👚";
+  readonly womanSHat: "👒";
+  readonly womanShrugging: "🤷‍♀️";
+  readonly womanSinger: "👩‍🎤";
+  readonly womanSSandal: "👡";
+  readonly womanStanding: "🧍‍♀️";
+  readonly womanStudent: "👩‍🎓";
+  readonly womanSuperhero: "🦸‍♀️";
+  readonly womanSupervillain: "🦹‍♀️";
+  readonly womanSurfing: "🏄‍♀️";
+  readonly womanSwimming: "🏊‍♀️";
+  readonly womanTeacher: "👩‍🏫";
+  readonly womanTechnologist: "👩‍💻";
+  readonly womanTippingHand: "💁‍♀️";
+  readonly womanVampire: "🧛‍♀️";
+  readonly womanWalking: "🚶‍♀️";
+  readonly womanWalkingFacingRight: "🚶‍♀️‍➡️";
+  readonly womanWearingTurban: "👳‍♀️";
+  readonly womanWhiteHair: "👩‍🦳";
+  readonly womanWithHeadscarf: "🧕";
+  readonly womanWithVeil: "👰‍♀️";
+  readonly womanWithWhiteCane: "👩‍🦯";
+  readonly womanWithWhiteCaneFacingRight: "👩‍🦯‍➡️";
+  readonly womanZombie: "🧟‍♀️";
+  readonly womenHoldingHands: "👭";
+  readonly womenSRoom: "🚺";
+  readonly womenWithBunnyEars: "👯‍♀️";
+  readonly womenWrestling: "🤼‍♀️";
+  readonly wood: "🪵";
+  readonly woozyFace: "🥴";
+  readonly worldMap: "🗺️";
+  readonly worm: "🪱";
+  readonly worriedFace: "😟";
+  readonly wrappedGift: "🎁";
+  readonly wrench: "🔧";
+  readonly writingHand: "✍️";
+  readonly xRay: "🩻";
+  readonly yarn: "🧶";
+  readonly yawningFace: "🥱";
+  readonly yellowCircle: "🟡";
+  readonly yellowHeart: "💛";
+  readonly yellowSquare: "🟨";
+  readonly yenBanknote: "💴";
+  readonly yinYang: "☯️";
+  readonly yoYo: "🪀";
+  readonly zanyFace: "🤪";
+  readonly zebra: "🦓";
+  readonly zipperMouthFace: "🤐";
+  readonly zombie: "🧟";
+  readonly zzz: "💤";
+}`} /> aliases into native tapbacks:
+
+<Accordion title="Emoji" description="">
+  | Constant | Value |
+  |---|---|
+  | `Emoji.love` | `"❤️"` |
+  | `Emoji.like` | `"👍"` |
+  | `Emoji.dislike` | `"👎"` |
+  | `Emoji.laugh` | `"😂"` |
+  | `Emoji.emphasize` | `"‼️"` |
+  | `Emoji.question` | `"❓"` |
+  
+</Accordion>
+
+```ts
+import { Emoji } from "spectrum-ts";
+
+await message.react(Emoji.laugh);
+```
+
+Other emoji are sent as ordinary emoji reactions when supported. Reactions
+require the cloud iMessage package.
+
+See [Reactions and replies](/spectrum-ts/reactions-and-replies) for the cross-platform reaction model.

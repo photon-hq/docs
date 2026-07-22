@@ -1,0 +1,204 @@
+---
+title: "iMessage connection and routing"
+sidebarTitle: "Connection and routing"
+description: "Configure cloud or local iMessage packages, lines, spaces, and per-phone routing."
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+Use this page to choose an iMessage package and understand how Spectrum routes
+iMessage conversations. Cloud and local iMessage are separate platforms; each
+is selected by its provider import, not by a config flag. A macOS application
+can register both when it needs both transports.
+
+## Provider packages
+
+<Tabs>
+  <Tab title="Cloud: @spectrum-ts/imessage">
+    Authenticates with Spectrum Cloud and connects to managed iMessage infrastructure via gRPC. Supports sending, receiving, typing indicators, reactions, and replies. Group creation and inbound group-change events require a dedicated line.
+
+    With automatic discovery, tokens are renewed at 80% of their TTL. This requires `projectId` and `projectSecret` on the `Spectrum()` call:
+
+    ```ts
+    import { Spectrum } from "spectrum-ts";
+    import { imessage } from "spectrum-ts/providers/imessage";
+
+    const app = await Spectrum({
+      projectId: process.env.SPECTRUM_PROJECT_ID!,
+      projectSecret: process.env.SPECTRUM_PROJECT_SECRET!,
+      providers: [imessage.config()],
+    });
+    ```
+
+    Spectrum discovers all cloud lines owned by the project and renews their tokens automatically. For advanced routing, you can instead provide a subset of the project's cloud clients:
+
+    ```ts
+    imessage.config({
+      clients: [
+        { address: "line-1.imsg.photon.codes:443", token: "your-token", phone: "+15551111111" },
+      ],
+    });
+    ```
+
+    Explicit clients let you control which cloud-owned lines this SDK instance subscribes to. They still use the cloud package. Their tokens are not renewed by the SDK, so you are responsible for keeping them current; most applications should use automatic discovery.
+  </Tab>
+  <Tab title="Local: @spectrum-ts/imessage-local">
+    Reads the macOS Messages SQLite database directly. It is an explicit,
+    macOS-only install and does not require project credentials.
+
+    ```bash
+    bun add spectrum-ts @spectrum-ts/imessage-local
+    ```
+
+    ```ts
+    import { Spectrum } from "spectrum-ts";
+    import { localIMessage } from "@spectrum-ts/imessage-local";
+
+    const app = await Spectrum({
+      providers: [localIMessage.config()],
+    });
+    ```
+
+    Local messages use `"local_imessage"` in `message.platform`. Narrow local
+    spaces and messages with the same `localIMessage` export.
+
+    <Note>
+      Local iMessage supports receiving and sending text, attachments, and
+      contacts. Universal app content degrades to its URL. Reactions, threaded
+      replies, edits, unsend, read receipts, effects, group creation, streaming
+      text, chat backgrounds, renaming, avatars, contact-card sharing, and
+      membership operations are unavailable. Typing signals are accepted as a
+      no-op.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Line model
+
+Cloud mode routes your messages through phone numbers, also called lines, provisioned by Spectrum. Which lines you get depends on your plan, and the difference is mostly invisible to end users.
+
+| Plan | Line allocation | What end users see | Group support |
+|---|---|---|---|
+| **Free / Pro** | **Shared pool.** Each end user is routed through a number from a shared pool. | A normal iMessage from a number that may differ across recipients. | No group creation or inbound group-change events. |
+| **Business** | **Dedicated.** All end users text the same number, which belongs to your project. | A normal iMessage, always from the same number. | Group creation and inbound group-change events are supported. |
+
+DM delivery is identical across both cloud line models. The developer-facing differences are sender-number allocation and group support.
+
+<Warning>
+  Shared-pool mode does not create group chats and does not subscribe to iMessage's group-event stream. Changes such as adding or removing a member, leaving, renaming the chat, or changing its avatar will not appear on `app.messages`. Use a Business dedicated line when your integration depends on group workflows.
+</Warning>
+
+### Auto-scale
+
+When traffic to a dedicated line approaches its per-line capacity, Spectrum can automatically provision an additional line so deliverability isn't affected. Auto-scale is an opt-in feature on the Business plan. Enable it in your project settings if you'd rather not get paged when a line saturates.
+
+<Note>
+  These are Spectrum Cloud features. With `@spectrum-ts/imessage-local`, you
+  provide the Messages account on the Mac and managed-line concepts do not
+  apply.
+</Note>
+
+## Quotas
+
+<Warning>
+  Default per-server and per-line quotas apply. Contact [help@photon.codes](mailto:help@photon.codes) for an increase.
+
+  - **5,000 messages per server per day.** Counts every message your instance sends across all chats. Additional sends are rejected until the window resets.
+  - **50 new conversations initiated per line per day.** A "new conversation" is the first message your line sends to a recipient it has never messaged before. Replies within existing conversations don't count.
+</Warning>
+
+## Space types
+
+iMessage spaces carry a `type` field, either `"dm"` or `"group"`, and a `phone` field indicating which phone number the conversation is routed through. Both are accessible through narrowing:
+
+```ts
+for await (const [space, message] of app.messages) {
+  if (message.platform !== "imessage") continue;
+  const im = imessage(space);
+  console.log(im.phone); // the phone number handling this conversation
+  if (im.type === "group") {
+    // group chat logic
+  }
+}
+```
+
+## User properties
+
+iMessage users carry optional platform-specific fields when resolved through narrowing. These are available when the platform has sender details for the user:
+
+| Field | Type | Description |
+|---|---|---|
+| `address` | `string` (optional) | The user's phone number or email address. |
+| `country` | `string` (optional) | The user's country code. |
+| `service` | `"iMessage" \| "SMS" \| "RCS" \| "unknown"` (optional) | The messaging service the user is reachable on. |
+
+```ts
+const im = imessage(app);
+const alice = await im.user("+15551111111");
+console.log(alice.address, alice.country, alice.service);
+```
+
+These fields are also available on `message.sender` after narrowing:
+
+```ts
+for await (const [space, message] of app.messages) {
+  if (message.platform !== "imessage") continue;
+  const imMsg = imessage(message);
+  console.log(imMsg.sender?.service);
+}
+```
+
+## Creating conversations
+
+Resolve users by phone number or email, then create a space with `space.create(...)`:
+
+```ts
+const im = imessage(app);
+const alice = await im.user("+15551111111");
+const bob = await im.user("+15552222222");
+
+// DM
+const dm = await im.space.create(alice);
+await dm.send("Hi Alice");
+
+// Group (dedicated lines only)
+const group = await im.space.create([alice, bob]);
+await group.send("Welcome to the group.");
+```
+
+To look up an existing conversation by its chat GUID, use `space.get(id)`:
+
+```ts
+const existing = await im.space.get("any;-;+15551111111");
+```
+
+DM creation works with the cloud package. The local package can construct a
+deterministic DM reference, but it cannot create a group because the local
+Messages database does not expose chat creation.
+
+
+Group creation requires a dedicated line. In shared-pool mode, passing multiple users to `space.create()` throws an <TypeTooltip name="UnsupportedError" type={`declare class UnsupportedError extends Error {
+    readonly kind: UnsupportedKind;
+    readonly platform?: string;
+    readonly contentType?: string;
+    readonly action?: string;
+    readonly detail?: string;
+    constructor(opts: UnsupportedErrorOptions);
+    static content(contentType: string, platform?: string, detail?: string): UnsupportedError;
+    static action(action: string, platform?: string, detail?: string): UnsupportedError;
+    withPlatform(platform: string): UnsupportedError;
+}`} />. You can use `space.get(chatGuid)` to reference an existing group, but shared mode still does not receive membership or metadata changes from the group-event stream.
+
+### Per-phone routing
+
+If your account has multiple dedicated phone numbers, you can pin a conversation to a specific line by passing `phone` as a space parameter:
+
+```ts
+const dm = await im.space.create(alice, { phone: "+15559999999" });
+```
+
+When omitted, Spectrum picks a phone at random from the available dedicated lines. All subsequent actions on that space route through the chosen number, including sending, typing, replies, edits, reactions, unsends, and lookups.
+
+<Note>
+  Per-phone routing applies to dedicated lines on the Business plan only. On shared-pool plans the `phone` parameter is ignored because all conversations route through the shared pool automatically.
+</Note>

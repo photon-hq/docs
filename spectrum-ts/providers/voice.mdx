@@ -1,0 +1,94 @@
+---
+title: "Voice"
+description: "Add inbound and outbound voice calls to a Spectrum iMessage line over SIP."
+---
+
+Spectrum Voice lets a SIP application, PBX, or voice agent place and receive
+live calls through a Spectrum iMessage line.
+
+<Note>
+  This guide is about live calls. To send an audio recording inside a message,
+  use the [`voice()` content builder](/spectrum-ts/content/voice).
+</Note>
+
+## What is supported
+
+| Capability | Status |
+|---|---|
+| Outbound calls | Supported |
+| Inbound calls | Supported |
+| iMessage lines | Supported |
+| WhatsApp numbers | Not supported |
+| Voice-only ("pure voice") lines | Coming soon |
+| SIP | Supported |
+| Webhooks | Coming soon |
+| `spectrum-ts` SDK call control | Coming soon |
+| TCP transport | Supported |
+| UDP or TLS transport | Not supported |
+
+<Warning>
+  Configure your SIP application to use **TCP**. Spectrum Voice does not
+  currently accept UDP, TLS, or `sips:` connections.
+</Warning>
+
+## Choose a setup path
+
+Inbound and outbound calling are configured separately. Set up one or both,
+depending on what your application needs.
+
+<CardGroup cols={2}>
+  <Card title="Outbound calls" icon="phone-outgoing" href="/spectrum-ts/providers/voice/outbound-calls">
+    Configure SIP credentials and place calls from your iMessage line.
+  </Card>
+  <Card title="Inbound calls" icon="phone-incoming" href="/spectrum-ts/providers/voice/inbound-calls">
+    Register inbound routing in the dashboard and receive calls in your SIP application.
+  </Card>
+</CardGroup>
+
+## Quick reference
+
+For outbound calls, configure your SIP application with these values:
+
+| Setting | Value |
+|---|---|
+| SIP server or URI | `sip.spectrum.photon.codes` |
+| Username | Your Spectrum project ID |
+| Password | Your Spectrum project secret |
+| Transport | `TCP` |
+
+You can find the project ID and project secret in your project settings in the
+[Spectrum dashboard](https://app.photon.codes).
+
+For inbound calls, register the inbound route in the dashboard. The dashboard
+connects the iMessage line to your SIP application.
+
+## Business profile registration
+
+A business profile is **not required** to place an outbound call. You can start
+building and testing before it is registered.
+
+However, outbound calls from an unregistered business may be flagged. For
+production traffic, we recommend registering the business profile in the
+dashboard. Registration is free and usually takes **1–2 business days**.
+
+<Note>
+  Business profile registration and inbound route registration are different:
+
+  - A **business profile** is optional and relates to outbound calling.
+  - An **inbound route** is required if you want to receive calls.
+</Note>
+
+## Current integration model
+
+Voice is documented as a provider because it is a communication platform, but
+it does not yet use a `voice.config()` SDK provider.
+
+Today, your application connects directly through SIP:
+
+- Use SIP over TCP for inbound and outbound calls.
+- Use the dashboard to manage the project, business profile, line, and inbound
+  route.
+- Do not expect voice calls in `app.messages` or `app.webhook()`.
+
+Webhook delivery, SDK call control, TLS transport, and voice-only lines are on
+the roadmap. No release dates are promised yet.

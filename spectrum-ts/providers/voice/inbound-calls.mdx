@@ -1,0 +1,100 @@
+---
+title: "Inbound calls"
+description: "Register an inbound route and receive calls from a Spectrum iMessage line."
+---
+
+Inbound calling sends calls received by your Spectrum iMessage line to your
+SIP application.
+
+You must register inbound routing in the dashboard. Configuring outbound SIP
+credentials does not create the inbound route automatically.
+
+## Before you start
+
+You need:
+
+- A Spectrum project.
+- An iMessage line in that project.
+- A SIP client, PBX, or voice application that can receive calls over TCP.
+- The inbound routing details requested by the dashboard.
+
+WhatsApp numbers cannot be used for Spectrum Voice.
+
+## Set up inbound calling
+
+<Steps>
+  <Step title="Open the project">
+    Sign in to the [Spectrum dashboard](https://app.photon.codes) and select the
+    project that owns the iMessage line.
+  </Step>
+  <Step title="Open inbound voice registration">
+    Open the project's inbound voice registration and choose the iMessage line
+    that should receive calls.
+
+    Make sure you select an iMessage line. WhatsApp numbers are not supported.
+  </Step>
+  <Step title="Register the inbound route">
+    Enter the SIP routing information requested by the dashboard and save the
+    registration. The dashboard registration tells Spectrum where to send an
+    incoming call.
+  </Step>
+  <Step title="Configure your SIP application">
+    Configure the receiving application with the inbound values shown in the
+    dashboard. Set the SIP transport to TCP.
+
+    Do not use UDP, TLS, or a `sips:` URI. They are not currently supported.
+  </Step>
+  <Step title="Keep the SIP application available">
+    Start the SIP application and keep its connection active so it can accept
+    an incoming call.
+  </Step>
+  <Step title="Place an inbound test call">
+    From another phone, call the iMessage line registered in the dashboard.
+    Confirm that your SIP application receives the call and that audio works in
+    both directions.
+  </Step>
+</Steps>
+
+## What each registration does
+
+The word "registration" can refer to two different settings:
+
+| Registration | Required? | Purpose |
+|---|---:|---|
+| Inbound route | Yes, for inbound calls | Routes calls from an iMessage line to your SIP application. |
+| Business profile | No | Helps identify outbound traffic and reduce flagging risk. |
+
+Registering a business profile does not create an inbound route. Registering
+an inbound route does not register the business profile.
+
+## Before going live
+
+- The inbound route is saved under the correct project.
+- The selected number is an iMessage line, not a WhatsApp number.
+- The SIP application uses the routing values shown in the dashboard.
+- The transport is TCP, not UDP or TLS.
+- The SIP application stays connected and ready to receive calls.
+- A test call reaches the application and has working two-way audio.
+
+## Troubleshooting
+
+### No inbound call arrives
+
+Check that the inbound route is saved for the exact iMessage line being called.
+Then confirm that the SIP application is running and connected over TCP.
+
+### The wrong project or line receives the call
+
+Open the inbound registration in the dashboard and verify both the selected
+project and iMessage line. The inbound route is tied to that selection.
+
+### The SIP application tries UDP or TLS
+
+Select TCP explicitly in the SIP application. Automatic transport selection
+can choose a protocol that Spectrum Voice does not support.
+
+### I configured outbound calls, but inbound does not work
+
+Outbound credentials and inbound routing are separate. Return to the dashboard
+and register the inbound route for the iMessage line.
+
