@@ -11,7 +11,7 @@ This repo is an **aggregator**: some doc areas are authored here in [`docs-src/`
 - **Local** — most areas still live in [`docs-src/`](docs-src/) in this repo.
 - **Source repos** — areas listed in [`scripts/sources.json`](scripts/sources.json) are pulled from their SDK repo's configured docs directory, at the configured git ref. For Spectrum, that is `photon-hq/spectrum-ts` `main` and the `docs/` directory, so prose fixes can ship without an SDK release. Vellum still extracts types from the installed package versions in this repo, so source-repo docs must stay compatible with the released package. Edit those docs in the SDK repo, not here. Local builds can use the `local` fallback in the manifest, but CI and deploy use `DOCS_SOURCE_MODE=git`.
 
-Navigation works the same way: [`docs.json`](docs.json) is **generated** by `scripts/build-nav` from [`docs.base.json`](docs.base.json) (the site skeleton) plus a `nav.json` fragment contributed by each source. Don't edit `docs.json` directly — edit `docs.base.json` or the fragment.
+Navigation works the same way: [`docs.json`](docs.json) is **generated** by `scripts/build-nav` from [`docs.base.json`](docs.base.json) (the site skeleton) plus a `nav.json` fragment contributed by each source. A source can route selected subdirectories to separate mounts, so it can own pages such as `/integrations/*` and `/best-practices/*` without changing their public URLs. Don't edit `docs.json` directly — edit `docs.base.json` or the fragment.
 
 ## How to edit
 

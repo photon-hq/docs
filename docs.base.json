@@ -46,19 +46,12 @@
             "group": "Advanced"
           },
           {
-            "group": "Integrations",
-            "pages": [
-              "integrations/chat-sdk"
-            ]
+            "$source": "spectrum-ts",
+            "group": "Integrations"
           },
           {
-            "group": "Best Practices",
-            "pages": [
-              "best-practices/architecture",
-              "best-practices/inbound-pipeline",
-              "best-practices/recovery-and-state",
-              "best-practices/imessage-deliverability"
-            ]
+            "$source": "spectrum-ts",
+            "group": "Best Practices"
           },
           {
             "$source": "spectrum-ts",

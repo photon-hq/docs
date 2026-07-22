@@ -9,7 +9,8 @@ import process from 'node:process'
 //      minus any subtree owned by a source mount, and
 //   2. each source in scripts/sources.json, pulled from its repo via git
 //      (sparse checkout of <docsDir> at the configured ref, usually main)
-//      or copied from a local fallback path.
+//      or copied from a local fallback path. A source can route selected
+//      subdirectories to separate mounts to preserve existing public slugs.
 //
 // Each source's nav fragment is copied to .vellum-src/.nav/<mount>.json for
 // build-nav to merge. See ENG-1742.
@@ -30,6 +31,12 @@ interface Source {
   ref?: string | null
   nav?: string
   local?: string
+  routes?: SourceRoute[]
+}
+
+interface SourceRoute {
+  from: string
+  mount: string
 }
 
 type Mode = 'git' | 'local'
@@ -139,9 +146,17 @@ function isUnderMount(absSrc: string, mounts: string[]): boolean {
   return mounts.some(m => rel === m || rel.startsWith(m + sep))
 }
 
+function isUnderRoute(absSrc: string, contentDir: string, routes: SourceRoute[]): boolean {
+  const rel = relative(contentDir, absSrc)
+  return routes.some(route => rel === route.from || rel.startsWith(route.from + sep))
+}
+
 function main() {
   const { sources } = JSON.parse(readFileSync(SOURCES, 'utf8')) as { sources: Source[] }
-  const mounts = sources.map(s => s.mount)
+  const mounts = sources.flatMap(source => [
+    source.mount,
+    ...(source.routes ?? []).map(route => route.mount),
+  ])
 
   rmSync(STAGING, { recursive: true, force: true })
   mkdirSync(NAV_DIR, { recursive: true })
@@ -160,11 +175,21 @@ function main() {
     const navName = src.nav ?? 'nav.json'
     const navFile = join(contentDir, navName)
     const dest = join(STAGING, src.mount)
+    const routes = src.routes ?? []
 
     cpSync(contentDir, dest, {
       recursive: true,
-      filter: p => basename(p) !== '.git' && p !== navFile,
+      filter: p => basename(p) !== '.git' && p !== navFile && !isUnderRoute(p, contentDir, routes),
     })
+
+    for (const route of routes) {
+      const routeDir = join(contentDir, route.from)
+      if (!existsSync(routeDir))
+        throw new Error(`source "${src.name}": route path is missing (${route.from})`)
+      const routeDest = join(STAGING, route.mount)
+      cpSync(routeDir, routeDest, { recursive: true })
+      log(`${src.name}: routed ${route.from} to ${relative(ROOT, routeDest)}`)
+    }
 
     if (existsSync(navFile))
       cpSync(navFile, join(NAV_DIR, `${src.mount}.json`))

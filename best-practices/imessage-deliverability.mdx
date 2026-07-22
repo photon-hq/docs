@@ -5,6 +5,8 @@ description: Designing messaging flows that don't get a line flagged by Apple's 
 
 iMessage is end-to-end encrypted, so Apple can't read message content: they filter on behavior. Patterns that look automated, cold, or burst-y will get a line flagged regardless of what the messages actually say. The guidance below is what we see work and fail in production.
 
+Photon is one of the most stable iMessage providers, with the lowest ban rate we have observed. However, no provider can remove Apple or carrier limits. You remain responsible for maintaining line health. Photon uses smart routing, auto-scaling, and recovery technology to simplify that work.
+
 ## Inbound-first is the decision that matters
 
 The single most important design call is whether users text you first or you text users. Inbound-first integrations never surface the "Report Junk" banner that Apple shows on every message from an unknown number. Outbound-first integrations do, and after a couple of unanswered messages it tends to get tapped.
@@ -13,6 +15,8 @@ How to make inbound-first work in practice:
 
 - **Pre-populate the first message.** Ship `sms:+1...&body=Hey!` deep links so tapping opens Messages with text pre-filled. Zero friction, and the user is the one who hits send.
 - **Share a contact card early.** Push a native iMessage contact card (or a `.VCF` for Android) shortly after the first exchange. Once they save it, you're a known contact and "Report Junk" is gone for good.
+
+Keep the conversation going after the first inbound message. Aim to receive at least three messages from the user in each conversation. After the user sends at least three messages, Apple marks the conversation as trusted. Maintain a strong response rate by responding consistently to legitimate inbound messages and designing for real, two-way conversation.
 
 ## Capacity
 
@@ -23,7 +27,20 @@ Two quotas govern how much traffic a deployment can carry. They're enforced limi
 | **5,000 messages per server per day** | Counts every send across all chats on a server. Past this, sends are rejected until the window resets. Email [help@photon.codes](mailto:help@photon.codes) for an increase. |
 | **50 new conversations per line per day** | A "new conversation" is the first message a line sends to a recipient it has never messaged before. Replies within existing conversations don't count. Most relevant if you're initiating outbound. |
 
-When a server hits 70-80% utilization, stop assigning new users to it. When the whole pool gets there, add capacity. On the Business plan, [auto-scale](/spectrum-ts/providers/imessage#auto-scale) handles the second step automatically.
+Use these ranges as starting points when you assign users to lines:
+
+| Conversation pattern | Recommended users per line |
+|---|---:|
+| **Moderate conversational usage** | 700-1,000 |
+| **Intensive usage** | 500-700 |
+
+These ranges are operating recommendations, not hard limits. A line may support more than 1,000 users. Total user count is only one part of capacity, though. A line can still hit activity limits when many existing users become active at once or many new users arrive within a short time window.
+
+Always spread users across multiple lines. We strongly recommend enabling Photon's smart routing and [auto-scale](/spectrum-ts/providers/imessage/connection-and-routing#auto-scale) so the system can distribute users and traffic spikes automatically. When a server hits 70-80% utilization, stop assigning new users to it. When the whole pool reaches that point, add capacity. On the Business plan, auto-scale handles the second step automatically.
+
+### New inbound contacts
+
+Apple's APNs service limits inbound activity from new contacts. If you expect an influx of new inbound conversations, distribute those contacts across multiple lines instead of directing everyone to one line. A short burst can affect deliverability even when the total number of users is within the recommended range.
 
 ### What gets a line flagged
 
@@ -44,6 +61,8 @@ Avoid all five and blocks are rare. When a line does get flagged, the cause is a
 - **Make outreach conversational.** If you need to push an update (digest, accountability ping), open with a question and wait: "Ready for your update?"
 - **Share a contact card after the first exchange.** Once saved, the "Report Junk" surface is gone.
 - **Round-robin new users across lines.** Spread load before any one line stands out.
+- **Enable smart routing and auto-scale.** Let Photon distribute growth and traffic spikes before a line becomes overloaded.
+- **Maintain a strong response rate.** Respond consistently and build flows that encourage users to send at least three messages per conversation.
 - **Watch the dashboard.** When a line goes Flagged, review what the agent was doing in the hour before — the cause is almost always there.
 
 ## Don't
@@ -55,6 +74,12 @@ Avoid all five and blocks are rare. When a line does get flagged, the cause is a
 - **Segment Android users onto separate lines.** Spread them through the pool — they may be your power users.
 - **Use iMessage for cold outreach.** Cold belongs on A2P channels (Twilio etc.). iMessage is for warm conversations.
 
+## SMS and RCS fallback
+
+When a message falls back from iMessage to SMS or RCS, the carrier monitors that traffic and applies its own filtering and delivery policies. Healthy iMessage performance does not override carrier rules for fallback traffic. Track iMessage, SMS, and RCS delivery separately so you don't mistake a carrier fallback issue for an iMessage line-health issue.
+
 ## Getting help
 
-If you're scaling past a handful of lines, talk to us. We do capacity planning with customers, surface per-line analytics in the dashboard, and run a shared Slack or Discord channel with engineering for production deployments.
+If Apple flags a line, Photon escalates it into the recovery process. Recovery does not replace preventive line management. Keep auto-scale enabled, stay within the recommended user ranges, distribute new inbound contacts, and maintain healthy two-way response rates.
+
+If you're scaling past a handful of lines, talk to us. We do capacity planning with customers, surface per-line analytics in the dashboard, and run a shared Slack or Discord channel with engineering for production deployments. For help with a flagged line, email [help@photon.codes](mailto:help@photon.codes) with your project ID and affected line.

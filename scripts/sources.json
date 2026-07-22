@@ -1,5 +1,5 @@
 {
-  "$comment": "Doc sources aggregated into .vellum-src before `vellum build`. Each source mounts under .vellum-src/<mount>/ (mount == page-slug prefix). `docsDir` is the source repo's Mintlify-template directory. `ref` selects the source repo revision for authored docs; use main so prose fixes can ship without package releases. `package` records the installed npm package tied to the source; Vellum still extracts types from package.json dependencies. Sources without `local` are git-only. Per-source ref override: DOCS_REF_<name> env (dots/dashes -> underscores).",
+  "$comment": "Doc sources aggregated into .vellum-src before `vellum build`. Each source mounts under .vellum-src/<mount>/ (mount == page-slug prefix). Optional routes move source subdirectories to separate mounts while preserving their public slugs. `docsDir` is the source repo's Mintlify-template directory. `ref` selects the source repo revision for authored docs; use main so prose fixes can ship without package releases. `package` records the installed npm package tied to the source; Vellum still extracts types from package.json dependencies. Sources without `local` are git-only. Per-source ref override: DOCS_REF_<name> env (dots/dashes -> underscores).",
   "sources": [
     {
       "name": "spectrum-ts",
@@ -8,7 +8,17 @@
       "repo": "photon-hq/spectrum-ts",
       "docsDir": "docs",
       "ref": "main",
-      "nav": "nav.json"
+      "nav": "nav.json",
+      "routes": [
+        {
+          "from": "integrations",
+          "mount": "integrations"
+        },
+        {
+          "from": "best-practices",
+          "mount": "best-practices"
+        }
+      ]
     }
   ]
 }
