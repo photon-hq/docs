@@ -1,5 +1,6 @@
 node_modules
 .typecheck-output
+.DS_Store
 
 .pnpm-store
 
