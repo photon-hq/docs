@@ -110,12 +110,18 @@ All of these drop the event as **fatal** — no retry. There's no update endpoin
 
 ## "I receive duplicates"
 
-This is expected behavior under at-least-once delivery. The two scenarios that cause it:
+Two flavors, with different fixes. The first two are retry-driven and solved by deduping; the third is a registration problem that deduping **can't** fix.
+
+**Retry-driven (at-least-once delivery).** Expected under our delivery contract:
 
 1. **Your handler succeeded but timed out before responding.** We retried, you processed twice.
 2. **Your handler returned `5xx` after partially processing.** We retried, you re-ran the partial work.
 
-### Fix
+**Registration-driven.** Not a retry at all:
+
+3. **More than one webhook is registered and more than one acts on the event.** Every registered URL receives *every* event (see [Multiple webhooks per project](/webhooks/managing-webhooks#multiple-webhooks-per-project)) — including **stale registrations you forgot to delete** after a URL change. If two endpoints both act (e.g. both reply), every message is doubled at the source. Deduping won't help here: two independent backends don't share a dedupe store, so each processes its own copy exactly once and the user still sees two. The fix is to keep one canonical webhook and [delete the rest](/webhooks/managing-webhooks#delete-a-webhook). If your URL changes on every restart or deploy (ngrok, preview environments), delete the old registration each time you add the new one — see ["ngrok URL keeps changing"](#ngrok-url-keeps-changing).
+
+### Fix (scenarios 1 and 2)
 
 Dedupe at the top of your handler using `X-Spectrum-Webhook-Id` plus `payload.message.id` as a composite key:
 
@@ -130,7 +136,7 @@ A 24-48 hour TTL is plenty — our retry budget is bounded to a few minutes at m
 
 ## "Deliveries time out"
 
-If you're seeing your endpoint logged as "took >30s," it triggers a retry on our side and a likely duplicate processing on yours.
+If you're seeing your endpoint logged as "took >15s," it triggers a retry on our side and a likely duplicate processing on yours.
 
 ### Diagnosis
 
@@ -145,7 +151,7 @@ app.post('/spectrum-webhook', async (c) => {
 });
 ```
 
-Anything network-dependent in the request path can blow past 30s.
+Anything network-dependent in the request path can blow past 15s.
 
 ### Fix
 
