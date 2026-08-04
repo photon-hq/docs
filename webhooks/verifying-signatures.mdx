@@ -106,10 +106,6 @@ a captured request. Apply both controls:
 2. insert `webhook-id` into a store with a unique constraint before performing
    non-idempotent work.
 
-Manual replay deliberately keeps the original `webhook-id` but receives a new
-signature timestamp. Decide whether an operator-requested replay should be
-ignored, reprocessed, or handled through a separate idempotent recovery path.
-
 ## Rotation without downtime
 
 Call the [rotation endpoint](/webhooks/managing-webhooks#rotate-the-standard-secret)

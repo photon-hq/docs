@@ -1,6 +1,6 @@
 ---
 title: Delivery and retries
-description: Status handling, durable retries, endpoint disabling, history, and replay
+description: Status handling, durable retries, endpoint disabling, and destination security
 ---
 
 Spectrum delivers each event independently to every subscribed endpoint. A
@@ -66,60 +66,15 @@ delivery lane.
 
 If the four-day retry budget expires, Spectrum:
 
-1. records the event as `dead_lettered`;
+1. moves the event to its internal dead-letter queue;
 2. disables the endpoint with reason `delivery_failures`; and
 3. sends an email if `failureNotificationEmail` is configured.
 
 Re-enable the endpoint with `PATCH /projects/{projectId}/webhooks/{webhookId}`
 and `{ "enabled": true }` after fixing it. Future events and any retries that
-are still pending resume in endpoint order; terminal `dead_lettered` events
-require an explicit replay.
-
-## Delivery history
-
-Terminal outcomes are retained for seven days:
-
-```sh
-curl "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/deliveries?limit=50" \
-  -u "$PROJECT_ID:$PROJECT_SECRET"
-```
-
-Each row includes the event id, event type, platform, terminal outcome,
-delivery count, final status or reason, timestamps, and whether replay is still
-available. The history table stores metadata, not the webhook payload.
-
-Use `before` for cursor pagination and `outcome=dead_lettered` to show failed
-deliveries only.
-
-## Manual replay
-
-Replay one failed event:
-
-```sh
-curl -X POST \
-  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/deliveries/$EVENT_ID/replay" \
-  -u "$PROJECT_ID:$PROJECT_SECRET"
-```
-
-Or replay up to 100 failures from a time range no longer than seven days:
-
-```sh
-curl -X POST \
-  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/deliveries/replay-failures" \
-  -u "$PROJECT_ID:$PROJECT_SECRET" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "since": "2026-08-01T00:00:00Z",
-    "until": "2026-08-02T00:00:00Z",
-    "limit": 100
-  }'
-```
-
-Replay requires an enabled Fusor endpoint, a `dead_lettered` outcome, and the
-original event to remain in the seven-day source-retention window. It preserves
-the original `webhook-id`, signs the delivery with the endpoint's current
-secret, and increments the history row's replay count. Your idempotency policy
-therefore remains authoritative during replay.
+are still pending resume in endpoint order. Spectrum does not currently expose
+delivery history or manual replay, so reconcile terminal failures from your own
+source of truth.
 
 ## Destination security
 

@@ -3,13 +3,10 @@ title: Troubleshooting webhooks
 description: Diagnose missing deliveries, invalid signatures, retries, and disabled endpoints
 ---
 
-Start by listing the endpoint and its recent delivery history:
+Start by listing the endpoint:
 
 ```sh
 curl "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/" \
-  -u "$PROJECT_ID:$PROJECT_SECRET"
-
-curl "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/deliveries" \
   -u "$PROJECT_ID:$PROJECT_SECRET"
 ```
 
@@ -57,7 +54,6 @@ implementation.
 
 At-least-once delivery permits duplicates. A handler can finish its work while
 Spectrum loses the response or reaches its timeout, causing another attempt.
-Manual replay also preserves the original event id.
 
 Use `webhook-id` as a unique idempotency key and acknowledge immediately after
 durably enqueueing the event. Do not wait for slow downstream APIs before
@@ -65,7 +61,7 @@ returning `2xx`.
 
 ## Spectrum keeps retrying
 
-Inspect the final HTTP status and reason in delivery history. Spectrum retries
+Check the responses and errors recorded by your endpoint. Spectrum retries
 `404`, `408`, `429`, `5xx`, network errors, DNS failures, and timeouts. It
 honors valid `Retry-After` values within the four-day retry budget.
 
@@ -96,21 +92,9 @@ curl -X PATCH \
 ```
 
 Re-enabling resumes future delivery and any retries that are still pending in
-the ordered endpoint lane. It does not automatically replay terminal events.
-Filter history with `outcome=dead_lettered` and replay eligible failures after
-the endpoint is healthy.
-
-## Replay is rejected
-
-Replay returns a conflict when any prerequisite is missing:
-
-- the endpoint is disabled or uses legacy delivery;
-- the delivery was not `dead_lettered`;
-- the source event has expired from seven-day retention; or
-- the history row lacks a source sequence.
-
-Enable the endpoint first. If `replayable` is `false`, recover the event from
-your own reconciliation source instead of repeatedly calling replay.
+the ordered endpoint lane. Spectrum does not currently expose terminal delivery
+history or manual replay. Reconcile terminal failures from your own source of
+truth after the endpoint is healthy.
 
 ## Rotation breaks some instances
 

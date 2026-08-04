@@ -10,7 +10,7 @@ Webhook management uses project Basic authentication:
 ```
 
 One project can register multiple endpoints. Each endpoint has an independent
-URL, secret, subscription set, retry lane, history, and enabled state.
+URL, secret, subscription set, retry lane, and enabled state.
 
 ## Create an endpoint
 
@@ -74,7 +74,7 @@ Set `failureNotificationEmail` to `null` to remove the notification address.
 
 ## Disable or re-enable an endpoint
 
-Disable delivery without deleting the registration or its history:
+Disable delivery without deleting the registration:
 
 ```sh
 curl -X PATCH \
@@ -99,9 +99,9 @@ curl -X PATCH \
 ```
 
 Re-enabling clears the disable reason. Future events and any retries still
-pending resume in endpoint order; events already recorded as `dead_lettered`
-are not replayed automatically. Replay those eligible failures separately from
-the [delivery history](/webhooks/delivery#delivery-history).
+pending resume in endpoint order. Spectrum does not currently expose terminal
+delivery history or manual replay; reconcile terminal failures from your own
+source of truth.
 
 ## Rotate the Standard secret
 
@@ -130,20 +130,6 @@ A safe rotation sequence is:
 
 `overlapSeconds` defaults to one day, can be zero for immediate revocation, and
 cannot exceed seven days.
-
-## Inspect and replay failures
-
-Use the delivery endpoints to inspect seven days of terminal outcomes and
-replay eligible failures:
-
-```text
-GET  /projects/{projectId}/webhooks/{webhookId}/deliveries
-POST /projects/{projectId}/webhooks/{webhookId}/deliveries/{eventId}/replay
-POST /projects/{projectId}/webhooks/{webhookId}/deliveries/replay-failures
-```
-
-See [Delivery and retries](/webhooks/delivery) for filters, retention, and replay
-constraints.
 
 ## Retrieve egress addresses
 

@@ -20,7 +20,7 @@ flowchart LR
 ```
 
 You can register multiple endpoints for one project. Each endpoint has its own
-secret, subscriptions, retry lane, delivery history, and enabled state. A slow
+secret, subscriptions, retry lane, and enabled state. A slow
 or failing endpoint does not block another endpoint.
 
 ## Standard Webhooks contract
@@ -69,8 +69,6 @@ See [Events](/webhooks/events) for the complete field reference.
 - A `410 Gone` response disables the endpoint immediately.
 - An endpoint that fails throughout the retry window is disabled. If you set a
   failure-notification email, Spectrum sends a notification.
-- Terminal delivery history is available for seven days. Failed events that
-  remain in source retention can be replayed manually.
 
 See [Delivery and retries](/webhooks/delivery) for status-code handling and
 timeouts.
@@ -106,7 +104,7 @@ integrations should use the Standard headers and the returned `whsec_` secret.
     Implement raw-body verification and safe key rotation.
   </Card>
   <Card title="Delivery and retries" icon="repeat" href="/webhooks/delivery">
-    Understand retries, disabling, history, and replay.
+    Understand retries, timeouts, and endpoint disabling.
   </Card>
   <Card title="Managing webhooks" icon="gear" href="/webhooks/managing-webhooks">
     Configure subscriptions, notifications, secrets, and endpoints.

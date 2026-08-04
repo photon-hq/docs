@@ -54,8 +54,8 @@ squashed into the top-level object. There is no additional `data` wrapper.
 | `webhook-signature` | One or more space-delimited `v1,<base64>` signatures. |
 
 The event id never contains a period, so the Standard Webhooks signed-content
-serialization remains unambiguous. The same event keeps its id across retries,
-multiple endpoints, and manual replay.
+serialization remains unambiguous. The same event keeps its id across retries
+and multiple endpoints.
 
 See [Verifying signatures](/webhooks/verifying-signatures) before processing a
 delivery.
