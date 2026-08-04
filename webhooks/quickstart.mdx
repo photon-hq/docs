@@ -53,12 +53,15 @@ creation or rotation. `signingSecret` exists for consumers of the legacy
 
 The following Hono handler verifies any of the space-delimited signatures sent
 during key rotation. It signs the exact request bytes before parsing JSON.
+Implement the imported `enqueue(event, id)` function with your durable queue.
+Use `id` as a unique key so retries do not repeat non-idempotent work.
 
-```ts server.ts
+```ts webhook.ts
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
+import { enqueue } from "./queue";
 
-const app = new Hono();
+export const app = new Hono();
 const secret = process.env.SPECTRUM_WEBHOOK_SECRET!;
 const toleranceSeconds = 5 * 60;
 
@@ -103,15 +106,36 @@ app.post("/spectrum-webhook", async (c) => {
   await enqueue(event, id);
   return c.text("ok", 200);
 });
-
-export default { port: 3000, fetch: app.fetch };
 ```
 
-```sh
-export SPECTRUM_WEBHOOK_SECRET='whsec_YWJj...'
-bun add hono
-bun server.ts
-```
+<Tabs>
+  <Tab title="Bun">
+    ```ts server.bun.ts
+    import { app } from "./webhook";
+
+    export default { port: 3000, fetch: app.fetch };
+    ```
+
+    ```sh
+    bun add hono
+    SPECTRUM_WEBHOOK_SECRET='whsec_YWJj...' bun server.bun.ts
+    ```
+  </Tab>
+  <Tab title="Node.js">
+    ```ts server.node.ts
+    import { serve } from "@hono/node-server";
+    import { app } from "./webhook";
+
+    serve({ port: 3000, fetch: app.fetch });
+    ```
+
+    ```sh
+    npm install hono @hono/node-server
+    npm install --save-dev tsx
+    SPECTRUM_WEBHOOK_SECRET='whsec_YWJj...' npx tsx server.node.ts
+    ```
+  </Tab>
+</Tabs>
 
 <Warning>
 Do not call `json()` before verification. Parsing and reserializing the body can
