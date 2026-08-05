@@ -30,20 +30,20 @@ importers:
         specifier: 7.0.0-dev.20260413.1
         version: 7.0.0-dev.20260413.1
       '@vellum-docs/cli':
-        specifier: ^0.2.4
-        version: 0.2.4
+        specifier: ^0.3.0
+        version: 0.3.0
       '@vellum-docs/core':
-        specifier: ^0.2.4
-        version: 0.2.4
+        specifier: ^0.3.0
+        version: 0.3.0
       '@vellum-docs/engine-nunjucks':
-        specifier: ^0.2.4
-        version: 0.2.4
+        specifier: ^0.3.0
+        version: 0.3.0
       '@vellum-docs/extractor-typescript':
-        specifier: ^0.2.4
-        version: 0.2.4
+        specifier: ^0.3.0
+        version: 0.3.0
       '@vellum-docs/profile-mintlify':
-        specifier: ^0.2.4
-        version: 0.2.4
+        specifier: ^0.3.0
+        version: 0.3.0
       chat:
         specifier: 4.34.0
         version: 4.34.0(ai@7.0.52(zod@4.4.3))(zod@4.4.3)
@@ -1368,21 +1368,21 @@ packages:
     resolution: {integrity: sha512-twzr3V4QLEbXaESuI2DqdzutOVFGpkY3VZDR9sF8YlLsAXkwyQvZo58cKM77mZcsHoCR4lCYcdTatWTTa/+8tw==}
     hasBin: true
 
-  '@vellum-docs/cli@0.2.4':
-    resolution: {integrity: sha512-mEcKQ9wa2kFDL8HTBqg2XPABrRERBsNBmNqvAvnry1lwTqqJbsgh+ZcWTI4PtL5EVUh0DNbGGGefPIUPI4PV8Q==}
+  '@vellum-docs/cli@0.3.0':
+    resolution: {integrity: sha512-Z+FacGbl826y/iMRT3cvHm9l0u4oTEQ3wRUqOaA5YBwBHPYYsKShtkwkNcl+acdBJee0UVwY4oxuv3a7JCgxlA==}
     hasBin: true
 
-  '@vellum-docs/core@0.2.4':
-    resolution: {integrity: sha512-mxN9Di8urj+iWwb+JSsWHliaBir1dnEU2K8cYIUpQ0JIPJpFA5dBV5crPEMw1G+dq39G/BPIDe4f6kh/f8Y8QQ==}
+  '@vellum-docs/core@0.3.0':
+    resolution: {integrity: sha512-eBgN2jUZAa62jRKHUVB18QMLe3o7uLsW2c1O+H7XJMRTHyqL1YEhhM4FyiF7pZoBmjUAI1og4gXrs+i8t64NsQ==}
 
-  '@vellum-docs/engine-nunjucks@0.2.4':
-    resolution: {integrity: sha512-8yqqJ7l82G+DnnkVlsxkV045rtT+ktmfDDPILFB0oz8PsSeuVPi0QUnmTz1v/5F0JHuL81oc4poOvkldaykYcQ==}
+  '@vellum-docs/engine-nunjucks@0.3.0':
+    resolution: {integrity: sha512-G7VkBRyHUDVc8/k4q0wdDhvOzoXHiV/qqRCU72NcU69kdGp1+Vy5Xjuih5kFrMWAJHi0VWf3zrGtwfCHWdH1nQ==}
 
-  '@vellum-docs/extractor-typescript@0.2.4':
-    resolution: {integrity: sha512-JCUdEmSbJv7lW+s3vmwNaypre+V/FiwXKVrelVWkhQmp+f4mEGTAruMM3G8yuJv1TpMsuJfvLCMZn0+eHZiNLQ==}
+  '@vellum-docs/extractor-typescript@0.3.0':
+    resolution: {integrity: sha512-Gmp6oAlfN0EWgcp2T1via839/C3VU81ihMZ/WxMKfY85ILoJucTa3gOPL5al9Z4xKA2yNuMeosZokbLX37Wbeg==}
 
-  '@vellum-docs/profile-mintlify@0.2.4':
-    resolution: {integrity: sha512-gdn9BeHr7hdoqzpCUN/eS3VAVubqBXqBD6w0IBv4892zXUQWpcDEqQj8fNHoYo27JHGxwAyDkuvBmizd5MjbVA==}
+  '@vellum-docs/profile-mintlify@0.3.0':
+    resolution: {integrity: sha512-4nEyVnZVGennu4O6vqh3+gR1NZ7KKDzoYsAg/CR3sakyfTqPThWaq2RLov+hQLMtjiEleg9sqHkKuAG8mNTrHA==}
 
   '@vercel/oidc@3.2.0':
     resolution: {integrity: sha512-UycprH3T6n3jH0k44NHMa7pnFHGu/N05MjojYr+Mc6I7obkoLIJujSWwin1pCvdy/eOxrI/l3uDLQsmcrOb4ug==}
@@ -1593,12 +1593,19 @@ packages:
     resolution: {integrity: sha512-WDrybc/gKFpTYQutKIK6UvfcuxijIZfMfXaYm8NMsPQxSYvf+13fXUJ4rztGGbJcBQ/GF55gvrZ0Bc0bj/mqvg==}
     engines: {node: '>=20.18.1'}
 
+  chokidar@4.0.3:
+    resolution: {integrity: sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA==}
+    engines: {node: '>= 14.16.0'}
+
   chownr@1.1.4:
     resolution: {integrity: sha512-jJ0bqzaylmJtVnNgzTeSOs8DPavpbYgEr/b0YL8/2GO3xJEhInFmhKMUnEJQjZumK7KXGFhUy89PrsJWlakBVg==}
 
   ci-info@4.4.0:
     resolution: {integrity: sha512-77PSwercCZU2Fc4sX94eF8k8Pxte6JAwL4/ICZLFjJLqegs7kCuAsqqj/70NQF6TvDpgFjkubQB2FW2ZZddvQg==}
     engines: {node: '>=8'}
+
+  citty@0.1.6:
+    resolution: {integrity: sha512-tskPPKEs8D2KPafUypv2gxwJP8h/OaJmC82QQGGDQcHvXX43xF2VDACcJVmZ0EuSxkpO9Kc4MlrA3q0+FG58AQ==}
 
   cjs-module-lexer@2.2.0:
     resolution: {integrity: sha512-4bHTS2YuzUvtoLjdy+98ykbNB5jS0+07EvFNXerqZQJ89F7DI6ET7OQo/HJuW6K0aVsKA9hj9/RVb2kQVOrPDQ==}
@@ -2854,6 +2861,10 @@ packages:
   readable-stream@3.6.2:
     resolution: {integrity: sha512-9u/sniCrY3D5WdsERHzHE4G2YCXqoG5FTHUiCC4SIbr6XcLZBY05ya9EKjYek9O5xOAwjGq+1JdGBAS7Q9ScoA==}
     engines: {node: '>= 6'}
+
+  readdirp@4.1.2:
+    resolution: {integrity: sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg==}
+    engines: {node: '>= 14.18.0'}
 
   refa@0.12.1:
     resolution: {integrity: sha512-J8rn6v4DBb2nnFqkqwy6/NnTYMcgLA+sLr0iIO41qpv0n+ngb7ksag2tMRl0inb1bbO/esUwzW1vbJi7K0sI0g==}
@@ -4421,30 +4432,33 @@ snapshots:
       '@typescript/native-preview-win32-arm64': 7.0.0-dev.20260413.1
       '@typescript/native-preview-win32-x64': 7.0.0-dev.20260413.1
 
-  '@vellum-docs/cli@0.2.4':
+  '@vellum-docs/cli@0.3.0':
     dependencies:
-      '@vellum-docs/core': 0.2.4
+      '@vellum-docs/core': 0.3.0
+      chokidar: 4.0.3
+      citty: 0.1.6
+      consola: 3.4.2
 
-  '@vellum-docs/core@0.2.4':
+  '@vellum-docs/core@0.3.0':
     dependencies:
       jiti: 2.6.1
 
-  '@vellum-docs/engine-nunjucks@0.2.4':
+  '@vellum-docs/engine-nunjucks@0.3.0':
     dependencies:
-      '@vellum-docs/core': 0.2.4
+      '@vellum-docs/core': 0.3.0
       nunjucks: 3.2.4
     transitivePeerDependencies:
       - chokidar
 
-  '@vellum-docs/extractor-typescript@0.2.4':
+  '@vellum-docs/extractor-typescript@0.3.0':
     dependencies:
       '@microsoft/tsdoc': 0.15.1
-      '@vellum-docs/core': 0.2.4
+      '@vellum-docs/core': 0.3.0
       typescript: 5.9.3
 
-  '@vellum-docs/profile-mintlify@0.2.4':
+  '@vellum-docs/profile-mintlify@0.3.0':
     dependencies:
-      '@vellum-docs/core': 0.2.4
+      '@vellum-docs/core': 0.3.0
 
   '@vercel/oidc@3.2.0': {}
 
@@ -4676,10 +4690,18 @@ snapshots:
       undici: 7.26.0
       whatwg-mimetype: 4.0.0
 
+  chokidar@4.0.3:
+    dependencies:
+      readdirp: 4.1.2
+
   chownr@1.1.4:
     optional: true
 
   ci-info@4.4.0: {}
+
+  citty@0.1.6:
+    dependencies:
+      consola: 3.4.2
 
   cjs-module-lexer@2.2.0:
     optional: true
@@ -6246,6 +6268,8 @@ snapshots:
       string_decoder: 1.3.0
       util-deprecate: 1.0.2
     optional: true
+
+  readdirp@4.1.2: {}
 
   refa@0.12.1:
     dependencies:
