@@ -32,8 +32,10 @@ Standard Webhooks signatures. Choose `normalized-events.v1` only when you need
 the original normalized Spectrum event shape.
 
 The create response is the only time both `signingSecret` and
-`standardSigningSecret` are returned. Store the `whsec_` Standard secret before
-discarding the response.
+`standardSigningSecret` are returned. Store both before discarding the response.
+For a `normalized-events.v1` endpoint, use `signingSecret` for current
+deliveries and retain the complete `whsec_` `standardSigningSecret` for a future
+upgrade to `raw-inbound.v1`.
 
 Register the endpoint's final public HTTPS URL. A project cannot have two
 active registrations for the same URL.
@@ -60,6 +62,10 @@ List responses do not contain signing secrets. They include:
 
 An endpoint using `normalized-events.v1` can upgrade once to
 `raw-inbound.v1`:
+
+Before upgrading, deploy the `standardSigningSecret` returned when the endpoint
+was created. The PATCH response does not reveal it again, and raw inbound
+delivery can begin as soon as the handoff completes.
 
 ```sh
 curl -X PATCH \
