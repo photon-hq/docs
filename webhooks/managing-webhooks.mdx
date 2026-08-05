@@ -20,13 +20,16 @@ curl -X POST "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/" \
   -H "Content-Type: application/json" \
   -d '{
     "webhookUrl": "https://example.com/spectrum",
+    "schemaVersion": "raw-inbound.v1",
     "eventTypes": ["message.received"],
     "failureNotificationEmail": "webhooks@example.com"
   }'
 ```
 
-`deliveryMode` defaults to `fusor`, which is the Standard Webhooks-compatible
-delivery path. `legacy` remains available only for migration.
+`schemaVersion` pins the payload contract for the endpoint. It defaults to
+`raw-inbound.v1`, which preserves the original provider request and uses
+Standard Webhooks signatures. Choose `normalized-events.v1` only when you need
+the original normalized Spectrum event shape.
 
 The create response is the only time both `signingSecret` and
 `standardSigningSecret` are returned. Store the `whsec_` Standard secret before
@@ -51,7 +54,24 @@ List responses do not contain signing secrets. They include:
 | `disabledAt` | When Spectrum or an operator disabled it. |
 | `disabledReason` | `manual`, `receiver_gone`, or `delivery_failures`. |
 | `failureNotificationEmail` | Address notified after prolonged delivery failure. |
-| `deliveryMode` | `fusor` or the migration-only `legacy` path. |
+| `schemaVersion` | Pinned payload contract: `raw-inbound.v1` or `normalized-events.v1`. |
+
+## Upgrade the payload schema
+
+An endpoint using `normalized-events.v1` can upgrade once to
+`raw-inbound.v1`:
+
+```sh
+curl -X PATCH \
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID" \
+  -u "$PROJECT_ID:$PROJECT_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{ "schemaVersion": "raw-inbound.v1" }'
+```
+
+The handoff makes the raw inbound destination visible before retiring the
+normalized source. A delivery already in flight can still complete with the
+previous schema. Schema downgrades are not supported.
 
 ## Configure subscriptions and alerts
 

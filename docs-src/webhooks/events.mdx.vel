@@ -44,6 +44,10 @@ webhook-signature: v1,SGVsbG8...
 Spectrum uses the Standard Webhooks convention that data fields may be
 squashed into the top-level object. There is no additional `data` wrapper.
 
+Selecting `schemaVersion: "raw-inbound.v1"` when you register an endpoint pins
+this payload contract. The numeric `schemaVersion` inside the delivered JSON is
+the revision of this raw inbound envelope.
+
 ## Standard Webhooks headers
 
 | Header | Description |

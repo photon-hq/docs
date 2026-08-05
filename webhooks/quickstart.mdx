@@ -3,7 +3,7 @@ title: Quickstart
 description: Register an endpoint, verify its Standard Webhooks signature, and receive an event
 ---
 
-This guide registers a Fusor webhook and verifies the first delivery with Node
+This guide registers a raw inbound webhook and verifies the first delivery with Node
 or Bun. Your endpoint must be a public HTTPS URL. For local development, expose
 your server with a tunnel such as [ngrok](https://ngrok.com/).
 
@@ -17,6 +17,7 @@ curl -X POST "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/" \
   -H "Content-Type: application/json" \
   -d '{
     "webhookUrl": "https://example.com/spectrum-webhook",
+    "schemaVersion": "raw-inbound.v1",
     "eventTypes": ["message.received"],
     "failureNotificationEmail": "webhooks@example.com"
   }'
@@ -30,7 +31,7 @@ The response includes two one-time secrets:
   "data": {
     "id": "6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b",
     "webhookUrl": "https://example.com/spectrum-webhook",
-    "deliveryMode": "fusor",
+    "schemaVersion": "raw-inbound.v1",
     "eventTypes": ["message.received"],
     "enabled": true,
     "status": "active",

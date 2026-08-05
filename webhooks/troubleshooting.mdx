@@ -16,7 +16,7 @@ Check the endpoint record first:
 
 - `enabled` must be `true` and `status` must be `active`.
 - `eventTypes` must include `message.received`.
-- `deliveryMode` should be `fusor` for Standard Webhooks delivery.
+- `schemaVersion` should be `raw-inbound.v1` for Standard Webhooks delivery.
 - The event must belong to the same project as the registration.
 
 Then check the destination:

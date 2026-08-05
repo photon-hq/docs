@@ -4,7 +4,7 @@ description: Receive signed messaging events at your HTTPS endpoint
 ---
 
 Spectrum sends inbound messaging events to your server as signed HTTPS `POST`
-requests. The default Fusor delivery mode follows the
+requests. The default `raw-inbound.v1` payload schema follows the
 [Standard Webhooks specification](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md)
 and keeps the legacy `X-Spectrum-*` headers during migration.
 
@@ -25,7 +25,7 @@ or failing endpoint does not block another endpoint.
 
 ## Standard Webhooks contract
 
-Every default-mode delivery includes:
+Every `raw-inbound.v1` delivery includes:
 
 | Header | Purpose |
 | --- | --- |
