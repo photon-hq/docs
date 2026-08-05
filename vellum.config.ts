@@ -21,7 +21,8 @@ const config: VellumConfig = {
   templates: '.vellum-src',
   outDir: '.',
   extractors: [new TypeScriptExtractor()],
-  engine: new NunjucksEngine(),
+  // Preserve 0.2 behavior until every synced template is strict-safe.
+  engine: new NunjucksEngine({ strict: false }),
   profile: new MintlifyProfile(),
 }
 
