@@ -25,6 +25,7 @@
     "@vellum-docs/engine-nunjucks": "^0.2.4",
     "@vellum-docs/extractor-typescript": "^0.2.4",
     "@vellum-docs/profile-mintlify": "^0.2.4",
+    "chat": "4.34.0",
     "eslint": "^9.39.4",
     "eslint-plugin-format": "^2.0.1",
     "husky": "^9.1.7",
