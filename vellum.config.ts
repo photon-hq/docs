@@ -13,6 +13,7 @@ const config: VellumConfig = {
         '@photon-ai/imessage-kit',
         '@photon-ai/whatsapp-business',
         'chat',
+        'eve/channels/photon',
         'spectrum-ts',
       ],
     },
