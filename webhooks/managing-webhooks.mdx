@@ -31,6 +31,11 @@ curl -X POST "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/" \
 Standard Webhooks signatures. Choose `normalized-events.v1` only when you need
 the original normalized Spectrum event shape.
 
+This management field is a string endpoint schema ID. It is distinct from the
+numeric `schemaVersion: 1` inside a delivered raw event, which identifies only
+the revision of that envelope. Do not send the numeric value to this API or
+compare the two fields.
+
 The create response is the only time both `signingSecret` and
 `standardSigningSecret` are returned. Store both before discarding the response.
 For a `normalized-events.v1` endpoint, use `signingSecret` for current
