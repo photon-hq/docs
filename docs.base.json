@@ -233,5 +233,10 @@
     "metatags": {
       "canonical": "https://photon.codes/docs"
     }
+  },
+  "integrations": {
+    "ga4": {
+      "measurementId": "G-WDQR0KJG87"
+    }
   }
 }
