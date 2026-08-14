@@ -30,6 +30,10 @@ Retrieve credentials with [`photon projects show`](/cli/projects) or from the da
 Project credentials grant full management access to a project. Store them in a secrets manager, not in source control or shell history.
 </Warning>
 
+<Note>
+Basic auth with project credentials applies to the Spectrum API only. The Dashboard API on `app.photon.codes` authenticates with bearer tokens instead — your own token from the CLI's [device flow](/cli/authentication), or user-consented [OAuth 2.1 access tokens](/api-reference/oauth) if you're building an app for other Photon users.
+</Note>
+
 ## Response format
 
 Every response is JSON wrapped in a `{ succeed, data }` envelope. On success, `data` holds the resource:

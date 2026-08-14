@@ -168,6 +168,7 @@
             "group": "Getting Started",
             "pages": [
               "api-reference/introduction",
+              "api-reference/oauth",
               "api-reference/rate-limit"
             ]
           },
