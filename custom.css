@@ -1,0 +1,288 @@
+@import url('https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@100..900&display=swap');
+
+code, pre, .code-block, .code-block * {
+  font-family: 'Azeret Mono', monospace !important;
+}
+
+/* Code blocks and cards */
+/*.code-block,
+[class*="CodeGroup"], [class*="code-group"],
+.card, [class*="Card"], [class*="card"],
+[class*="Callout"], [class*="callout"],
+[class*="Note"], [class*="note"],
+[class*="Warning"], [class*="warning"],
+[class*="Tip"], [class*="tip"],
+[class*="Accordion"], [class*="accordion"],
+[class*="ResponseField"], [class*="Expandable"] {
+  border-radius: 8px !important;
+  border: 1px solid #404040 !important;
+  background: rgba(64, 64, 64, 0.25) !important;
+}
+
+[style*="--shiki-dark-bg"] {
+  --shiki-dark-bg: transparent !important;
+  background-color: transparent !important;
+}
+
+.code-block pre,
+.code-block code {
+  background-color: transparent !important;
+}
+
+.code-block [data-fade-overlay] {
+  --fade-color-light: transparent !important;
+  --fade-color-dark: transparent !important;
+}
+
+.rounded-xl {
+  border-radius: 4px !important;
+}
+
+.rounded-2xl {
+  border-radius: 8px !important;
+}*/
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border, rgba(128, 128, 128, 0.3));
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.5);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border, rgba(128, 128, 128, 0.3)) transparent;
+}
+
+/*.dark #navbar {
+  background-color: #000000 !important;
+  height: 60px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+}
+
+.almond-layout {
+  top: 62px !important;
+  padding-bottom: 2px !important;
+  height: calc(100vh - 64px) !important;
+}
+
+#sidebar-content {
+  top: 61px !important;
+  height: calc(100vh - 63px) !important;
+}
+
+#navbar .h-14.min-w-0 {
+  padding-left: 32px !important;
+  padding-right: 32px !important;
+}
+
+#navbar .h-full.relative.flex-1 {
+  align-items: center !important;
+  height: 38px !important;
+  margin: auto 0 !important;
+}
+
+#navbar .nav-logo {
+  width: 28px !important;
+  height: 34px !important;
+}
+
+#navbar .nav-tabs-item {
+  font-weight: 400 !important;
+  font-size: 16px !important;
+}
+
+/* Move tabs next to logo, contact button to right */
+#navbar div:has(> a > .nav-logo) {
+  flex: 0 0 auto !important;
+}
+
+#navbar div[class*="ustify-end"] {
+  margin-left: 0 !important;
+  flex: 0 0 auto !important;
+}
+
+#navbar .nav-tabs {
+  column-gap: 24px !important;
+}
+
+#navbar #topbar-cta-button {
+  position: fixed !important;
+  right: 1.75rem !important;
+  top: 0 !important;
+  height: 3.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+}*/
+
+.eyebrow {
+  font-family: 'Azeret Mono', monospace !important;
+}
+
+/*#content-container {
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  background-color: #101010;
+  scroll-behavior: smooth !important;
+}
+
+.sidebar-group {
+  font-weight: 400 !important;
+}*/
+
+#table-of-contents {
+  scrollbar-width: none;
+}
+
+#table-of-contents::-webkit-scrollbar {
+  display: none;
+}
+
+/* Shared pill-button visual for the marketing-site CTA pair (Dashboard + Contact).
+   Mirrors the Framer styling on https://photon.codes/spectrum:
+   - 1.5px translucent border matching bg hue
+   - inset white glow (box-shadow) that shifts on hover
+   - subtle scale(1.02) hover transform */
+#navbar a[href^="https://app.photon.codes"],
+#navbar li.navbar-link > a[href="https://photon.codes/contact"] {
+  --corner-shape-fallback: 0.945;
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  corner-shape: superellipse(1.1);
+  border-radius: calc(40px * var(--one-if-corner-shape-supported, var(--corner-shape-fallback, 1))) !important;
+  box-shadow: rgba(255, 255, 255, 0.5) 0px 0px 5px 2px inset !important;
+  border-style: solid !important;
+  border-width: 1.5px !important;
+  padding: 8px 14px !important;
+  color: rgb(255, 255, 255) !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  text-shadow: rgba(128, 128, 128, 0.25) 0px 0px 4px;
+  transition: box-shadow 0.35s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  transform: scale(1);
+}
+
+#navbar a[href^="https://app.photon.codes"]:hover,
+#navbar li.navbar-link > a[href="https://photon.codes/contact"]:hover {
+  box-shadow: rgba(255, 255, 255, 0.5) 0px -2.77px 7.82px 2px inset !important;
+  transform: scale(1.02) !important;
+}
+
+/* Shared gap animation for both buttons (creates the space between label and arrow on hover) */
+#navbar a[href^="https://app.photon.codes"],
+#navbar li.navbar-link > a[href="https://photon.codes/contact"] {
+  gap: 0 !important;
+  transition: box-shadow 0.35s ease,
+              transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              gap 0.25s ease !important;
+}
+
+#navbar a[href^="https://app.photon.codes"]:hover,
+#navbar li.navbar-link > a[href="https://photon.codes/contact"]:hover {
+  gap: 4px !important;
+}
+
+/* Arrow icon (slides in on hover) for both Dashboard and Contact */
+#navbar a[href^="https://app.photon.codes"]::after,
+#navbar li.navbar-link > a[href="https://photon.codes/contact"]::after {
+  content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='20' height='20'%3E%3Cpath d='M 0 0 L 5.5 5.25 L 0 10.5' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' stroke='white' transform='translate(13.75 6.75)'/%3E%3Cpath d='M 14.25 0 L 0 0' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' stroke='white' transform='translate(4.75 12)'/%3E%3C/svg%3E");
+  display: inline-block;
+  width: 0;
+  height: 20px;
+  opacity: 0;
+  overflow: hidden;
+  line-height: 0;
+  transition: opacity 0.25s ease, width 0.25s ease;
+  vertical-align: middle;
+}
+
+#navbar a[href^="https://app.photon.codes"]:hover::after,
+#navbar li.navbar-link > a[href="https://photon.codes/contact"]:hover::after {
+  opacity: 1;
+  width: 20px;
+}
+
+/* Dashboard = filled primary */
+#navbar a[href^="https://app.photon.codes"] {
+  background-color: rgb(41, 152, 217) !important;
+  border-color: rgba(41, 152, 217, 0.62) !important;
+  margin-left: 8px !important;
+}
+
+/* Contact = black outlined */
+#navbar li.navbar-link > a[href="https://photon.codes/contact"] {
+  background-color: rgb(0, 0, 0) !important;
+  border-color: rgba(255, 255, 255, 0.62) !important;
+}
+
+/* Hide vertical link divider and extra margins when Dashboard renders inside the
+   mobile popup (its own layout rules take over there). */
+[data-headlessui-portal] a[href^="https://app.photon.codes"] {
+  margin-left: 0 !important;
+}
+
+[data-headlessui-portal] a[href^="https://app.photon.codes"]::before {
+  display: none;
+}
+
+/* Pin the Contact <li> to the right edge of the navbar, next to the Dashboard CTA.
+   Dashboard is `position: fixed; right: 28px` in the Mintlify Almond theme, so we
+   use the same coordinate space for Contact. */
+#navbar li.navbar-link:has(> a[href="https://photon.codes/contact"]) {
+  position: fixed !important;
+  right: calc(28px + 111px + 8px) !important;
+  top: 0 !important;
+  height: 56px !important;
+  display: flex !important;
+  align-items: center !important;
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  z-index: 10;
+  transition: right 0.25s ease !important;
+}
+
+/* When Dashboard is hovered (arrow slides in, button grows ~24px), shift Contact left
+   so the two buttons don't collide. */
+#navbar:has(a[href^="https://app.photon.codes"]:hover) li.navbar-link:has(> a[href="https://photon.codes/contact"]) {
+  right: calc(28px + 111px + 8px + 24px) !important;
+}
+
+/* Inside the mobile popup, restore normal flow */
+[data-headlessui-portal] li.navbar-link:has(> a[href="https://photon.codes/contact"]) {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* AI assistant sidebar — sit below the 56px navbar so its height matches the
+   visible content window instead of overlapping the topbar. */
+div:has(> #chat-assistant-sheet) {
+  margin-top: 56px !important;
+  height: calc(100vh - 56px) !important;
+  top: 56px !important;
+}

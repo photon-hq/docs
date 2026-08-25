@@ -7,17 +7,44 @@
     "light": "#47c6ed",
     "dark": "#47c6ed"
   },
+  "fonts": {
+    "heading": {
+      "family": "PolySansArabicVF",
+      "source": "/fonts/PolySansArabicVF.woff2",
+      "format": "woff2"
+    },
+    "body": {
+      "family": "PolySansArabicVF",
+      "source": "/fonts/PolySansArabicVF.woff2",
+      "format": "woff2"
+    }
+  },
   "favicon": "/favicon.svg",
   "navigation": {
     "pages": [
       "index"
     ],
     "global": {
-      "anchors": [
+      "tabs": [
         {
-          "anchor": "Photon",
-          "href": "https://photon.codes",
-          "icon": "house"
+          "tab": "iMessage",
+          "href": "https://photon.codes/platform/imessage"
+        },
+        {
+          "tab": "WhatsApp",
+          "href": "https://photon.codes/platform/whatsapp"
+        },
+        {
+          "tab": "Pricing",
+          "href": "https://photon.codes/pricing"
+        },
+        {
+          "tab": "Docs",
+          "href": "/"
+        },
+        {
+          "tab": "Blog",
+          "href": "https://photon.codes/blog"
         }
       ]
     }
