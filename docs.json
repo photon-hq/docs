@@ -19,32 +19,71 @@
       "format": "woff2"
     }
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon-128x128.png",
   "navigation": {
-    "pages": [
-      "index"
+    "tabs": [
+      {
+        "tab": "Spectrum",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "index"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "cli/index"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Webhooks",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "webhooks/index"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Low-level SDKs",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "low-level-sdks/index"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API reference",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "api-reference/index"
+            ]
+          }
+        ]
+      }
     ],
     "global": {
-      "tabs": [
+      "anchors": [
         {
-          "tab": "iMessage",
-          "href": "https://photon.codes/platform/imessage"
-        },
-        {
-          "tab": "WhatsApp",
-          "href": "https://photon.codes/platform/whatsapp"
-        },
-        {
-          "tab": "Pricing",
-          "href": "https://photon.codes/pricing"
-        },
-        {
-          "tab": "Docs",
-          "href": "/"
-        },
-        {
-          "tab": "Blog",
-          "href": "https://photon.codes/blog"
+          "anchor": "Blog",
+          "href": "https://photon.codes/blog",
+          "icon": "newspaper"
         }
       ]
     }
