@@ -10,12 +10,12 @@
   "fonts": {
     "heading": {
       "family": "PolySansArabicVF",
-      "source": "/docs/fonts/PolySansArabicVF.woff2",
+      "source": "https://photon.codes/docs/fonts/PolySansArabicVF.woff2",
       "format": "woff2"
     },
     "body": {
       "family": "PolySansArabicVF",
-      "source": "/docs/fonts/PolySansArabicVF.woff2",
+      "source": "https://photon.codes/docs/fonts/PolySansArabicVF.woff2",
       "format": "woff2"
     }
   },
