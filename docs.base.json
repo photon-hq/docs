@@ -10,12 +10,12 @@
   "fonts": {
     "heading": {
       "family": "PolySansArabicVF",
-      "source": "/fonts/PolySansArabicVF.woff2",
+      "source": "/docs/fonts/PolySansArabicVF.woff2",
       "format": "woff2"
     },
     "body": {
       "family": "PolySansArabicVF",
-      "source": "/fonts/PolySansArabicVF.woff2",
+      "source": "/docs/fonts/PolySansArabicVF.woff2",
       "format": "woff2"
     }
   },
