@@ -1,0 +1,62 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "almond",
+  "name": "Photon",
+  "colors": {
+    "primary": "#47c6ed",
+    "light": "#47c6ed",
+    "dark": "#47c6ed"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "pages": [
+      "index"
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Photon",
+          "href": "https://photon.codes",
+          "icon": "house"
+        }
+      ]
+    }
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Contact",
+        "href": "https://photon.codes/contact"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Dashboard",
+      "href": "https://app.photon.codes"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
+  },
+  "footer": {
+    "socials": {
+      "x": "https://x.com/photon_hq",
+      "github": "https://github.com/photon-hq",
+      "linkedin": "https://www.linkedin.com/company/photonhq",
+      "discord": "https://discord.gg/4c3VJzDfNA"
+    }
+  }
+}
