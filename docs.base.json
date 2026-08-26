@@ -37,10 +37,24 @@
         "tab": "CLI",
         "groups": [
           {
-            "group": "Get started",
-            "pages": [
-              "cli/index"
-            ]
+            "$source": "photon-cli",
+            "group": "Get started"
+          },
+          {
+            "$source": "photon-cli",
+            "group": "Projects"
+          },
+          {
+            "$source": "photon-cli",
+            "group": "Account"
+          },
+          {
+            "$source": "photon-cli",
+            "group": "Compliance"
+          },
+          {
+            "$source": "photon-cli",
+            "group": "Reference"
           }
         ]
       },

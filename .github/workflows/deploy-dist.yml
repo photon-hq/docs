@@ -3,9 +3,10 @@ name: Deploy dist
 on:
   push:
     branches: [main]
-  # Source repos notify us when their docs/ changes. No type filter yet, since
-  # scripts/sources.json is empty; narrow this to explicit types once sources land.
+  # Source repos notify us when their docs/ changes. Add one type per source in
+  # scripts/sources.json; each source repo sends its own event_type.
   repository_dispatch:
+    types: [photon-cli-docs]
   workflow_dispatch:
 
 jobs:
@@ -30,6 +31,7 @@ jobs:
           # clone in sync-docs can reach it.
           repositories: |
             ${{ steps.parse-repo.outputs.name }}
+            cli-beta
 
       - uses: actions/checkout@v4
         with:

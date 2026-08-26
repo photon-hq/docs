@@ -43,6 +43,10 @@ Rules:
   stays owned by this repo while page lists stay owned by the source.
 - Add every visible page to the navigation, either directly in `docs.base.json`
   or in the owning source's `nav.json`.
+- Group names in a source's `nav.json` are a cross-repo contract. `build-nav`
+  hard-fails on a marker whose group is missing, and sources are pulled at their
+  `ref` at build time — so renaming a group in a source repo breaks this build
+  before anyone edits `docs.base.json`. Rename on both sides in one go.
 
 ## Style
 

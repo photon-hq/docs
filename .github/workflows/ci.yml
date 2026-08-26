@@ -44,6 +44,7 @@ jobs:
           # Keep in sync with scripts/sources.json and deploy-dist.yml.
           repositories: |
             ${{ steps.parse-repo.outputs.name }}
+            cli-beta
 
       - uses: actions/checkout@v4
         with:

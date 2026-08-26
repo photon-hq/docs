@@ -16,3 +16,7 @@ node_modules/
 llms.txt
 llms-full.txt
 llms-*.txt
+
+# Rendered from photon-hq/cli-beta (source "photon-cli", mount "cli") by
+# `vellum build`. The whole directory is generated -- see scripts/sources.json.
+/cli/

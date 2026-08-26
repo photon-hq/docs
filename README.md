@@ -14,7 +14,11 @@ the repo they document and pulled in at build time.
 | Templated pages   | `docs-src/**/*.mdx.vel`            | `vellum build`                       |
 | Source-repo pages | declared in `scripts/sources.json` | `scripts/sync-docs` + `vellum build` |
 
-`scripts/sources.json` is currently empty — no external source is registered yet.
+Registered sources:
+
+| Source       | Repo                                                        | Mount | Owns                                                      |
+| ------------ | ----------------------------------------------------------- | ----- | --------------------------------------------------------- |
+| `photon-cli` | [photon-hq/cli-beta](https://github.com/photon-hq/cli-beta) | `cli` | The whole **CLI** tab, from that repo's `docs/` on `main` |
 
 ## Build pipeline
 
