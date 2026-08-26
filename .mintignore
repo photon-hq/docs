@@ -1,0 +1,13 @@
+# Mintlify automatically ignores these files and directories:
+# .git, .github, .claude, .agents, .idea, node_modules,
+# README.md, LICENSE.md, CHANGELOG.md, CONTRIBUTING.md
+
+node_modules/
+
+# Build pipeline: templates and tooling, not publishable pages
+scripts/
+docs-src/
+.vellum-src/
+*.vel
+
+AGENTS.md

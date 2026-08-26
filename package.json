@@ -1,0 +1,29 @@
+{
+  "name": "docs-v2",
+  "type": "module",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "docs:generate": "pnpm docs:sync && tsx scripts/build-nav/index.ts && vellum build && tsx scripts/llms-generator/index.ts",
+    "docs:sync": "tsx scripts/sync-docs/index.ts",
+    "docs:llms": "tsx scripts/llms-generator/index.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck:docs": "tsx scripts/typecheck-docs/index.ts"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^4.19.0",
+    "@types/node": "^25.6.0",
+    "@typescript/native-preview": "7.0.0-dev.20260413.1",
+    "@vellum-docs/cli": "^0.3.0",
+    "@vellum-docs/core": "^0.3.0",
+    "@vellum-docs/engine-nunjucks": "^0.3.0",
+    "@vellum-docs/extractor-typescript": "^0.3.0",
+    "@vellum-docs/profile-mintlify": "^0.3.0",
+    "eslint": "^9.39.4",
+    "eslint-plugin-format": "^2.0.1",
+    "oxfmt": "^0.44.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

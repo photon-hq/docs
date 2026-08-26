@@ -1,0 +1,82 @@
+name: Deploy dist
+
+on:
+  push:
+    branches: [main]
+  # Source repos notify us when their docs/ changes. No type filter yet, since
+  # scripts/sources.json is empty; narrow this to explicit types once sources land.
+  repository_dispatch:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parse repository
+        id: parse-repo
+        run: |
+          echo "owner=${GITHUB_REPOSITORY%/*}" >> "$GITHUB_OUTPUT"
+          echo "name=${GITHUB_REPOSITORY#*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ steps.parse-repo.outputs.owner }}
+          # Add each source repo from scripts/sources.json here so the sparse
+          # clone in sync-docs can reach it.
+          repositories: |
+            ${{ steps.parse-repo.outputs.name }}
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generate docs from Vellum templates
+        run: pnpm docs:generate
+        # sync-docs pulls per-source authored docs from the configured git ref
+        # while Vellum extracts types from the installed package versions.
+        env:
+          DOCS_SOURCE_MODE: git
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Push to dist branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Force-add the generated navigation (gitignored, but needed on dist)
+          git add -f docs.json
+
+          # Force-add all Vellum-generated files (gitignored, but needed on dist).
+          # Template list comes from the assembled tree (.vellum-src), not docs-src,
+          # since sources may be pulled from other repos. May be empty while no
+          # source is registered, so guard against an argument-less `git add`.
+          vel_out=$(find .vellum-src -name '*.vel' | sed 's|^.vellum-src/||;s|\.vel$||')
+          if [ -n "$vel_out" ]; then
+            git add -f $vel_out
+          fi
+
+          # Force-add custom llms.txt generator output (also gitignored)
+          git add -f llms.txt llms-full.txt llms-*.txt
+
+          # Commit onto a detached HEAD so main is untouched
+          TREE=$(git write-tree)
+          PARENT=$(git rev-parse HEAD)
+          COMMIT=$(git commit-tree "$TREE" -p "$PARENT" \
+            -m "build: generate docs from $(git rev-parse --short HEAD)")
+
+          git push "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}.git" \
+            "$COMMIT":refs/heads/dist --force

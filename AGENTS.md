@@ -5,19 +5,44 @@
 - This is the ground-up rewrite of Photon documentation.
 - The site is built and hosted with Mintlify.
 - Pages are MDX files with YAML frontmatter.
-- Site configuration lives in `docs.json`.
+- Site configuration lives in `docs.base.json`; `docs.json` is generated.
+- Run `pnpm install`, then `pnpm docs:generate` before previewing.
 - Run `mint dev` to preview locally.
 - Run `mint validate` and `mint broken-links` before publishing.
-- Use Node.js 22 for Mintlify CLI commands.
+- Use Node.js 24 for the build pipeline and Mintlify CLI commands.
 
 ## Content ownership
 
-- Write source content directly in this repository.
-- Do not copy generated files or generation workflows from `photon-hq/docs`.
-- Do not import content from another repository unless the project explicitly
-  adopts that source as an owner.
-- Treat the existing Photon documentation as reference material, not as the
+This repository aggregates documentation from more than one place. Before
+editing, work out which of the three a page belongs to:
+
+1. **Plain `.mdx` at the repo root** — owned here, committed as-is, no build
+   step. This is the default for new prose.
+2. **`docs-src/**/*.mdx.vel`** — owned here, but templated. `vellum build`
+   renders them to `.mdx` at the matching root path.
+3. **A source repo** — SDK docs authored next to the code and pulled in at build
+   time. Sources are declared in `scripts/sources.json`. Never edit the synced
+   copies; edit them in the source repo and re-run the sync.
+
+Rules:
+
+- Do not edit `docs.json`, `.vellum-src/`, `llms*.txt`, or any generated `.mdx`.
+  They are gitignored here and regenerated on every build. Edit
+  `docs.base.json`, the templates, or the source repo instead.
+- Adding a source repo means: an entry in `scripts/sources.json`, a `nav.json`
+  fragment in that repo's docs directory, its generated `.mdx` output paths in
+  `.gitignore`, and the repo added to the `repositories:` list in both workflows.
+- Treat the existing `photon-hq/docs` site as reference material, not as the
   structure for this rewrite.
+
+## Navigation
+
+- `docs.base.json` is the navigation skeleton and is owned here.
+- A `{"$source": "<name>", "group": "<group>"}` marker in it is replaced, in
+  place, by that group from the source's `nav.json` fragment — so group order
+  stays owned by this repo while page lists stay owned by the source.
+- Add every visible page to the navigation, either directly in `docs.base.json`
+  or in the owning source's `nav.json`.
 
 ## Style
 
@@ -30,7 +55,6 @@
 
 ## Mintlify conventions
 
-- Add every visible page to the navigation in `docs.json`.
 - Use root-relative internal links without file extensions.
 - Give every MDX page a `title` and `description` in frontmatter.
 - Prefer built-in Mintlify components over custom components.
