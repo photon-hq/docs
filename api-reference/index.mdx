@@ -3,6 +3,29 @@ title: "API reference"
 description: "Photon API reference."
 ---
 
+The Photon API is a REST API over JSON. Use it to manage projects, provision and
+operate messaging and voice lines, handle 10DLC and call registry compliance,
+configure webhooks, and administer accounts, members, and billing.
+
 <Note>
-  This section is being rewritten from the ground up.
+  This reference is generated from the **staging** OpenAPI schema, and every
+  endpoint page — including the interactive playground — targets
+  `https://api.staging.photon.codes`. Do not use it against production data.
 </Note>
+
+## Base URL
+
+```
+https://api.staging.photon.codes
+```
+
+Every endpoint is versioned under `/v1`.
+
+## Browse the endpoints
+
+The **Endpoints** group in the sidebar lists every operation, grouped by the area
+it belongs to. Each page documents the parameters, request body, and responses,
+and lets you send a request against staging.
+
+You can also read the schema directly at
+[`/openapi.json`](https://api.staging.photon.codes/openapi.json).

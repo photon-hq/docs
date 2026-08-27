@@ -23,8 +23,12 @@ interface Group {
   group?: string
   icon?: string
   pages?: (string | Group)[]
-  openapi?: string
+  openapi?: OpenApiSource
 }
+
+// Mintlify accepts either a bare URL/path or an object that also pins the
+// directory the generated endpoint pages are mounted under.
+type OpenApiSource = string | { source: string, directory?: string }
 
 interface PageFile {
   title: string
@@ -208,7 +212,7 @@ function emitGroup(group: Group, depth: number, out: WalkNode[]) {
     out.push({
       kind: 'openapi',
       depth: group.group ? depth + 1 : depth,
-      source: group.openapi,
+      source: typeof group.openapi === 'string' ? group.openapi : group.openapi.source,
       label: group.group ?? 'OpenAPI',
     })
     return

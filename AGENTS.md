@@ -14,7 +14,7 @@
 ## Content ownership
 
 This repository aggregates documentation from more than one place. Before
-editing, work out which of the three a page belongs to:
+editing, work out which of the four a page belongs to:
 
 1. **Plain `.mdx` at the repo root** — owned here, committed as-is, no build
    step. This is the default for new prose.
@@ -23,6 +23,9 @@ editing, work out which of the three a page belongs to:
 3. **A source repo** — SDK docs authored next to the code and pulled in at build
    time. Sources are declared in `scripts/sources.json`. Never edit the synced
    copies; edit them in the source repo and re-run the sync.
+4. **A remote OpenAPI schema** — endpoint pages Mintlify generates at render time
+   from a spec URL in `docs.base.json`. They have no file in this repo; change
+   the API to change the docs.
 
 Rules:
 
