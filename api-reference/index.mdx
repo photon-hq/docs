@@ -21,6 +21,52 @@ https://api.staging.photon.codes
 
 Every endpoint is versioned under `/v1`.
 
+## Authentication
+
+Send your credential as a bearer token on every request:
+
+```
+Authorization: Bearer <credential>
+```
+
+Photon accepts three kinds of credential and tells them apart by their prefix:
+
+| Credential | Looks like | Use it for |
+| --- | --- | --- |
+| Account service key | `pho_ask_...` | Any endpoint your account can reach. |
+| Project API key | `pho_sk_...` | One project, under `/v1/projects/{projectId}`. |
+| Access token | A JWT | Dashboard sessions and OAuth grants. |
+
+A project API key only works under `/v1/projects/{projectId}`, for the project it
+was issued for. Every other endpoint needs an account credential — all of
+`/v1/account`, the `/v1/projects` collection, and invitations.
+
+Pick the narrowest credential that reaches what you are testing. A project API
+key is enough for most endpoints, and limits the damage if you leak it. Reach for
+an account service key only when you need `/v1/account` or the project
+collection.
+
+Create one with the CLI. Every key needs a name and an explicit expiry:
+
+```sh
+photon account service-key create \
+  --name "Docs playground" \
+  --expires-at 2027-01-01T00:00:00Z
+```
+
+The credential is printed once, when the key is created, so copy it straight
+away. To replace a key you lost, revoke it and create another. See
+[Service keys](/cli/service-keys) for the full command, or create keys through
+`POST /v1/account/service-keys`.
+
+<Warning>
+  The playground sends real requests, so anything you paste is a live credential.
+  Create a key against staging for this, never paste a production one, and revoke
+  it when you are done.
+</Warning>
+
+A handful of endpoints under `/v1/auth` are public and ignore the header.
+
 ## Browse the endpoints
 
 The **Endpoints** group in the sidebar lists every operation, grouped by the area
