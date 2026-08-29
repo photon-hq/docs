@@ -1,0 +1,49 @@
+name: OpenAPI watch
+
+# Mintlify ingests the remote OpenAPI spec only when a deployment runs -- a
+# changed spec does not redeploy the docs by itself. The aggregator publishes a
+# strong SHA-256 ETag, so this compares the live document against the ETag the
+# last dist build recorded and triggers a redeploy only on drift. Freshness is
+# bounded by the schedule; the probe costs two requests when nothing changed.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compare the live spec against the last deployed stamp
+        id: compare
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          live=$(curl -sSfI --max-time 30 https://api.staging.photon.codes/openapi.json \
+            | tr -d '\r' | awk 'tolower($1)=="etag:" {print $2}') || live=""
+          if [ -z "$live" ]; then
+            echo "::warning::no ETag from the aggregator; skipping this cycle"
+            exit 0
+          fi
+          # The repository is private, so read the stamp through the API
+          # rather than raw.githubusercontent.com. A missing stamp (first run,
+          # or the aggregator was down during the last deploy) reads as
+          # "none" and triggers one converging redeploy.
+          deployed=$(gh api "repos/${GITHUB_REPOSITORY}/contents/.openapi-etag?ref=dist" \
+            --jq '.content' 2>/dev/null | base64 --decode | tr -d '\n') || deployed=""
+          [ -z "$deployed" ] && deployed="none"
+          echo "live=$live deployed=$deployed"
+          if [ "$live" != "$deployed" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Redeploy the docs
+        if: steps.compare.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-dist.yml --repo "$GITHUB_REPOSITORY" --ref main

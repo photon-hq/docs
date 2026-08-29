@@ -9,6 +9,17 @@ on:
     types: [photon-cli-docs]
   workflow_dispatch:
 
+# One running build plus at most one queued collapses bursts -- watcher
+# dispatches and source updates alike -- into a single trailing deploy.
+concurrency:
+  group: deploy-dist
+  cancel-in-progress: false
+
+# The default GITHUB_TOKEN is only ever read here; pushing to dist and cloning
+# source repos use the App installation token minted below.
+permissions:
+  contents: read
+
 jobs:
   deploy:
     if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
@@ -27,6 +38,9 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ steps.parse-repo.outputs.owner }}
+          # The push to dist and the source clones need repository contents
+          # only; withhold every other permission the App installation holds.
+          permission-contents: write
           # Add each source repo from scripts/sources.json here so the sparse
           # clone in sync-docs can reach it.
           repositories: |
@@ -54,6 +68,24 @@ jobs:
           DOCS_SOURCE_MODE: git
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
+      - name: Record the OpenAPI spec version this build saw
+        # The aggregator serves a strong SHA-256 ETag. openapi-watch.yml
+        # compares this stamp against the live document and redeploys on drift,
+        # which is what keeps the API playground fresh -- Mintlify ingests the
+        # remote spec only at deployment, never per page view. An unreachable
+        # aggregator leaves no stamp rather than failing the deploy; the
+        # watcher skips when its own probe fails, so the two converge on the
+        # next cycle in which the aggregator is up.
+        run: |
+          etag=$(curl -sSfI --max-time 30 https://api.staging.photon.codes/openapi.json \
+            | tr -d '\r' | awk 'tolower($1)=="etag:" {print $2}') || etag=""
+          if [ -n "$etag" ]; then
+            printf '%s\n' "$etag" > .openapi-etag
+            cat .openapi-etag
+          else
+            echo "::warning::no ETag from the aggregator; stamp omitted"
+          fi
+
       - name: Push to dist branch
         run: |
           git config user.name "github-actions[bot]"
@@ -61,6 +93,7 @@ jobs:
 
           # Force-add the generated navigation (gitignored, but needed on dist)
           git add -f docs.json
+          [ -f .openapi-etag ] && git add -f .openapi-etag
 
           # Force-add all Vellum-generated files (gitignored, but needed on dist).
           # Template list comes from the assembled tree (.vellum-src), not docs-src,
