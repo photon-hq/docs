@@ -1,0 +1,13 @@
+{
+  "$comment": "Registry problems raised by the chassis rather than declared on an operation, so they never appear in an OpenAPI response schema. Values mirror error-ts/src/registry.ts (and problem.ts internalErrorContract) -- they are org-wide wire contracts, so keep both sides in step. Merged into the catalog by scripts/build-problems; a slug here that the spec also publishes loses to the spec.",
+  "problems": [
+    { "slug": "not-authenticated", "code": "NOT_AUTHENTICATED", "status": 401, "title": "Not Authenticated" },
+    { "slug": "route-not-found", "code": "ROUTE_NOT_FOUND", "status": 404, "title": "Route Not Found" },
+    { "slug": "not-found", "code": "NOT_FOUND", "status": 404, "title": "Not Found" },
+    { "slug": "already-exists", "code": "ALREADY_EXISTS", "status": 409, "title": "Already Exists" },
+    { "slug": "limit-reached", "code": "LIMIT_REACHED", "status": 409, "title": "Limit Reached" },
+    { "slug": "resource-deleted", "code": "RESOURCE_DELETED", "status": 410, "title": "Resource Deleted" },
+    { "slug": "idempotency-response-unsupported", "code": "IDEMPOTENCY_RESPONSE_UNSUPPORTED", "status": 500, "title": "Idempotency Response Unsupported" },
+    { "slug": "internal-error", "code": "INTERNAL_ERROR", "status": 500, "title": "Internal Server Error" }
+  ]
+}

@@ -67,6 +67,24 @@ away. To replace a key you lost, revoke it and create another. See
 
 A handful of endpoints under `/v1/auth` are public and ignore the header.
 
+## Errors
+
+Every error is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem
+document served as `application/problem+json`, carrying a stable `type` URI and
+`code` you can match on:
+
+```json
+{
+  "type": "https://photon.codes/docs/problems/validation-failed",
+  "code": "VALIDATION_FAILED",
+  "title": "Request Validation Failed",
+  "status": 422
+}
+```
+
+Each `type` URI resolves to the page documenting that problem. See
+[Problems](/problems) for the envelope and the full catalogue.
+
 ## Browse the endpoints
 
 The **Endpoints** group in the sidebar lists every operation, grouped by the area

@@ -286,3 +286,137 @@ div:has(> #chat-assistant-sheet) {
   height: calc(100vh - 56px) !important;
   top: 56px !important;
 }
+
+/* Problems catalogue — snippets/problems-table.jsx. Colours are inherited or
+   theme variables so the table reads correctly in both schemes. */
+.pt-controls {
+  display: flex;
+  gap: 8px;
+  margin: 1rem 0 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pt-search {
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.pt-search,
+.pt-group {
+  padding: 7px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.35));
+  background: transparent;
+  color: inherit;
+  font-size: 0.875rem;
+}
+
+.pt-search:focus,
+.pt-group:focus {
+  outline: none;
+  border-color: rgb(41, 152, 217);
+}
+
+.pt-group {
+  cursor: pointer;
+}
+
+/* The catalog page is `mode: "wide"`, which already removes the
+   table-of-contents column and roughly doubles the content measure. Fill it and
+   stay aligned with the heading -- Mintlify puts `max-width: 100%` on this
+   wrapper, so a negative-margin breakout only shifts the table left of the
+   heading without ever widening it. */
+.pt-catalogue {
+  width: 100%;
+}
+
+.pt-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.25));
+  border-radius: 8px;
+}
+
+.pt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.pt-table th,
+.pt-table td {
+  text-align: left;
+  padding: 8px 12px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border, rgba(128, 128, 128, 0.18));
+}
+
+.pt-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.pt-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  background: var(--background, rgba(20, 20, 20, 0.85));
+}
+
+.pt-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.pt-arrow {
+  display: inline-block;
+  width: 1em;
+  opacity: 0.7;
+}
+
+.pt-table code {
+  white-space: nowrap;
+  font-size: 0.8125rem;
+}
+
+.pt-table th:nth-child(1),
+.pt-table th:nth-child(2),
+.pt-table th:nth-child(3) {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.pt-4xx {
+  color: rgb(217, 152, 41);
+}
+
+.pt-5xx {
+  color: rgb(217, 84, 84);
+}
+
+.pt-meta {
+  opacity: 0.7;
+}
+
+/* The row a type URI pointed at. */
+.pt-target td {
+  background: rgba(41, 152, 217, 0.14);
+}
+
+.pt-target td:first-child {
+  box-shadow: inset 2px 0 0 rgb(41, 152, 217);
+}
+
+.pt-count,
+.pt-empty {
+  font-size: 0.8125rem;
+  opacity: 0.65;
+  margin-top: 0.6rem;
+}
+
+/* Anchored rows sit under the sticky navbar without this. */
+.pt-row {
+  scroll-margin-top: 96px;
+}

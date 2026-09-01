@@ -115,6 +115,13 @@ function cleanBody(body: string): string {
 
   text = text.replace(/\{%[\s\S]*?%\}/g, '')
 
+  // problems.mdx carries its catalogue twice: as a data prop for the React
+  // table, and as the markdown table that is the actual served content. Drop
+  // the prop -- a single-line JSON blob is not what an llms.txt reader wants --
+  // and unwrap the div so the table it holds reads as markdown.
+  text = text.replace(/<ProblemsTable\b[\s\S]*?\/>/g, '')
+  text = text.replace(/^[ \t]*<\/?div\b[^>]*>[ \t]*$/gm, '')
+
   text = text.replace(/<TypeTooltip\b[\s\S]*?\/>/g, (match) => {
     const nameMatch = match.match(/name=["']([^"']+)["']/)
     return nameMatch ? `\`${nameMatch[1]}\`` : ''

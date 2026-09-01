@@ -42,24 +42,51 @@ which runs:
    source in `scripts/sources.json` (blobless clone + cone sparse checkout of the
    source's docs directory at its configured `ref`). Each source's `nav.json` is
    copied to `.vellum-src/.nav/<mount>.json`.
-2. `scripts/build-nav` — merges `docs.base.json` with those nav fragments and
+2. `scripts/build-problems` — reads the OpenAPI schema and writes `problems.mdx`,
+   the catalogue of every RFC 9457 problem type the API publishes, appended to
+   the hand-owned prose in `scripts/build-problems/intro.mdx`.
+3. `scripts/build-nav` — merges `docs.base.json` with those nav fragments and
    writes `docs.json`.
-3. `vellum build` — renders `.vellum-src/**/*.mdx.vel` to `.mdx` at the repo root.
-4. `scripts/llms-generator` — writes `llms.txt`, `llms-full.txt`, and a
+4. `vellum build` — renders `.vellum-src/**/*.mdx.vel` to `.mdx` at the repo root.
+5. `scripts/llms-generator` — writes `llms.txt`, `llms-full.txt`, and a
    per-tab `llms-<tab>.txt` from `docs.json` and the rendered pages.
 
-`docs.json`, `.vellum-src/`, `llms*.txt`, and generated `.mdx` are gitignored.
-**Don't edit `docs.json` directly** — edit `docs.base.json` or the source's
-`nav.json` fragment.
+`docs.json`, `.vellum-src/`, `llms*.txt`, `problems/` (except its hand-owned
+`handling-errors.mdx`), and generated `.mdx` are gitignored. **Don't edit `docs.json` directly** — edit `docs.base.json` or
+the source's `nav.json` fragment.
+
+`problems/catalog.mdx` catalogues the problem type URIs that every Photon
+service stamps on its errors, and `problems/handling-errors.mdx` beside it
+explains the envelope. Each slug anchors a row, so a problem typed
+`https://photon.codes/docs/problems/<slug>` is documented at
+`/problems/catalog#<slug>`, and a `redirects` entry in `docs.base.json` sends
+the published URI straight to that anchor.
+
+Mintlify only matches the wildcard form `:slug*` here — a bare `:slug`, a `+`
+quantifier, and a regex constraint on the param all silently stop matching. A
+real page still beats the wildcard, which is why `/problems/catalog` resolves,
+but `:slug*` also matches zero segments, which is why no page sits at the bare
+`/problems`. Those URIs are a wire contract — see `problemTypeBase` in
+`error-ts`. The table itself is `snippets/problems-table.jsx`. It sorts and filters through
+`@tanstack/table-core`, loaded at runtime from a CDN, and falls back to a local
+implementation if that fetch fails. The generator also emits the catalogue as a
+plain markdown table, which is what the served HTML carries and what crawlers
+read; the component hides it on mount. It puts the slug on the row `id` and reveals
+that row on hash navigation, clearing any active filter so a linked row is never
+one the search excludes. Problems
+the chassis raises outside any operation never reach the schema, so they are
+supplemented from `scripts/build-problems/chassis.json`; grouping lives in
+`scripts/build-problems/groups.ts`.
 
 ### Environment
 
-| Variable                         | Effect                                                                                                      |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `DOCS_SOURCE_MODE`               | `git` (strict; used by CI) or `local` (use each source's `local` path). Unset prefers `local` when present. |
-| `DOCS_GH_TOKEN` / `GITHUB_TOKEN` | Token for cloning private source repos.                                                                     |
-| `DOCS_REF_<name>`                | Override one source's ref. Non-alphanumerics in the name become `_`.                                        |
-| `DOCS_BASE_URL`                  | Public site URL used in `llms*.txt` links.                                                                  |
+| Variable                         | Effect                                                                                                       |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `DOCS_SOURCE_MODE`               | `git` (strict; used by CI) or `local` (use each source's `local` path). Unset prefers `local` when present.  |
+| `DOCS_GH_TOKEN` / `GITHUB_TOKEN` | Token for cloning private source repos.                                                                      |
+| `DOCS_REF_<name>`                | Override one source's ref. Non-alphanumerics in the name become `_`.                                         |
+| `DOCS_BASE_URL`                  | Public site URL used in `llms*.txt` links.                                                                   |
+| `PHOTON_OPENAPI_URL`             | OpenAPI schema `build-problems` reads. Falls back to the committed `catalog.json` snapshot when unreachable. |
 
 ## Adding a source repo
 

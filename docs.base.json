@@ -23,12 +23,23 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Spectrum",
+        "tab": "Overview",
         "groups": [
           {
             "group": "Get started",
             "pages": [
               "index"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Messaging",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "messaging/index"
             ]
           }
         ]
@@ -59,34 +70,19 @@
         ]
       },
       {
-        "tab": "Webhooks",
-        "groups": [
-          {
-            "group": "Get started",
-            "pages": [
-              "webhooks/index"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Low-level SDKs",
-        "groups": [
-          {
-            "group": "Get started",
-            "pages": [
-              "low-level-sdks/index"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
             "group": "Get started",
             "pages": [
               "api-reference/index"
+            ]
+          },
+          {
+            "group": "Problems",
+            "pages": [
+              "problems/handling-errors",
+              "problems/catalog"
             ]
           },
           {
@@ -109,6 +105,13 @@
       ]
     }
   },
+  "redirects": [
+    {
+      "source": "/problems/:slug*",
+      "destination": "/problems/catalog#:slug*",
+      "permanent": false
+    }
+  ],
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg"

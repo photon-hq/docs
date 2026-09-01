@@ -104,6 +104,10 @@ jobs:
             git add -f $vel_out
           fi
 
+          # Force-add the generated problem catalogue. It is not Vellum output,
+          # so the *.vel glob above does not cover it.
+          git add -f problems
+
           # Force-add custom llms.txt generator output (also gitignored)
           git add -f llms.txt llms-full.txt llms-*.txt
 
