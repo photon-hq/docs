@@ -287,8 +287,29 @@ div:has(> #chat-assistant-sheet) {
   top: 56px !important;
 }
 
-/* Problems catalogue — snippets/problems-table.jsx. Colours are inherited or
-   theme variables so the table reads correctly in both schemes. */
+/* Problems catalogue — snippets/problems-table.jsx.
+   The Almond theme defines only --primary and --gray-100, so `var(--background)`
+   and `var(--border)` never resolve and every fallback is what actually renders.
+   Light is therefore the default here and `.dark` overrides it, rather than
+   relying on variables that do not exist. */
+.pt-catalogue {
+  --pt-line: rgba(0, 0, 0, 0.12);
+  --pt-line-soft: rgba(0, 0, 0, 0.07);
+  --pt-header-bg: rgba(255, 255, 255, 0.92);
+  --pt-4xx: rgb(146, 93, 10);
+  --pt-5xx: rgb(176, 42, 42);
+  --pt-accent: rgb(23, 122, 176);
+}
+
+html.dark .pt-catalogue {
+  --pt-line: rgba(255, 255, 255, 0.14);
+  --pt-line-soft: rgba(255, 255, 255, 0.08);
+  --pt-header-bg: rgba(20, 20, 20, 0.85);
+  --pt-4xx: rgb(217, 152, 41);
+  --pt-5xx: rgb(217, 84, 84);
+  --pt-accent: rgb(71, 198, 237);
+}
+
 .pt-controls {
   display: flex;
   gap: 8px;
@@ -305,7 +326,7 @@ div:has(> #chat-assistant-sheet) {
 .pt-group {
   padding: 7px 11px;
   border-radius: 8px;
-  border: 1px solid var(--border, rgba(128, 128, 128, 0.35));
+  border: 1px solid var(--pt-line);
   background: transparent;
   color: inherit;
   font-size: 0.875rem;
@@ -314,7 +335,7 @@ div:has(> #chat-assistant-sheet) {
 .pt-search:focus,
 .pt-group:focus {
   outline: none;
-  border-color: rgb(41, 152, 217);
+  border-color: var(--pt-accent);
 }
 
 .pt-group {
@@ -332,7 +353,7 @@ div:has(> #chat-assistant-sheet) {
 
 .pt-scroll {
   overflow-x: auto;
-  border: 1px solid var(--border, rgba(128, 128, 128, 0.25));
+  border: 1px solid var(--pt-line);
   border-radius: 8px;
 }
 
@@ -348,7 +369,7 @@ div:has(> #chat-assistant-sheet) {
   text-align: left;
   padding: 8px 12px;
   vertical-align: top;
-  border-bottom: 1px solid var(--border, rgba(128, 128, 128, 0.18));
+  border-bottom: 1px solid var(--pt-line-soft);
 }
 
 .pt-table tbody tr:last-child td {
@@ -362,7 +383,7 @@ div:has(> #chat-assistant-sheet) {
   font-weight: 500;
   white-space: nowrap;
   backdrop-filter: blur(8px);
-  background: var(--background, rgba(20, 20, 20, 0.85));
+  background: var(--pt-header-bg);
 }
 
 .pt-sortable {
@@ -389,11 +410,11 @@ div:has(> #chat-assistant-sheet) {
 }
 
 .pt-4xx {
-  color: rgb(217, 152, 41);
+  color: var(--pt-4xx);
 }
 
 .pt-5xx {
-  color: rgb(217, 84, 84);
+  color: var(--pt-5xx);
 }
 
 .pt-meta {
@@ -402,11 +423,11 @@ div:has(> #chat-assistant-sheet) {
 
 /* The row a type URI pointed at. */
 .pt-target td {
-  background: rgba(41, 152, 217, 0.14);
+  background: color-mix(in srgb, var(--pt-accent) 14%, transparent);
 }
 
 .pt-target td:first-child {
-  box-shadow: inset 2px 0 0 rgb(41, 152, 217);
+  box-shadow: inset 2px 0 0 var(--pt-accent);
 }
 
 .pt-count,
