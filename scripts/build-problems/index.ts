@@ -23,6 +23,7 @@ const OUT = join(ROOT, 'problems/catalog.mdx')
 const HEADER = join(import.meta.dirname, 'catalog-header.mdx')
 const CHASSIS = join(import.meta.dirname, 'chassis.json')
 const SNAPSHOT = join(import.meta.dirname, 'catalog.json')
+const REDIRECTS = join(ROOT, '.vellum-src/.redirects/problems.json')
 
 const SPEC_URL = process.env.PHOTON_OPENAPI_URL ?? 'https://api.staging.photon.codes/openapi.json'
 const TYPE_BASE = 'https://photon.codes/docs/problems/'
@@ -160,22 +161,20 @@ function mergeChassis(catalog: Catalog): Catalog {
 // Rendering
 // ---------------------------------------------------------------------------
 
-// The catalogue is emitted twice, on purpose.
+// The markdown table below is the catalogue -- the only copy of it.
 //
-// Mintlify server-renders a snippet component as null, so anything the table
-// shows exists only after hydration. Search engines deprioritise what they have
-// to run JavaScript to see, and the crawlers behind AI answers mostly do not run
-// it at all -- which would leave 106 documented error codes invisible on exactly
-// the page people search an error code to find.
+// Mintlify server-renders a snippet component as null, so anything only the
+// React table shows exists after hydration alone. Search engines deprioritise
+// what they must run JavaScript to see, and the crawlers behind AI answers
+// mostly do not run it at all, which would leave 106 documented error codes
+// invisible on exactly the page people search an error code to find.
 //
-// So the markdown table below is the content, present in the served HTML, and
-// snippets/problems-table.jsx hides it once the interactive table takes over.
-// Same rows either way; this is progressive enhancement, not cloaking.
-function jsonProp(value: unknown): string {
-  // Embedded in JSX, so the one character that must not appear raw is `<`.
-  return JSON.stringify(value).replace(/</g, '\\u003c')
-}
-
+// So the rows are emitted as markdown, and snippets/problems-table.jsx reads
+// them back out of the DOM and hides the static table once its own is live.
+// Passing them as a prop instead would put the catalogue on the page twice:
+// Mintlify's "Copy page" and the `contextual` options serve this page's
+// markdown source, and a 14KB line of JSON ahead of the table is not what
+// anyone means to paste.
 function describe(row: { title: string, extensions?: string[], chassis?: boolean }): string {
   const parts = [row.title.endsWith('.') ? row.title : `${row.title}.`]
   if (row.extensions?.length)
@@ -233,7 +232,7 @@ function renderCatalogue(problems: Problem[]): string {
     (order.get(a.group) ?? 0) - (order.get(b.group) ?? 0) || a.slug.localeCompare(b.slug))
 
   return [
-    `<ProblemsTable problems={${jsonProp(rows)}} />`,
+    '<ProblemsTable />',
     '',
     // Blank lines around the markdown are what make MDX parse it as a table
     // rather than as JSX children.
@@ -273,6 +272,18 @@ async function loadCatalog(): Promise<Catalog> {
 async function main() {
   const catalog = mergeChassis(await loadCatalog())
   const problems = catalog.problems.sort((a, b) => a.slug.localeCompare(b.slug))
+
+  // One exact redirect per slug rather than a /problems/:slug* wildcard. The
+  // wildcard also swallowed /problems/catalog.md -- the markdown endpoint behind
+  // "Copy page" and every `contextual` option -- handing them a whole HTML
+  // document. Listing the slugs keeps the redirect to exactly what it is for.
+  mkdirSync(dirname(REDIRECTS), { recursive: true })
+  writeFileSync(REDIRECTS, `${JSON.stringify(problems.map(problem => ({
+    source: `/problems/${problem.slug}`,
+    destination: `/problems/catalog#${problem.slug}`,
+    permanent: false,
+  })), null, 2)}\n`)
+  log(`wrote ${problems.length} redirect(s) to .vellum-src/.redirects/problems.json`)
 
   const header = readFileSync(HEADER, 'utf8').trimEnd()
   mkdirSync(dirname(OUT), { recursive: true })

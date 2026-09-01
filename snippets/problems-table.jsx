@@ -24,10 +24,11 @@
 // local fallback: this page documents error codes, so it is exactly the page
 // someone loads when things are already broken.
 
-export function ProblemsTable({ problems = [] }) {
+export function ProblemsTable() {
   const CDN = 'https://esm.sh/@tanstack/table-core@8.21.3'
 
   const [core, setCore] = useState(null)
+  const [problems, setProblems] = useState([])
   const [sorting, setSorting] = useState([{ id: 'slug', desc: false }])
   const [query, setQuery] = useState('')
   const [group, setGroup] = useState('All')
@@ -66,14 +67,14 @@ export function ProblemsTable({ problems = [] }) {
     { key: 'status', label: 'Status' },
   ], [])
 
-  // The table model also carries title and group so the global filter reaches
-  // them -- searching a description or an area has to work even though neither
-  // gets a column of its own. Cells are rendered by hand below, so a column in
-  // the model does not imply a column on screen.
+  // group and description are in the model but not the header row, so the global
+  // filter reaches them: searching an area or a description has to work even
+  // though neither is a sortable column. Cells are rendered by hand below, so a
+  // column in the model does not imply a column on screen.
   const columns = useMemo(() => [
     ...headers.map(h => ({ accessorKey: h.key })),
-    { accessorKey: 'title' },
     { accessorKey: 'group' },
+    { accessorKey: 'description' },
   ], [headers])
 
   const groups = useMemo(
@@ -119,7 +120,7 @@ export function ProblemsTable({ problems = [] }) {
   const localRows = useMemo(() => {
     const needle = query.trim().toLowerCase()
     const rows = filtered.filter(p => !needle
-      || `${p.slug} ${p.code} ${p.title} ${p.group} ${p.status}`.toLowerCase().includes(needle))
+      || `${p.slug} ${p.code} ${p.description} ${p.group} ${p.status}`.toLowerCase().includes(needle))
     const { id, desc } = sorting[0] ?? { id: 'slug', desc: false }
     rows.sort((a, b) => (id === 'status'
       ? a.status - b.status || a.slug.localeCompare(b.slug)
@@ -129,13 +130,36 @@ export function ProblemsTable({ problems = [] }) {
 
   const rows = table ? table.getRowModel().rows.map(r => r.original) : localRows
 
-  // problems.mdx also emits a plain markdown table, which is what search
-  // engines and non-JS AI crawlers actually read -- Mintlify server-renders this
-  // component as null. Retire it now that the interactive table is live.
+  // The rows come from the markdown table problems/catalog.mdx renders, which is
+  // what search engines and non-JS AI crawlers read -- this component is
+  // server-rendered as null. Reading it back rather than taking a prop keeps the
+  // catalogue on the page once: as a prop it would also land in the page's
+  // markdown source, which is what "Copy page" hands you.
+  //
+  // Columns are Type, Code, Status, Group, Description, in that order.
   useEffect(() => {
     const staticTable = document.getElementById('problems-static')
-    if (staticTable)
-      staticTable.hidden = true
+    if (!staticTable)
+      return
+    const rows = [...staticTable.querySelectorAll('tbody tr')]
+      .map((tr) => {
+        const cell = [...tr.children].map(td => (td.textContent ?? '').trim())
+        if (cell.length < 5 || !cell[0])
+          return null
+        return {
+          slug: cell[0],
+          code: cell[1],
+          status: Number(cell[2]),
+          group: cell[3],
+          description: cell[4],
+        }
+      })
+      .filter(Boolean)
+
+    if (rows.length === 0)
+      return // Leave the static table showing rather than replacing it with nothing.
+    setProblems(rows)
+    staticTable.hidden = true
   }, [])
 
   // A type URI lands here as a hash. Drop any active filter first: a row the
@@ -178,7 +202,7 @@ export function ProblemsTable({ problems = [] }) {
           className="pt-search"
           type="search"
           value={query}
-          placeholder={`Search ${problems.length} problems by type, code, or status`}
+          placeholder={problems.length ? `Search ${problems.length} problems by type, code, status, or group` : 'Search problems'}
           onChange={e => setQuery(e.target.value)}
           aria-label="Search problems"
         />
@@ -216,13 +240,7 @@ export function ProblemsTable({ problems = [] }) {
                 <td><code>{p.slug}</code></td>
                 <td><code>{p.code}</code></td>
                 <td><code className={p.status >= 500 ? 'pt-5xx' : 'pt-4xx'}>{p.status}</code></td>
-                <td>
-                  {p.title}
-                  {p.extensions?.length > 0 && (
-                    <span className="pt-meta">{` Adds ${p.extensions.join(', ')}.`}</span>
-                  )}
-                  {p.chassis && <span className="pt-meta">{' Any endpoint can return it.'}</span>}
-                </td>
+                <td>{p.description}</td>
               </tr>
             ))}
           </tbody>

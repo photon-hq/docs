@@ -105,13 +105,6 @@
       ]
     }
   },
-  "redirects": [
-    {
-      "source": "/problems/:slug*",
-      "destination": "/problems/catalog#:slug*",
-      "permanent": false
-    }
-  ],
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg"

@@ -62,11 +62,11 @@ explains the envelope. Each slug anchors a row, so a problem typed
 `/problems/catalog#<slug>`, and a `redirects` entry in `docs.base.json` sends
 the published URI straight to that anchor.
 
-Mintlify only matches the wildcard form `:slug*` here — a bare `:slug`, a `+`
-quantifier, and a regex constraint on the param all silently stop matching. A
-real page still beats the wildcard, which is why `/problems/catalog` resolves,
-but `:slug*` also matches zero segments, which is why no page sits at the bare
-`/problems`. Those URIs are a wire contract — see `problemTypeBase` in
+`build-problems` emits one exact redirect per slug and `build-nav` merges them
+from `.vellum-src/.redirects/`. A `/problems/:slug*` wildcard is tempting but
+wrong: it also captures `/problems/catalog.md`, the markdown endpoint behind
+"Copy page". Mintlify matches only the `:slug*` form anyway — a bare `:slug`, a
+`+` quantifier, and a regex constraint on the param all silently stop matching. Those URIs are a wire contract — see `problemTypeBase` in
 `error-ts`. The table itself is `snippets/problems-table.jsx`. It sorts and filters through
 `@tanstack/table-core`, loaded at runtime from a CDN, and falls back to a local
 implementation if that fetch fails. The generator also emits the catalogue as a

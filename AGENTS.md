@@ -77,8 +77,13 @@ Rules:
 - `eslint.config.mjs` declares the injected hooks as globals for `snippets/`.
 - A snippet is server-rendered as `null`, so anything only it renders is absent
   from the served HTML — invisible to search engines and to the AI crawlers that
-  do not run JavaScript. Emit the content as markdown too and let the component
-  hide it on mount, as `problems/catalog.mdx` does with `#problems-static`.
+  do not run JavaScript. Emit the content as markdown and let the component read
+  it back and hide it on mount, as `problems/catalog.mdx` does with
+  `#problems-static`.
+- Read that content from the DOM rather than passing it as a prop. A prop lands
+  in the page's markdown source, which is what Mintlify serves at `<page>.md`
+  for "Copy page" and every `contextual` option — so a data prop is pasted
+  verbatim by anyone who copies the page.
 
 ## Style
 
