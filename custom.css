@@ -382,7 +382,6 @@ html.dark .pt-catalogue {
   z-index: 1;
   font-weight: 500;
   white-space: nowrap;
-  backdrop-filter: blur(8px);
   background: var(--pt-header-bg);
 }
 
