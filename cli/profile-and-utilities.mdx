@@ -26,10 +26,14 @@ Walks you through an interactive prompt to create a developer or organization pr
 ### Update your profile
 
 ```sh
-photon profile update --display-name "Jane Doe"
+# Developer profile
+photon profile update --languages typescript,python
+
+# Organization profile
+photon profile update --company-name "Acme Inc" --role "Engineering"
 ```
 
-Updates specific fields on your existing profile. The available flags differ based on whether you have a developer or organization profile.
+Updates specific fields on your existing profile. The available flags differ based on whether you have a developer or organization profile — run `photon profile update --help` for the full list.
 
 Aliases: `profile edit`.
 
@@ -73,7 +77,7 @@ Show the authenticated user for the current backend:
 photon whoami
 ```
 
-Prints your user ID, email, and name. Returns an error with a login hint if your session has expired.
+Prints your name, email, and the backend you're signed in to. Returns an error with a login hint if your session has expired.
 
 ### auth status
 
