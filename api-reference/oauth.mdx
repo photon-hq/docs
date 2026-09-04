@@ -20,17 +20,16 @@ OAuth tokens authenticate **users** against the Dashboard API on `app.photon.cod
 | Revocation | `POST https://app.photon.codes/api/auth/oauth2/revoke` |
 | Introspection | `POST https://app.photon.codes/api/auth/oauth2/introspect` |
 | JWKS | `GET https://app.photon.codes/api/auth/jwks` |
+| Discovery | `GET https://app.photon.codes/.well-known/oauth-authorization-server/api/auth` — see [Discovery](#discovery) |
 
 ### Discovery
 
-Because the issuer contains a path component (`/api/auth`), the metadata documents live at the [RFC 8414 §3.1](https://datatracker.ietf.org/doc/html/rfc8414#section-3.1) path-insertion URLs — the issuer's path goes *after* the well-known segment:
+The discovery document — the JSON metadata listing every endpoint, scope, and capability of the provider — is served at:
 
-```
-https://app.photon.codes/.well-known/oauth-authorization-server/api/auth
-https://app.photon.codes/.well-known/openid-configuration/api/auth
-```
+- OAuth 2.1 metadata: [`https://app.photon.codes/.well-known/oauth-authorization-server/api/auth`](https://app.photon.codes/.well-known/oauth-authorization-server/api/auth)
+- OpenID Connect metadata: [`https://app.photon.codes/.well-known/openid-configuration/api/auth`](https://app.photon.codes/.well-known/openid-configuration/api/auth)
 
-Libraries that derive the metadata URL from the issuer per RFC 8414 resolve these automatically. Some OIDC clients instead append `/.well-known/openid-configuration` to the issuer or probe the domain root — both of those 404 here, so configure the discovery URL (or the individual endpoints) explicitly in that case.
+The trailing `/api/auth` looks unusual, but it's where a spec-compliant client will look: the issuer contains a path component, and [RFC 8414 §3.1](https://datatracker.ietf.org/doc/html/rfc8414#section-3.1) inserts the issuer's path *after* the well-known segment, not before. Libraries that derive the metadata URL from the issuer per RFC 8414 resolve this automatically. Two common variants don't work here and 404: appending `/.well-known/openid-configuration` to the issuer, and probing the domain root's `/.well-known/` directly. If your library does either, configure the discovery URL (or the individual endpoints) explicitly.
 
 ## Create an OAuth app
 
@@ -174,6 +173,6 @@ Users can also withdraw an app's access at any time from their dashboard setting
 
 ## Limitations
 
-- **No machine-to-machine tokens.** The `client_credentials` grant is not supported — every access token represents a user who went through the consent flow. For server-to-server project automation, use the Spectrum API's [project credentials](/api-reference/introduction#authentication) instead.
-- **No dynamic client registration.** The discovery document advertises a `registration_endpoint`, but programmatic registration is disabled — create apps in the [dashboard](https://app.photon.codes/dashboard/developer/apps).
+- **No machine-to-machine tokens.** The token endpoint will issue a token for the `client_credentials` grant, but don't be fooled: that token identifies your app, not a user, and no Dashboard API endpoint accepts app-only tokens — every call returns `401`. Only tokens from the authorization code flow work, so there is nothing a `client_credentials` token can currently be used for. For server-to-server project automation, use the Spectrum API's [project credentials](/api-reference/introduction#authentication) instead.
+- **No dynamic client registration.** The [discovery document](#discovery) advertises a `registration_endpoint`, but programmatic registration is disabled — create apps in the [dashboard](https://app.photon.codes/dashboard/developer/apps).
 - **`S256` only.** The `plain` PKCE challenge method is rejected, and PKCE cannot be skipped.
