@@ -1,319 +1,185 @@
 ---
 title: Managing webhooks
-description: Register, list, delete, and rotate webhook signing secrets via the Spectrum API
+description: Create endpoints, configure subscriptions, rotate secrets, and manage failures
 ---
 
-By now you can receive deliveries, verify them, and survive retries. This page is the operational layer — how you actually create the webhook records, list them, take one offline, or rotate a leaked secret.
-
-There are three HTTP endpoints, all under `https://spectrum.photon.codes/projects/{projectId}/webhooks/`. Every example below uses `curl`. The same operations are also available through the **Webhook** tab of the [Spectrum dashboard](https://app.photon.codes/dashboard), the [API reference](/api-reference/introduction), and any HTTP client (Postman, Insomnia, a language SDK, etc.) — see [Three ways to manage webhooks](/webhooks/overview#three-ways-to-manage-webhooks) on the overview for details.
-
-## Authentication
-
-Every request uses HTTP Basic auth where the username is your `projectId` and the password is your `projectSecret`. The `projectId` also appears in the URL path — both are required.
+Webhook management uses project Basic authentication:
 
 ```sh
-curl -u "$PROJECT_ID:$PROJECT_SECRET" \
-  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/"
+-u "$PROJECT_ID:$PROJECT_SECRET"
 ```
 
-Project credentials are scoped to a single project. They never expire — rotate them via `photon projects regenerate-secret <id>` (see the [CLI projects docs](/cli/projects#rotate-the-spectrum-api-secret)) if they leak.
+One project can register multiple endpoints. Each endpoint has an independent
+URL, secret, subscription set, retry lane, and enabled state.
 
-## Register a webhook
+## Create an endpoint
 
-<CodeGroup>
-```sh curl
+```sh
 curl -X POST "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/" \
   -u "$PROJECT_ID:$PROJECT_SECRET" \
   -H "Content-Type: application/json" \
-  -d '{"webhookUrl":"https://your-app.com/spectrum-webhook"}'
+  -d '{
+    "webhookUrl": "https://example.com/spectrum",
+    "schemaVersion": "raw-inbound.v1",
+    "eventTypes": ["message.received"],
+    "failureNotificationEmail": "webhooks@example.com"
+  }'
 ```
 
-```ts JavaScript
-const auth = Buffer.from(`${PROJECT_ID}:${PROJECT_SECRET}`).toString('base64');
+`schemaVersion` pins the payload contract for the endpoint. It defaults to
+`raw-inbound.v1`, which preserves the original provider request and uses
+Standard Webhooks signatures. Choose `normalized-events.v1` only when you need
+the original normalized Spectrum event shape.
 
-const res = await fetch(
-  `https://spectrum.photon.codes/projects/${PROJECT_ID}/webhooks/`,
-  {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${auth}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ webhookUrl: 'https://your-app.com/spectrum-webhook' }),
-  }
-);
+This management field is a string endpoint schema ID. It is distinct from the
+numeric `schemaVersion: 1` inside a delivered raw event, which identifies only
+the revision of that envelope. Do not send the numeric value to this API or
+compare the two fields.
 
-const { data } = await res.json();
-console.log('signingSecret:', data.signingSecret); // save this — only shown once
+The create response is the only time both `signingSecret` and
+`standardSigningSecret` are returned. Store both before discarding the response.
+For a `normalized-events.v1` endpoint, use `signingSecret` for current
+deliveries and retain the complete `whsec_` `standardSigningSecret` for a future
+upgrade to `raw-inbound.v1`.
+
+Register the endpoint's final public HTTPS URL. A project cannot have two
+active registrations for the same URL.
+
+## List endpoints
+
+```sh
+curl "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/" \
+  -u "$PROJECT_ID:$PROJECT_SECRET"
 ```
 
-```py Python
-import httpx, os
+List responses do not contain signing secrets. They include:
 
-res = httpx.post(
-    f"https://spectrum.photon.codes/projects/{os.environ['PROJECT_ID']}/webhooks/",
-    auth=(os.environ['PROJECT_ID'], os.environ['PROJECT_SECRET']),
-    json={"webhookUrl": "https://your-app.com/spectrum-webhook"},
-)
+| Field | Meaning |
+| --- | --- |
+| `eventTypes` | Events routed to this endpoint. |
+| `enabled` / `status` | Whether delivery is active. |
+| `disabledAt` | When Spectrum or an operator disabled it. |
+| `disabledReason` | `manual`, `receiver_gone`, or `delivery_failures`. |
+| `failureNotificationEmail` | Address notified after prolonged delivery failure. |
+| `schemaVersion` | Pinned payload contract: `raw-inbound.v1` or `normalized-events.v1`. |
 
-data = res.json()["data"]
-print("signingSecret:", data["signingSecret"])  # save this — only shown once
-```
-</CodeGroup>
+## Upgrade the payload schema
 
-Response (`200 OK`):
+An endpoint using `normalized-events.v1` can upgrade once to
+`raw-inbound.v1`:
 
-```json
-{
-  "succeed": true,
-  "data": {
-    "id": "6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b",
-    "webhookUrl": "https://your-app.com/spectrum-webhook",
-    "signingSecret": "a3f8e29b...5c7e9b2d",
-    "createdAt": "2026-05-14T19:00:00Z",
-    "updatedAt": "2026-05-14T19:00:00Z"
-  }
-}
-```
+Before upgrading, deploy the `standardSigningSecret` returned when the endpoint
+was created. The PATCH response does not reveal it again, and raw inbound
+delivery can begin as soon as the handoff completes.
 
-<Warning>
-The `signingSecret` is **only returned in this response**. There is no `GET` endpoint that returns it, by design — once it's gone, it's gone. Save it to your secrets manager before doing anything else.
-</Warning>
-
-### Errors
-
-| Status | When it happens | What to do |
-| --- | --- | --- |
-| `422` | `webhookUrl` fails schema validation (empty, malformed, etc.) | Send a syntactically valid URL string |
-| `409` | The same URL is already registered for this project | List existing webhooks, or delete the old one and re-register |
-| `401` | Bad project credentials | Rotate via the CLI and try again |
-
-### URL requirements
-
-Registration only validates that `webhookUrl` is a syntactically valid URL — a malformed string gets a `422`. The real requirements are enforced at **delivery** time by the URL guard, so a URL can register successfully and still drop every event if it violates them:
-
-- **Must be `https://`.** Plain `http://` URLs register but are rejected at delivery (fatal, no retry) — we won't put signed message payloads on the wire in plaintext.
-- **Must resolve to a public address.** URLs pointing at `localhost`, private networks (`10.x` / `172.16–31.x` / `192.168.x`), or link-local / cloud-metadata addresses are blocked as SSRF. The IPv6 equivalents are blocked too.
-- **Must not redirect.** A `3xx` response is treated as a fatal misconfiguration — register the endpoint's final URL directly.
-- **Path component is yours to choose;** we POST to it as-is.
-
-See [Delivery → Where we won't deliver](/webhooks/delivery#where-we-wont-deliver) for the full contract, and [Troubleshooting → Every delivery is dropped immediately](/webhooks/troubleshooting#every-delivery-is-dropped-immediately) if a registered URL never fires.
-
-## List registered webhooks
-
-<CodeGroup>
-```sh curl
-curl -u "$PROJECT_ID:$PROJECT_SECRET" \
-  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/"
+```sh
+curl -X PATCH \
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID" \
+  -u "$PROJECT_ID:$PROJECT_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{ "schemaVersion": "raw-inbound.v1" }'
 ```
 
-```ts JavaScript
-const auth = Buffer.from(`${PROJECT_ID}:${PROJECT_SECRET}`).toString('base64');
+The handoff makes the raw inbound destination visible before retiring the
+normalized source. A delivery already in flight can still complete with the
+previous schema. Schema downgrades are not supported.
 
-const res = await fetch(
-  `https://spectrum.photon.codes/projects/${PROJECT_ID}/webhooks/`,
-  { headers: { Authorization: `Basic ${auth}` } }
-);
+## Configure subscriptions and alerts
 
-const { data } = await res.json();
-console.log(data); // array of { id, webhookUrl, createdAt, updatedAt }
+`message.received` is the currently supported event type. New endpoints
+subscribe to it by default. Set subscriptions explicitly so additional event
+types can be introduced without changing where they are routed.
+
+```sh
+curl -X PATCH \
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID" \
+  -u "$PROJECT_ID:$PROJECT_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "eventTypes": ["message.received"],
+    "failureNotificationEmail": "on-call@example.com"
+  }'
 ```
 
-```py Python
-import httpx, os
+Set `failureNotificationEmail` to `null` to remove the notification address.
 
-res = httpx.get(
-    f"https://spectrum.photon.codes/projects/{os.environ['PROJECT_ID']}/webhooks/",
-    auth=(os.environ['PROJECT_ID'], os.environ['PROJECT_SECRET']),
-)
+## Disable or re-enable an endpoint
 
-print(res.json()["data"])  # list of { id, webhookUrl, createdAt, updatedAt }
-```
-</CodeGroup>
+Disable delivery without deleting the registration:
 
-Response:
-
-```json
-{
-  "succeed": true,
-  "data": [
-    {
-      "id": "6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b",
-      "webhookUrl": "https://your-app.com/spectrum-webhook",
-      "createdAt": "2026-05-14T19:00:00Z",
-      "updatedAt": "2026-05-14T19:00:00Z"
-    },
-    {
-      "id": "9f1e3d4b-2c8a-4f5d-b7e6-1a2b3c4d5e6f",
-      "webhookUrl": "https://staging.your-app.com/spectrum-webhook",
-      "createdAt": "2026-05-15T09:30:00Z",
-      "updatedAt": "2026-05-15T09:30:00Z"
-    }
-  ]
-}
+```sh
+curl -X PATCH \
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID" \
+  -u "$PROJECT_ID:$PROJECT_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{ "enabled": false }'
 ```
 
-Webhooks are returned in creation order, oldest first. Soft-deleted webhooks are not included.
+Manual disablement records reason `manual`. A receiver response of `410 Gone`
+records `receiver_gone`; exhausting the four-day retry budget records
+`delivery_failures`.
 
-<Note>
-The list response **does not include `signingSecret`**. It's only ever returned at creation time. Treat the secret like a password — if you need it back, rotate by deleting and re-registering.
-</Note>
+After correcting the endpoint, re-enable it:
 
-## Delete a webhook
+```sh
+curl -X PATCH \
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID" \
+  -u "$PROJECT_ID:$PROJECT_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{ "enabled": true }'
+```
 
-<CodeGroup>
-```sh curl
+Re-enabling clears the disable reason. Future events and any retries still
+pending resume in endpoint order. Spectrum does not currently expose terminal
+delivery history or manual replay; reconcile terminal failures from your own
+source of truth.
+
+## Rotate the Standard secret
+
+Rotation replaces only the Standard Webhooks secret. The legacy
+`X-Spectrum-Signature` secret stays unchanged.
+
+```sh
+curl -X POST \
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/secret/rotate" \
+  -u "$PROJECT_ID:$PROJECT_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{ "overlapSeconds": 86400 }'
+```
+
+The response returns the new `standardSigningSecret` once and a
+`previousValidUntil` timestamp. During the overlap, every
+`webhook-signature` header contains one signature for the new secret and one
+for the previous secret.
+
+A safe rotation sequence is:
+
+1. request a rotation with enough overlap for your deployment;
+2. store and deploy the new `whsec_` secret;
+3. confirm the new secret verifies production deliveries; and
+4. remove the old secret after `previousValidUntil`.
+
+`overlapSeconds` defaults to one day, can be zero for immediate revocation, and
+cannot exceed seven days.
+
+## Retrieve egress addresses
+
+```sh
+curl "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/egress-ips" \
+  -u "$PROJECT_ID:$PROJECT_SECRET"
+```
+
+Allowlist every returned IPv4 address. Query this endpoint when updating your
+firewall instead of relying permanently on a copied list.
+
+## Delete an endpoint
+
+```sh
 curl -X DELETE \
-  -u "$PROJECT_ID:$PROJECT_SECRET" \
-  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b/"
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID" \
+  -u "$PROJECT_ID:$PROJECT_SECRET"
 ```
 
-```ts JavaScript
-const auth = Buffer.from(`${PROJECT_ID}:${PROJECT_SECRET}`).toString('base64');
-
-await fetch(
-  `https://spectrum.photon.codes/projects/${PROJECT_ID}/webhooks/${webhookId}/`,
-  { method: 'DELETE', headers: { Authorization: `Basic ${auth}` } }
-);
-```
-
-```py Python
-import httpx, os
-
-httpx.delete(
-    f"https://spectrum.photon.codes/projects/{os.environ['PROJECT_ID']}/webhooks/{webhook_id}/",
-    auth=(os.environ['PROJECT_ID'], os.environ['PROJECT_SECRET']),
-)
-```
-</CodeGroup>
-
-Response:
-
-```json
-{ "succeed": true, "data": { "id": "6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b" } }
-```
-
-After this returns `200`, **no further events are delivered to that URL**. A delivery already in flight at the moment of deletion may still complete (the worker won't abort an in-progress `POST`).
-
-The delete is logical — the row is soft-deleted with a `deletedAt` timestamp on our side. The `id` and `signingSecret` are gone forever; re-registering the same URL produces a brand-new webhook with a new `id` and a new secret.
-
-### Errors
-
-| Status | When it happens |
-| --- | --- |
-| `404` | The id doesn't exist or has already been deleted |
-
-## Rotating the signing secret
-
-There is no dedicated rotation endpoint. To rotate, **delete and re-register**:
-
-```sh
-# 1. Capture the old id
-OLD_ID=6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b
-
-# 2. Register the same URL — get a new secret
-curl -X POST "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/" \
-  -u "$PROJECT_ID:$PROJECT_SECRET" \
-  -H "Content-Type: application/json" \
-  -d '{"webhookUrl":"https://your-app.com/spectrum-webhook"}'
-# Save the new signingSecret immediately
-
-# 3. Update your server's SPECTRUM_SIGNING_SECRET env var and redeploy
-
-# 4. Delete the old webhook
-curl -X DELETE -u "$PROJECT_ID:$PROJECT_SECRET" \
-  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/$OLD_ID/"
-```
-
-<Tip>
-For a graceful zero-downtime rotation, run your verifier against **both** the old and new secret for a brief overlap window between steps 2 and 4. Treat a request as valid if either secret verifies it.
-</Tip>
-
-```ts
-const verifyEither = (rawBody, timestamp, signature) =>
-  verify(rawBody, timestamp, signature, OLD_SECRET) ||
-  verify(rawBody, timestamp, signature, NEW_SECRET);
-```
-
-Step 4 (deleting the old webhook) is what actually cuts off the old secret — until that point we'll keep signing with whichever record still exists.
-
-## Multiple webhooks per project
-
-You can register as many URLs as you need. Each one:
-
-- Has its own `id`.
-- Has its own `signingSecret`.
-- Receives every event for the project (no per-URL filtering yet).
-- Is delivered in parallel with the others — one failing URL doesn't delay the others.
-
-Common patterns:
-
-| Pattern | Setup |
-| --- | --- |
-| **Prod + staging mirror** | Register both URLs. Staging receives a copy of every prod event for testing. |
-| **Multi-service fan-out** | Register one URL per consumer service. Each gets its own copy. |
-| **Backup endpoint** | Register a logging service in addition to your main handler. If your main handler is down, the logger still gets it for replay later. |
-
-There is no built-in fan-out filter. If you only want some events on a particular URL, branch in your handler and `2xx` the rest.
-
-## Working with the CLI
-
-A first-class `photon webhooks` CLI is on the roadmap. Until then, wrap the curl commands above in a shell function or use `photon projects show --json` to find your credentials and pipe them in.
-
-```sh
-# A small helper to list webhooks for the active project
-list_webhooks() {
-  local row creds id
-  row=$(photon projects show --json)
-  id=$(echo "$row" | jq -r '.id')
-  creds=$(echo "$row" | jq -r '"\(.id):\(.secret)"')
-  curl -s -u "$creds" "https://spectrum.photon.codes/projects/$id/webhooks/"
-}
-```
-
-## Working with the dashboard
-
-The same operations are available as a UI in the [Spectrum dashboard](https://app.photon.codes/dashboard) under the **Webhook** tab of a workspace (alongside *Platforms*, *Users*, *Lines*, and *Settings*).
-
-The tab contains:
-
-- A list of every registered webhook — endpoint URL and registration date.
-- An **+ Add webhook** button. The signing secret is shown once in a modal after registration; it cannot be retrieved later.
-- A **Remove** button on each row. Same effect as the `DELETE` endpoint: delivery stops immediately and the signing secret is invalidated.
-
-## Common workflows
-
-### "I lost my secret"
-
-1. List webhooks, find the one you've lost the secret for.
-2. Delete it.
-3. Re-register the same URL — store the new secret immediately.
-4. Update your server.
-
-### "I'm changing my URL"
-
-1. Register the new URL (you'll get a new secret).
-2. Update your DNS / ingress so the new URL points at your server.
-3. Once you've confirmed events are arriving on the new URL, delete the old one.
-
-This avoids any window where events go nowhere because the old URL has been deleted but the new one isn't live yet.
-
-### "I'm rotating credentials after a leak"
-
-1. Rotate the project secret first via `photon projects regenerate-secret <id>`. This invalidates Basic auth on management endpoints, so an attacker can't make further changes.
-2. Rotate every webhook signing secret using the delete-and-recreate flow above.
-
-The signing secret being leaked doesn't grant the attacker the ability to send messages on your behalf — only to forge inbound deliveries to your webhook URL. But in either case, rotating quickly is the right move.
-
-## Where to next
-
-You can register, list, delete, and rotate. If you're hitting a snag along the way — a verify that won't pass, a webhook that registers but never delivers, a duplicate that won't go away — the next chapter is the triage guide.
-
-<Columns cols={2}>
-  <Card title="Troubleshooting" icon="bug" href="/webhooks/troubleshooting">
-    Common signature errors, missed deliveries, duplicates, ngrok issues, and how to debug them.
-  </Card>
-  <Card title="API reference" icon="code" href="/api-reference/introduction">
-    Schema and live request playground for every endpoint on this page.
-  </Card>
-</Columns>
+Deletion invalidates the registration and its secrets. A request already in
+flight can still finish. Registering the URL again creates a new endpoint id
+and new secrets.
