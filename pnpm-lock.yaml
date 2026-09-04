@@ -12,8 +12,8 @@ importers:
         specifier: ^4.19.0
         version: 4.19.0(@typescript-eslint/rule-tester@8.58.1(eslint@9.39.4)(typescript@5.9.3))(@typescript-eslint/typescript-estree@8.58.2(typescript@5.9.3))(@typescript-eslint/utils@8.58.2(eslint@9.39.4)(typescript@5.9.3))(@vue/compiler-sfc@3.5.32)(eslint-plugin-format@2.0.1(eslint@9.39.4))(eslint@9.39.4)(typescript@5.9.3)
       '@photon-ai/advanced-imessage':
-        specifier: ^0.11.2
-        version: 0.11.2
+        specifier: ^2.1.0
+        version: 2.1.0(@grpc/grpc-js@1.14.4)(nice-grpc-common@2.0.3)(nice-grpc@2.1.16)
       '@photon-ai/advanced-imessage-kit':
         specifier: ^1.14.3
         version: 1.14.3(typescript@5.9.3)
@@ -968,10 +968,6 @@ packages:
     engines: {node: '>=18.0.0'}
     peerDependencies:
       typescript: ^5.9.3
-
-  '@photon-ai/advanced-imessage@0.11.2':
-    resolution: {integrity: sha512-3mjzy1IIBtsCQK6kAB8dbFCK0np7hS256wwW+nqNL8vKz0W5nRhu1iKAwyZxP8Z470dtNX5RjNgcl9I4wZeuTA==}
-    engines: {node: '>=18.17'}
 
   '@photon-ai/advanced-imessage@2.1.0':
     resolution: {integrity: sha512-KT/aCBWcq667alyKe8DclqDUa/0fUuW2ZYDCxfIKuQBm08U4JcNG56fCdNUd69MFkKkzZgW35j59EYsx5DnLcQ==}
@@ -2072,6 +2068,7 @@ packages:
   eslint@9.39.4:
     resolution: {integrity: sha512-XoMjdBOwe/esVgEvLmNsD3IRHkm7fbKIUGvrleloJXUZgDHig2IPWNniv+GwjyJXzuNqVjlr5+4yVUZjycJwfQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -4014,13 +4011,6 @@ snapshots:
       - debug
       - supports-color
       - utf-8-validate
-
-  '@photon-ai/advanced-imessage@0.11.2':
-    dependencies:
-      '@bufbuild/protobuf': 2.12.0
-      '@grpc/grpc-js': 1.14.4
-      nice-grpc: 2.1.16
-      nice-grpc-common: 2.0.3
 
   '@photon-ai/advanced-imessage@2.1.0(@grpc/grpc-js@1.14.4)(nice-grpc-common@2.0.3)(nice-grpc@2.1.16)':
     dependencies:
