@@ -1,0 +1,254 @@
+---
+title: "Attachments"
+description: "Upload files, inspect metadata, and stream attachment downloads"
+---
+
+`im.attachments` uploads file bytes to the server, reads attachment metadata, and downloads attachments in chunks. Sending an attachment message is a two-step flow: upload the file to get an attachment GUID, then pass that GUID to the [messages API](/advanced-kits/imessage/messages).
+
+Message sends accept server attachment GUIDs. They do not accept local file paths.
+
+## What You Can Do
+
+| Need | Use this when |
+|---|---|
+| Upload a regular attachment | You are sending an image, video, audio file, document, or archive |
+| Upload a Live Photo | You have a HEIC/HEIF still image plus the matching MOV companion video |
+| Read metadata | You need the file name, MIME type, size, or transfer state |
+| Stream a download | You need the attachment bytes; Live Photos may include a companion stream |
+
+## Upload an Attachment
+
+A regular attachment needs two fields: `fileName` and `data`. After upload, send `uploaded.attachment.guid`.
+
+```ts
+const uploaded = await im.attachments.upload({
+  fileName: "photo.jpg",
+  data: await readFile("photo.jpg"),
+});
+
+await im.messages.sendAttachment(chat.guid, uploaded.attachment.guid);
+```
+
+`upload(...)` returns `UploadAttachmentResult`. For a regular attachment, use the `attachment` field:
+
+```jsonc
+{
+  "attachment": {
+    "guid": "attachment-guid",
+    "fileName": "photo.jpg",
+    "mimeType": "image/jpeg",
+    "totalBytes": 123456,
+    "transferState": "finished"
+  }
+}
+```
+
+Input shape:
+
+```jsonc
+{
+  "fileName": "photo.jpg",           // Display file name; keep the extension when you can
+  "data":     [255, 216, 255]        // Uint8Array; raw file bytes
+}
+```
+
+| Input | Rule |
+|---|---|
+| `fileName` | Display file name. Include an extension when possible. The server sanitizes path characters; an empty value falls back to `attachment`. |
+| `data` | Raw file bytes. Must not be empty. |
+
+The file extension is not strictly required. The server first tries to detect MIME / UTI from the bytes, then falls back to the `fileName` extension. Files without an extension can still upload, but unknown types may be labeled `application/octet-stream` / `public.data`, which usually gives recipients a worse preview. Keep extensions for documents, archives, and Office files.
+
+Each uploaded file is limited to `100 MiB` by default.
+
+### Common Formats
+
+The SDK uploads raw bytes and the server stores them as-is. Messages.app and Apple's delivery path decide how the recipient sees the file: inline preview, file attachment, transcoded media, or an iCloud link.
+
+| Type | Common formats | Notes |
+|---|---|---|
+| Images | HEIC, HEIF, JPEG, PNG, GIF, TIFF, BMP, WebP, AVIF, SVG | Non-Apple environments may need conversion |
+| Video | MOV, MP4, WebM | Apple may transcode depending on recipient device support |
+| Audio | M4A, MP3, WAV, AIFF, FLAC, CAF | Pass `isAudioMessage: true` to `sendAttachment(...)` for the audio-message UI |
+| Documents | PDF, DOCX, XLSX, PPTX, TXT, CSV, JSON, HTML, XML, RTF | Preview behavior depends on the recipient device |
+| Archives | ZIP, TAR, GZ, BZ2, XZ | Usually delivered as file attachments |
+
+<Warning>
+  Apple may reject, compress, or convert payloads that are too large or not supported by the recipient path. The SDK uploads bytes; it does not control the final presentation.
+</Warning>
+
+## Upload a Live Photo
+
+A Live Photo is a paired upload: the primary file is a HEIC/HEIF image, and `companion.data` is the matching QuickTime `.MOV` video. When sending, still pass only `livePhoto.attachment.guid`.
+
+```ts
+const livePhoto = await im.attachments.upload({
+  fileName: "live-photo.HEIC",
+  data: await readFile("live-photo.HEIC"),
+  companion: {
+    data: await readFile("live-photo.MOV"),
+  },
+});
+
+await im.messages.sendAttachment(chat.guid, livePhoto.attachment.guid);
+```
+
+When the Live Photo upload succeeds, `UploadAttachmentResult` includes both `attachment` and `companion`:
+
+```jsonc
+{
+  "attachment": {                    // HEIC/HEIF primary image
+    "guid": "attachment-guid",
+    "fileName": "live-photo.HEIC",
+    "mimeType": "image/heic",
+    "totalBytes": 123456,
+    "transferState": "finished"
+  },
+  "companion": {                     // Paired MOV video
+    "fileName": "live-photo.MOV",
+    "mimeType": "video/quicktime",
+    "totalBytes": 456789,
+    "kind": "live-photo-video"
+  }
+}
+```
+
+The primary file and companion file are counted separately. Each defaults to the `100 MiB` upload limit.
+
+<Warning>
+  Do not pass a `.MOV` file as the primary `fileName`. A Live Photo primary file should be HEIC/HEIF; the MOV belongs in `companion.data`.
+</Warning>
+
+## Get Metadata
+
+You do not need `get(...)` before sending an attachment. Use it when you need to inspect attachment state, display file information, or confirm that a file is ready before downloading.
+
+```ts
+const attachment = await im.attachments.get(uploaded.attachment.guid);
+
+console.log(attachment.fileName, attachment.mimeType, attachment.totalBytes);
+```
+
+Returns `AttachmentInfo`. Use `transferState` to decide whether the attachment is ready to download. Missing or unresolvable attachments throw `NotFoundError`.
+
+```jsonc
+{
+  "guid":          "attachment-guid",   // Attachment GUID used for sending and downloading
+  "fileName":      "photo.jpg",         // Stored file name
+  "mimeType":      "image/jpeg",        // Server-detected MIME type
+  "uti":           "public.jpeg",       // Apple Uniform Type Identifier
+  "totalBytes":    123456,              // File size in bytes
+  "transferState": "finished",          // Current transfer state
+  "isOutgoing":    true,                // Uploaded by the current account
+  "isHidden":      false,               // Hidden by Apple, for example inline preview artifacts
+  "isSticker":     false,               // Used as a sticker
+  "companionKind": "live-photo-video",  // Companion kind; may be absent
+  "originalGuid":  "original-guid"      // Original attachment GUID; may be absent
+}
+```
+
+`transferState` can be:
+
+| Value | Meaning |
+|---|---|
+| `"pending"` | Waiting to transfer |
+| `"transferring"` | Transfer in progress |
+| `"failed"` | Transfer failed |
+| `"finished"` | Ready |
+| `"unknown"` | Server could not classify the state |
+
+## Stream Downloads
+
+Before downloading, check that `transferState === "finished"` when you can. Otherwise the server may throw `attachmentNotReady`.
+
+```ts
+for await (const frame of im.attachments.downloadStream(attachment.guid)) {
+  switch (frame.type) {
+    case "header":
+      console.log(frame.info.fileName, frame.info.mimeType);
+      break;
+
+    case "primaryChunk":
+      // Append frame.data to the primary output file.
+      break;
+
+    case "companionChunk":
+      // Append frame.data to the Live Photo companion output file.
+      break;
+  }
+}
+```
+
+The stream emits one `header` frame first, followed by data chunks. Regular attachments only emit `primaryChunk`; Live Photos may also emit `companionChunk`.
+
+| `frame.type` | Meaning | Extra fields |
+|---|---|---|
+| `header` | First frame with metadata | `info`, `companionInfo?` |
+| `primaryChunk` | Chunk from the primary file | `data` |
+| `companionChunk` | Chunk from the Live Photo companion video | `data` |
+
+```jsonc
+{
+  "type": "header",
+  "info": {                            // Primary AttachmentInfo
+    "guid": "attachment-guid",
+    "fileName": "photo.jpg"
+  },
+  "companionInfo": {                   // Present only for Live Photo downloads
+    "fileName": "live-photo.MOV",
+    "kind": "live-photo-video",
+    "mimeType": "video/quicktime",
+    "totalBytes": 456789
+  }
+}
+```
+
+Breaking out of the `for await` loop cancels the download.
+
+| Case | Result |
+|---|---|
+| Attachment does not exist | Throws `NotFoundError` |
+| Attachment is not ready | Throws `ValidationError`, with `error.code === ErrorCode.attachmentNotReady` |
+| `header.companionInfo` is present | This is a Live Photo download; later frames may include `companionChunk` |
+
+If an attachment is not ready, poll `get(...)` until `transferState` becomes `"finished"`, then call `downloadStream(...)`.
+
+Minimal save-to-file example:
+
+```ts
+const { writeFile } = await import("node:fs/promises");
+
+let primaryFileName = "attachment";
+let companionFileName: string | undefined;
+const primaryChunks: Uint8Array[] = [];
+const companionChunks: Uint8Array[] = [];
+
+for await (const frame of im.attachments.downloadStream(attachment.guid)) {
+  switch (frame.type) {
+    case "header":
+      primaryFileName = frame.info.fileName;
+      companionFileName = frame.companionInfo?.fileName;
+      break;
+
+    case "primaryChunk":
+      primaryChunks.push(frame.data);
+      break;
+
+    case "companionChunk":
+      companionChunks.push(frame.data);
+      break;
+  }
+}
+
+await writeFile(primaryFileName, Buffer.concat(primaryChunks));
+
+if (companionFileName && companionChunks.length > 0) {
+  await writeFile(companionFileName, Buffer.concat(companionChunks));
+}
+```
+
+## Next Steps
+
+1. [Messages](/advanced-kits/imessage/messages) — send attachment messages with attachment GUIDs
+2. [Error Handling](/advanced-kits/imessage/error-handling) — handle `NotFoundError`, `ValidationError`, and `attachmentNotReady`
+3. [Chats](/advanced-kits/imessage/chats) — create a chat and get `chat.guid`

@@ -1,0 +1,274 @@
+# Photon — API reference
+
+> Manage Spectrum projects, webhooks, and platform configuration over HTTPS.
+
+## Getting Started
+
+### Introduction
+
+Source: https://photon.codes/docs/api-reference/introduction
+
+The Spectrum API is the HTTP surface for managing a project's webhooks, platforms, lines, and users. It's the same thing the [Photon dashboard](https://app.photon.codes) and the [`photon` CLI](/cli/overview) call under the hood — reach for it when you want to automate setup, drive changes from CI, or build your own internal tooling.
+
+If you're sending and receiving messages at runtime, you want the [`spectrum-ts` SDK](/spectrum-ts/getting-started) or [webhooks](/webhooks/overview) instead. This API is for the management plane around them.
+
+#### Base URL
+
+Every endpoint lives under a single host. HTTPS only — plaintext requests are rejected.
+
+```
+https://spectrum.photon.codes
+```
+
+#### Authentication
+
+The API uses HTTP Basic auth. The username is your `projectId` and the password is your `projectSecret`. Credentials are scoped to a single project and never expire on their own.
+
+```sh
+curl -u "$PROJECT_ID:$PROJECT_SECRET" \
+  "https://spectrum.photon.codes/projects/$PROJECT_ID/webhooks/"
+```
+
+Retrieve credentials with [`photon projects show`](/cli/projects) or from the dashboard. If a secret leaks, rotate it with [`photon projects regenerate-secret`](/cli/projects#rotate-the-spectrum-api-secret).
+
+Project credentials grant full management access to a project. Store them in a secrets manager, not in source control or shell history.
+
+Basic auth with project credentials applies to the Spectrum API only. The Dashboard API on `app.photon.codes` authenticates with bearer tokens instead — your own token from the CLI's [device flow](/cli/authentication), or user-consented [OAuth 2.1 access tokens](/api-reference/oauth) if you're building an app for other Photon users.
+
+#### Response format
+
+Every response is JSON wrapped in a `{ succeed, data }` envelope. On success, `data` holds the resource:
+
+```json
+{
+  "succeed": true,
+  "data": {
+    "id": "6a4d2e8c-7b1f-4d3a-9a8e-2c5d6f7e8a9b",
+    "webhookUrl": "https://your-app.com/spectrum-webhook",
+    "createdAt": "2026-05-14T19:00:00Z",
+    "updatedAt": "2026-05-14T19:00:00Z"
+  }
+}
+```
+
+On error, `succeed` is `false` and the body carries an explanation:
+
+```json
+{
+  "succeed": false,
+  "message": "webhookUrl must be a valid URL"
+}
+```
+
+List endpoints return an array under `data` rather than a single object. The HTTP status code is the source of truth for whether a call succeeded — branch on it first, then read `data`.
+
+#### Response codes
+
+| Code | Meaning |
+| --- | --- |
+| `200` | Request succeeded. |
+| `401` | Missing or invalid project credentials. |
+| `404` | Resource not found or already deleted. |
+| `409` | Conflict — for example, a resource with the same key already exists. |
+| `422` | Request body failed schema validation. |
+| `5xx` | Spectrum-side error. Safe to retry with backoff. |
+
+#### Where to next
+
+- [**Get project**](https://photon.codes/docs/api-reference/projects/get-project) — The simplest endpoint to try first — fetch a project by id.
+- [**Get started with the SDK**](https://photon.codes/docs/spectrum-ts/getting-started) — Send and receive messages from your agent server with `spectrum-ts`.
+
+
+### OAuth
+
+Source: https://photon.codes/docs/api-reference/oauth
+
+The Photon dashboard is an OAuth 2.1 and OpenID Connect provider. Register an OAuth app, send users through the authorization code flow, and call the [Dashboard API](/api-reference/introduction) with the resulting bearer token — limited to exactly the scopes the user consented to.
+
+OAuth tokens authenticate **users** against the Dashboard API on `app.photon.codes`. The [Spectrum API](/api-reference/introduction) on `spectrum.photon.codes` uses per-project HTTP Basic credentials instead; the two credential systems are separate and not interchangeable.
+
+#### Endpoints
+
+| Endpoint | URL |
+| --- | --- |
+| Issuer | `https://app.photon.codes/api/auth` |
+| Authorization | `GET https://app.photon.codes/api/auth/oauth2/authorize` |
+| Token | `POST https://app.photon.codes/api/auth/oauth2/token` |
+| UserInfo | `GET https://app.photon.codes/api/auth/oauth2/userinfo` |
+| Revocation | `POST https://app.photon.codes/api/auth/oauth2/revoke` |
+| Introspection | `POST https://app.photon.codes/api/auth/oauth2/introspect` |
+| JWKS | `GET https://app.photon.codes/api/auth/jwks` |
+
+##### Discovery
+
+Because the issuer contains a path component (`/api/auth`), the metadata documents live at the [RFC 8414 §3.1](https://datatracker.ietf.org/doc/html/rfc8414#section-3.1) path-insertion URLs — the issuer's path goes *after* the well-known segment:
+
+```
+https://app.photon.codes/.well-known/oauth-authorization-server/api/auth
+https://app.photon.codes/.well-known/openid-configuration/api/auth
+```
+
+Libraries that derive the metadata URL from the issuer per RFC 8414 resolve these automatically. Some OIDC clients instead append `/.well-known/openid-configuration` to the issuer or probe the domain root — both of those 404 here, so configure the discovery URL (or the individual endpoints) explicitly in that case.
+
+#### Create an OAuth app
+
+In the dashboard, open [Developer → Apps](https://app.photon.codes/dashboard/developer/apps) and create an app. You'll choose:
+
+- **Name, logo, homepage** — shown to users on the consent screen.
+- **Redirect URIs** — an exact-match allowlist. The `redirect_uri` in your authorization request must match one of these character for character.
+- **Client type** — *confidential* for server-side apps that can keep a secret, or *public* for native and browser-based apps that can't. Public clients get no secret and rely on PKCE alone.
+- **Scopes** — the maximum set your app may request. Authorization requests for scopes outside this set are rejected with `invalid_scope`.
+
+The `client_secret` is shown **once**, when the app is created. It's stored hashed and can't be retrieved later — keep it in a secrets manager. If you lose it, rotate it from the app's page in the dashboard.
+
+#### Authorization code flow
+
+PKCE with the `S256` challenge method is required for every client, confidential ones included. `plain` is not accepted.
+
+**Generate a PKCE verifier and challenge**
+
+```sh
+code_verifier=$(openssl rand -base64 32 | tr -d '=' | tr '/+' '_-')
+code_challenge=$(printf '%s' "$code_verifier" | openssl dgst -sha256 -binary | openssl base64 | tr -d '=\n' | tr '/+' '_-')
+```
+
+**Send the user to the authorization endpoint**
+
+```
+https://app.photon.codes/api/auth/oauth2/authorize
+  ?response_type=code
+  &client_id=YOUR_CLIENT_ID
+  &redirect_uri=https://yourapp.example/oauth/callback
+  &scope=openid+profile+email+offline_access+projects:read
+  &state=RANDOM_STATE
+  &code_challenge=CODE_CHALLENGE
+  &code_challenge_method=S256
+```
+
+`scope` is a space-separated list (URL-encoded). The user signs in to Photon, reviews the requested scopes on the consent screen, and on approval is redirected to your `redirect_uri` with `code` and your `state` in the query string. Verify `state` matches what you sent before using the code.
+
+**Exchange the code for tokens**
+
+```sh
+curl -X POST "https://app.photon.codes/api/auth/oauth2/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  --data-urlencode "grant_type=authorization_code" \
+  --data-urlencode "code=$code" \
+  --data-urlencode "redirect_uri=https://yourapp.example/oauth/callback" \
+  --data-urlencode "client_id=$CLIENT_ID" \
+  --data-urlencode "client_secret=$CLIENT_SECRET" \
+  --data-urlencode "code_verifier=$code_verifier"
+```
+
+Confidential clients authenticate with `client_secret` in the body as shown, or with HTTP Basic (`client_id:client_secret`) — both are accepted. Public clients omit the secret.
+
+```json
+{
+  "access_token": "kJ2f…",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "hV9c…",
+  "id_token": "eyJhbGciOiJFZERTQSJ9.…",
+  "scope": "openid profile email offline_access projects:read"
+}
+```
+
+The access token is opaque — don't try to parse it. `id_token` is only present when `openid` was granted, and `refresh_token` only when `offline_access` was granted.
+
+**Call the Dashboard API**
+
+```sh
+curl "https://app.photon.codes/api/projects/" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+A missing, expired, or revoked token returns `401`. A valid token missing the scope an endpoint requires returns `403` with `insufficient_scope: <scope>` in the message.
+
+#### Refresh tokens
+
+Request the `offline_access` scope to receive a refresh token, then exchange it when the access token expires:
+
+```sh
+curl -X POST "https://app.photon.codes/api/auth/oauth2/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  --data-urlencode "grant_type=refresh_token" \
+  --data-urlencode "refresh_token=$REFRESH_TOKEN" \
+  --data-urlencode "client_id=$CLIENT_ID" \
+  --data-urlencode "client_secret=$CLIENT_SECRET"
+```
+
+Refresh tokens rotate: each exchange returns a new refresh token and invalidates the old one, so always store the one from the latest response. Refresh tokens live for 30 days; an app that refreshes at least that often stays connected indefinitely.
+
+#### Scopes
+
+| Scope | Grants |
+| --- | --- |
+| `openid` | Identify the user; adds an `id_token` to the token response. |
+| `profile` | The user's name and profile picture. |
+| `email` | The user's email address. |
+| `offline_access` | A refresh token, so access survives past the first expiry. |
+| `projects:read` | View the user's projects. |
+| `projects:write` | Create, edit, and delete projects. |
+| `members:read` | See project collaborators. |
+| `members:write` | Invite and remove project collaborators. |
+| `webhooks:read` | View project webhooks. |
+| `webhooks:write` | Create and delete project webhooks. |
+| `billing:read` | View subscription and billing details. |
+| `billing:write` | Manage the subscription, including starting checkout. |
+| `spectrum:read` | View Spectrum platform configuration. |
+| `spectrum:write` | Edit Spectrum platform configuration. |
+| `payments:read` | View payment provider setup. |
+| `payments:write` | Enable and manage payment providers. |
+
+##### Access-token lifetimes
+
+Access tokens live **1 hour** by default. Sensitive scopes shorten that: `billing:write` tokens live **5 minutes**, and every other `:write` scope caps the token at **15 minutes**. When one token carries several scopes, the shortest lifetime wins — a token with `projects:read` and `projects:write` expires after 15 minutes. Apps that hold write scopes should request `offline_access` and refresh rather than treating the access token as long-lived.
+
+#### OpenID Connect
+
+With the `openid` scope granted, the token response includes an `id_token` and the UserInfo endpoint returns the user's claims:
+
+```sh
+curl "https://app.photon.codes/api/auth/oauth2/userinfo" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+The `id_token` is a JWT signed with **EdDSA (Ed25519)** — verify it against the [JWKS endpoint](https://app.photon.codes/api/auth/jwks), and make sure your JWT library supports EdDSA before relying on local verification. Available claims include `sub`, `email`, `email_verified`, `name`, and `picture`, gated by the `profile` and `email` scopes.
+
+#### Revoking access
+
+Apps can revoke a token they hold:
+
+```sh
+curl -X POST "https://app.photon.codes/api/auth/oauth2/revoke" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  --data-urlencode "token=$TOKEN" \
+  --data-urlencode "client_id=$CLIENT_ID" \
+  --data-urlencode "client_secret=$CLIENT_SECRET"
+```
+
+Users can also withdraw an app's access at any time from their dashboard settings, which revokes the consent along with every live token issued under it. Revocation propagates to API servers within about a minute.
+
+#### Limitations
+
+- **No machine-to-machine tokens.** The `client_credentials` grant is not supported — every access token represents a user who went through the consent flow. For server-to-server project automation, use the Spectrum API's [project credentials](/api-reference/introduction#authentication) instead.
+- **No dynamic client registration.** The discovery document advertises a `registration_endpoint`, but programmatic registration is disabled — create apps in the [dashboard](https://app.photon.codes/dashboard/developer/apps).
+- **`S256` only.** The `plain` PKCE challenge method is rejected, and PKCE cannot be skipped.
+
+
+### Rate limit
+
+Source: https://photon.codes/docs/api-reference/rate-limit
+
+#### Rate limit
+
+The default maximum rate limit is **5 requests per second per project**. This limit applies across all requests authenticated with your project credentials. This number can be increased for trusted senders by request. After that, you'll hit the rate limit and receive a `429` response error code.
+
+
+## Dashboard API
+
+OpenAPI specification: <https://photon.codes/docs/api-reference/dashboard-openapi.json>
+
+## Spectrum API
+
+OpenAPI specification: <https://spectrum.photon.codes/openapi/json>

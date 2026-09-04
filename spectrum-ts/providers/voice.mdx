@@ -1,0 +1,140 @@
+---
+title: "Voice"
+description: "Add inbound and outbound voice calls to a Spectrum iMessage line over SIP."
+---
+
+Spectrum Voice connects a SIP application or phone system to a Spectrum
+iMessage line. The application can place calls from that line and receive calls
+made to it.
+
+<Note>
+  This guide is about live calls. To send an audio recording inside a message,
+  use the [`voice()` content builder](/spectrum-ts/content/voice).
+</Note>
+
+## What inbound and outbound mean
+
+- An **outbound call** starts in your SIP application. Spectrum places the call
+  from your iMessage line to the phone number you dial.
+- An **inbound call** starts when someone calls your iMessage line. Spectrum
+  sends the call to your SIP application.
+
+You can set up either direction or both.
+
+## How a call connects
+
+A call uses two kinds of network traffic:
+
+- **SIP signaling** contains the instructions to start, answer, and end a call.
+  SIP stands for Session Initiation Protocol.
+- **TLS** creates an encrypted connection for SIP signaling. Use TLS when you
+  want those call instructions protected in transit.
+- **TCP** can also carry SIP signaling, but without encryption.
+- **RTP audio** carries the voices you hear during the call. Spectrum currently
+  uses RTP, not its encrypted form, SRTP. This means the audio on the SIP side
+  of the call is not encrypted.
+
+## What is supported
+
+| Capability | Status |
+|---|---|
+| Outbound calls | Supported |
+| Inbound calls | Supported |
+| iMessage lines | Supported |
+| WhatsApp numbers | Not supported |
+| Voice-only ("pure voice") lines | Coming soon |
+| SIP | Supported |
+| Webhooks | Coming soon |
+| `spectrum-ts` SDK call control | Coming soon |
+| SIP over TLS | Supported |
+| SIP over TCP | Supported |
+| SIP over UDP | Not supported |
+| RTP audio | Supported |
+| SRTP audio | Not supported |
+
+<Note>
+  Inbound and outbound calls have separate settings:
+
+  - For **outbound calls**, your application connects to Spectrum. Use TLS and
+    Spectrum server port 5061. TCP on Spectrum server port 5060 remains
+    available for compatibility, but it does not encrypt SIP signaling.
+  - For **inbound calls**, Spectrum connects to the SIP address you save in the
+    dashboard. A `sips:` address selects TLS; a `sip:` address selects TCP. You
+    can choose the port on which your application listens.
+
+  Spectrum does not support SIP signaling over UDP.
+</Note>
+
+## Choose a setup path
+
+Inbound and outbound calling are configured separately. Set up one or both,
+depending on what your application needs.
+
+<CardGroup cols={2}>
+  <Card title="Outbound calls" icon="phone-outgoing" href="/spectrum-ts/providers/voice/outbound-calls">
+    Configure SIP credentials and place calls from your iMessage line.
+  </Card>
+  <Card title="Inbound calls" icon="phone-incoming" href="/spectrum-ts/providers/voice/inbound-calls">
+    Register inbound routing in the dashboard and receive calls in your SIP application.
+  </Card>
+</CardGroup>
+
+## Quick reference
+
+For outbound calls, configure your SIP application with these values:
+
+| Setting | Value |
+|---|---|
+| SIP server | `sip.spectrum.photon.codes` |
+| Username | Your Spectrum project ID |
+| Password | Your Spectrum project secret |
+| Recommended transport | `TLS` |
+| Spectrum server port | `5061` |
+| Audio | RTP (not encrypted) |
+
+You can find the project ID and project secret in your project settings in the
+[Spectrum dashboard](https://app.photon.codes).
+
+Port 5061 is the server port to enter in your SIP application. Your application
+does not need to use 5061 as its own local or listening port. To keep an
+existing TCP configuration, use Spectrum server port 5060 instead. TLS is
+recommended because TCP does not encrypt SIP signaling.
+
+For inbound calls, register the inbound route in the dashboard. The dashboard
+connects the iMessage line to your SIP application.
+
+## Business profile registration
+
+A business profile is **not required** to place an outbound call. You can start
+building and testing before it is registered.
+
+However, outbound calls from an unregistered business may be flagged. For
+production traffic, we recommend registering the business profile in the
+dashboard. Registration is free and usually takes **1–2 business days**.
+
+<Note>
+  Business profile registration and inbound route registration are different:
+
+  - A **business profile** is optional and relates to outbound calling.
+  - An **inbound route** is required if you want to receive calls.
+</Note>
+
+## Current integration model
+
+Voice is documented as a provider because it is a communication platform, but
+it does not yet use a `voice.config()` SDK provider.
+
+Today, your application connects directly through SIP:
+
+- For outbound calls, connect your application to Spectrum using TLS on server
+  port 5061. TCP on server port 5060 remains available for compatibility.
+- For inbound calls, save a `sips:` address for TLS or a `sip:` address for TCP.
+  This setting is independent of the outbound connection.
+- Allow RTP media traffic for call audio. SIP TLS does not encrypt the RTP
+  audio stream.
+- Use the dashboard to manage the project, business profile, line, and inbound
+  route.
+- Do not expect voice calls in `app.messages` or `app.webhook()`.
+
+Webhook delivery, SDK call control, and voice-only lines are on the roadmap. No
+release dates are promised yet.

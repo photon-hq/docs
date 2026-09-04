@@ -1,0 +1,822 @@
+# Photon — CLI
+
+> Bring your agents to any interface — manage projects, Spectrum, billing, and your profile from the terminal
+
+## Getting Started
+
+### Photon CLI
+
+Source: https://photon.codes/docs/cli/overview
+
+The Photon CLI replaces the [Dashboard](https://app.photon.codes) web UI for everyday work. Manage projects, Spectrum users and lines, billing, and your developer profile — all from a terminal.
+
+```sh
+npx @photon-ai/cli login
+```
+
+You can run it on Node.js >= 18 — no additional runtime required.
+
+#### Quick demo
+
+After [installing](/cli/installation) the CLI:
+
+```sh
+# Log in (opens a browser to approve the device)
+photon login
+
+# List your projects
+photon projects ls
+
+# Set a project for the current shell session
+export PHOTON_PROJECT_ID=<project-id>
+
+# Manage Spectrum resources
+photon spectrum users ls
+photon spectrum lines ls
+
+# Check billing
+photon billing show
+```
+
+#### Command tree
+
+```text
+photon
+├── ping                                            hit /api/health
+├── env current                                     print resolved API host
+├── login [--api-host] [--no-browser]               device-auth login
+├── logout [--api-host]                             clear stored credentials
+├── whoami [--api-host]                             current user on this backend
+├── auth status [--json]                            login state across all backends
+├── config show [--json]                            dump active configuration
+├── profile
+│   ├── show                                        account & profile details
+│   ├── init                                        create developer or org profile
+│   └── update [flags]                              update profile fields
+├── projects
+│   ├── ls [--json]                                 list projects
+│   ├── show [id] [--json]                          project detail
+│   ├── create [--name --location --spectrum]        new project
+│   ├── update [id] [flags]                         rename / toggle flags
+│   ├── delete [id] [-y]                            permanent delete
+│   ├── regenerate-secret [id] [-y]                 rotate Spectrum API secret
+│   ├── open [id] [--no-browser]                    open dashboard in browser
+│   ├── upgrade [id] [tier]                         subscribe / open Stripe portal
+│   └── check-phone <number>                        phone number availability
+├── spectrum
+│   ├── profile show / update                       project Spectrum profile
+│   ├── users ls / add / remove                     manage Spectrum users
+│   ├── lines ls / add / remove                     manage phone lines
+│   ├── platforms ls / enable / disable             toggle messaging platforms
+│   └── avatar upload <file>                        upload Spectrum avatar
+└── billing
+    ├── plans                                       available plans
+    ├── show [--json]                               current subscription
+    ├── checkout [tier] [--plan <price-id>] [--qty <n>]  Stripe Checkout
+    └── manage                                      Stripe Customer Portal
+```
+
+Run `photon <command> --help` for the full flag list of any command.
+
+#### The `pho` alias
+
+After installing globally, a `pho` shortcut is created automatically the first time you run `photon`:
+
+```sh
+pho projects ls     # same as: photon projects ls
+pho whoami
+```
+
+The alias is only available for global installs — `npx` / `bunx` users don't get it since they're already typing the full package name.
+
+#### Global flags
+
+| Flag | Env var | Effect |
+|------|---------|--------|
+| `--debug` | `PHOTON_DEBUG=1` | Verbose HTTP request/response logs to stderr |
+| `--version`, `-v` | — | Print CLI version |
+| `--no-color` | `NO_COLOR=1` | Disable colored output ([NO_COLOR standard](https://no-color.org/)) |
+
+All other flags (`--api-host`, `--project`, `--token`, `--json`, `--yes`, `--no-browser`) are **per-command** and must appear after the subcommand name.
+
+
+### Installation
+
+Source: https://photon.codes/docs/cli/installation
+
+#### One-off — no install
+
+You can run any CLI command on demand without a global install:
+
+```sh npx
+npx @photon-ai/cli login
+npx @photon-ai/cli projects ls
+```
+
+```sh pnpx
+pnpx @photon-ai/cli login
+pnpx @photon-ai/cli projects ls
+```
+
+```sh yarn dlx
+# Yarn Berry / v2+ only
+yarn dlx @photon-ai/cli login
+yarn dlx @photon-ai/cli projects ls
+```
+
+```sh bunx
+bunx @photon-ai/cli login
+bunx @photon-ai/cli projects ls
+```
+
+Each time you run it, it pulls the latest release automatically. This is useful for scripts, throwaway machines, or trying the CLI before committing.
+
+#### Global install
+
+For daily use, you can install globally so `photon` is always on your `PATH`:
+
+```sh npm
+npm install -g @photon-ai/cli
+```
+
+```sh pnpm
+pnpm add -g @photon-ai/cli
+```
+
+```sh yarn
+yarn global add @photon-ai/cli
+```
+
+```sh bun
+bun add -g @photon-ai/cli
+```
+
+```sh
+photon login
+```
+
+The `pho` shortcut alias is created automatically the first time you run `photon`.
+
+You need Node.js >= 18 to run the CLI. You can also use Bun, but it's not required.
+
+#### Standalone binary
+
+If you don't want any runtime dependency (e.g. CI environments), you can download a prebuilt binary directly. Replace `<os>` and `<arch>` with your platform:
+
+```sh
+# <os>: darwin | linux
+# <arch>: arm64 | x64
+curl -L -o /usr/local/bin/photon \
+  https://github.com/photon-hq/cli/releases/latest/download/photon-<os>-<arch>
+chmod +x /usr/local/bin/photon
+photon --version
+```
+
+For example, on an Apple Silicon Mac:
+
+```sh
+curl -L -o /usr/local/bin/photon \
+  https://github.com/photon-hq/cli/releases/latest/download/photon-darwin-arm64
+chmod +x /usr/local/bin/photon
+```
+
+Available platforms:
+
+| Platform | Architectures |
+|----------|--------------|
+| macOS | arm64, x64 |
+| Linux | arm64, x64 |
+
+Each binary ships with a corresponding `.sha256` checksum on the [release page](https://github.com/photon-hq/cli/releases/latest).
+
+#### Update
+
+The CLI shows a notification when a new version is available. To update:
+
+```sh npm
+npm update -g @photon-ai/cli
+```
+
+```sh pnpm
+pnpm update -g @photon-ai/cli
+```
+
+```sh yarn
+yarn global upgrade @photon-ai/cli
+```
+
+```sh bun
+bun update -g @photon-ai/cli
+```
+
+If you installed via a standalone binary, re-download the latest release:
+
+```sh
+curl -L -o /usr/local/bin/photon \
+  https://github.com/photon-hq/cli/releases/latest/download/photon-<os>-<arch>
+chmod +x /usr/local/bin/photon
+```
+
+If you use a one-off runner (`npx` / `pnpx` / `yarn dlx` / `bunx`), you automatically pick up new releases — no manual update needed. These tools cache resolved versions, so to force the latest immediately, pin to `@latest`:
+
+```sh
+npx @photon-ai/cli@latest projects ls
+```
+
+To suppress the update notification, set `PHOTON_NO_UPDATE_NOTIFIER=1`.
+
+#### Verify the installation
+
+```sh
+photon --version
+photon ping
+```
+
+`photon ping` hits the Photon API health endpoint — if you see a success response, you're ready to [authenticate](/cli/authentication).
+
+
+### Authentication
+
+Source: https://photon.codes/docs/cli/authentication
+
+#### Device flow login
+
+The CLI uses a device authorization flow — you approve the login from a browser, no password is typed into the terminal.
+
+```sh
+photon login
+```
+
+This opens your default browser to the Photon approval page. Once you approve, the CLI stores your access token locally and you're ready to go.
+
+If you're on a headless machine (SSH session, container), pass `--no-browser` to get a URL you can open elsewhere:
+
+```sh
+photon login --no-browser
+```
+
+#### Verify your session
+
+```sh
+photon whoami
+```
+
+Prints your user ID, email, and name. If the session has expired, you'll see a hint to re-run `photon login`.
+
+#### Log out
+
+```sh
+photon logout
+```
+
+Revokes the session on the server and deletes the local credential file.
+
+#### Credential storage
+
+Credentials are stored as JSON files with `600` permissions:
+
+```
+$PHOTON_CONFIG_DIR/credentials/<backend-key>.json
+```
+
+The config directory is resolved in this order:
+
+1. `$PHOTON_CONFIG_DIR` — explicit override
+2. `$XDG_CONFIG_HOME/photon` — XDG standard
+3. `~/.config/photon/` — default
+
+If a legacy `~/.config/photon-dashboard/` directory exists from a prior install, it migrates automatically on first run.
+
+##### Multi-backend credentials
+
+Credentials are stored **per backend**. You can be logged into production and a staging server simultaneously — each gets its own credential file keyed by a sanitized hostname (e.g. `production`, `staging-app_photon_codes`, `localhost_3000`).
+
+```sh
+# Log in to production (default)
+photon login
+
+# Log in to staging
+photon login --api-host https://staging-app.photon.codes
+
+# Check all backends at once
+photon auth status
+```
+
+`photon auth status` shows the login state for every backend you've authenticated against. Pass `--json` for machine-readable output.
+
+#### Backend host
+
+Every command talks to a backend URL. The default is production (`https://app.photon.codes`). To target a different backend, set `PHOTON_API_HOST` or use the `--api-host` flag:
+
+```sh
+# Environment variable — applies to every command in this shell
+export PHOTON_API_HOST=https://staging-app.photon.codes
+photon projects ls
+
+# Per-command flag
+photon projects ls --api-host https://staging-app.photon.codes
+
+# Inline
+PHOTON_API_HOST=http://localhost:3000 photon projects ls
+```
+
+Resolution order: `--api-host` flag > `PHOTON_API_HOST` env var > built-in production URL.
+
+Check the resolved host with:
+
+```sh
+photon env current
+```
+
+#### Setting an active project
+
+Most commands operate on a single project. Specify it per-command or per-shell:
+
+```sh
+# Per command
+photon spectrum users ls --project abc123
+
+# Per shell session
+export PHOTON_PROJECT_ID=abc123
+photon spectrum users ls
+```
+
+Resolution order: `--project` flag > `$PHOTON_PROJECT_ID` > error with a hint.
+
+Put `export PHOTON_PROJECT_ID='...'` in your shell rc, or use [direnv](https://direnv.net/) to scope it to a project directory.
+
+#### CI and scripting
+
+For non-interactive environments, pass a token directly instead of running the device flow:
+
+```sh
+# Flag
+photon projects ls --token "$PHOTON_TOKEN"
+
+# Environment variable
+PHOTON_TOKEN=ey... photon projects ls
+```
+
+Get the token from your local credentials file (under `$PHOTON_CONFIG_DIR/credentials/<key>.json`) after authenticating once with `photon login`.
+
+Pair with `--json` for machine-readable output:
+
+```sh
+photon projects ls --json | jq '.[] | .id'
+photon billing show --json
+```
+
+| Flag / env var | Effect |
+|----------------|--------|
+| `-t, --token <token>` / `PHOTON_TOKEN` | Use this token instead of stored credentials |
+| `--json` | Structured JSON output |
+| `--yes`, `-y` | Skip destructive-action confirmation prompts |
+| `--no-browser` | Don't auto-open the browser |
+
+`PHOTON_TOKEN` reuses the access token from the device flow (default 7-day expiry). Re-run `photon login` when it expires. A long-lived API key path is on the roadmap.
+
+
+## Commands
+
+### Projects
+
+Source: https://photon.codes/docs/cli/projects
+
+Projects are the top-level container in Photon. Each project has its own Spectrum configuration, users, lines, and billing subscription.
+
+#### List projects
+
+```sh
+photon projects ls
+photon projects ls --json
+```
+
+Aliases: `project ls`, `projects list`.
+
+#### Show project details
+
+```sh
+photon projects show
+photon projects show <project-id>
+```
+
+Defaults to `$PHOTON_PROJECT_ID` if no ID is given. Aliases: `projects get`.
+
+#### Create a project
+
+```sh
+photon projects create
+```
+
+Without flags, the CLI walks you through an interactive prompt. You can also pass flags directly:
+
+```sh
+photon projects create --name "My Project" --location us-east --spectrum
+```
+
+| Flag | Description |
+|------|-------------|
+| `--name <name>` | Project name |
+| `--location <loc>` | Deployment region |
+| `--spectrum` | Enable Spectrum for the project |
+
+Aliases: `projects new`.
+
+#### Update a project
+
+```sh
+photon projects update <project-id> --name "New Name"
+```
+
+Fetches the current project, overlays your changes, and patches. Defaults to `$PHOTON_PROJECT_ID` if no ID is given.
+
+Aliases: `projects edit`, `projects set`.
+
+#### Delete a project
+
+```sh
+photon projects delete <project-id>
+photon projects delete <project-id> -y   # skip confirmation
+```
+
+This is a permanent, irreversible operation. The CLI asks for confirmation unless you pass `-y`.
+
+Aliases: `projects rm`, `projects remove`.
+
+#### Rotate the Spectrum API secret
+
+```sh
+photon projects regenerate-secret <project-id>
+photon projects regenerate-secret -y
+```
+
+Generates a new Spectrum API secret for the project. The old secret stops working immediately.
+
+Aliases: `projects rotate-secret`.
+
+#### Open in the dashboard
+
+```sh
+photon projects open
+photon projects open <project-id>
+photon projects open --no-browser   # prints the URL instead
+```
+
+Opens the project's Dashboard page in your default browser.
+
+#### Upgrade subscription
+
+Use this command to subscribe a project or manage its existing subscription. The CLI routes you to the right Stripe surface based on the project's current state:
+
+- **Free or unsubscribed projects** — opens Stripe Checkout
+- **Active or past-due subscriptions** — opens the Stripe Customer Portal (change plan, payment method, cancel, etc.)
+
+```sh
+# Interactive picker (recommended)
+photon projects upgrade
+
+# Skip the picker with a positional tier
+photon projects upgrade pro
+photon projects upgrade <project-id> business
+
+# Force a specific flow
+photon projects upgrade --checkout         # always Checkout, even if subscribed
+photon projects upgrade --manage           # always Portal (downgrade / cancel / change card)
+
+# Use a specific Stripe price (escape hatch)
+photon projects upgrade --plan price_xxx
+```
+
+Available tiers: `pro`, `business`, `enterprise`.
+
+| Flag | Description |
+|------|-------------|
+| `[tier]` | Positional tier (`pro` / `business` / `enterprise`). Skips the picker. |
+| `--plan <price-id>` | Stripe price ID. Escape hatch when you need a specific price. |
+| `--qty <n>` | Quantity (default 1) |
+| `--checkout` | Force Checkout even if the project already has a subscription |
+| `--manage` | Force the Stripe Customer Portal (use this for downgrades / cancellation) |
+| `--no-browser` | Print the URL instead of opening it |
+| `--json` | Output `{action, url, tier?}` as JSON and skip opening the browser |
+
+`--manage` wins over `[tier]` / `--plan` / `--checkout` when both are passed. Downgrades and cancellations live in the Stripe Portal — there's no dedicated `downgrade` command.
+
+#### Check phone number availability
+
+```sh
+photon projects check-phone +15551234567
+```
+
+Checks whether a phone number is available for Spectrum.
+
+#### Common flags
+
+These flags are available on most project commands:
+
+| Flag | Env var | Description |
+|------|---------|-------------|
+| `-p, --project <id>` | `PHOTON_PROJECT_ID` | Target project (defaults to env var) |
+| `--api-host <url>` | `PHOTON_API_HOST` | Override the backend URL |
+| `-t, --token <token>` | `PHOTON_TOKEN` | Use this token instead of stored credentials |
+| `--json` | — | Output as JSON |
+| `-y, --yes` | — | Skip confirmation prompts |
+
+
+### Spectrum
+
+Source: https://photon.codes/docs/cli/spectrum
+
+The `photon spectrum` commands manage your project's messaging configuration — the Spectrum profile, users, phone lines, platform toggles, and avatar.
+
+All Spectrum commands require an active project. Set `$PHOTON_PROJECT_ID` or pass `--project <id>`.
+
+#### Spectrum profile
+
+View or update the Spectrum profile attached to your project.
+
+```sh
+# View the current profile
+photon spectrum profile show
+
+# Update profile fields
+photon spectrum profile update --display-name "Support Bot"
+```
+
+Aliases: `spectrum profile edit`.
+
+#### Users
+
+Manage users that can interact through your project's Spectrum instance.
+
+##### List users
+
+```sh
+photon spectrum users ls
+photon spectrum users ls --json
+```
+
+Aliases: `spectrum users list`.
+
+##### Add a user
+
+```sh
+photon spectrum users add
+```
+
+Aliases: `spectrum users create`.
+
+##### Remove a user
+
+```sh
+photon spectrum users remove <user-id>
+```
+
+Removing a user is irreversible. The CLI asks for confirmation unless you pass `-y`.
+
+Aliases: `spectrum users rm`, `spectrum users delete`.
+
+#### Lines
+
+Manage the phone lines assigned to your project.
+
+##### List lines
+
+```sh
+photon spectrum lines ls
+```
+
+Aliases: `spectrum lines list`.
+
+##### Add a line
+
+```sh
+photon spectrum lines add
+```
+
+Currently supports iMessage lines only.
+
+##### Remove a line
+
+```sh
+photon spectrum lines remove <line-id>
+```
+
+#### Platforms
+
+View and toggle messaging platforms for your project.
+
+##### List platforms
+
+```sh
+photon spectrum platforms ls
+```
+
+Aliases: `spectrum platforms list`.
+
+##### Enable a platform
+
+```sh
+photon spectrum platforms enable <platform-name>
+```
+
+##### Disable a platform
+
+```sh
+photon spectrum platforms disable <platform-name>
+```
+
+#### Avatar
+
+Upload a custom avatar image for your project's Spectrum profile.
+
+```sh
+photon spectrum avatar upload photo.png
+```
+
+The CLI requests a presigned upload URL from the API, uploads the file directly, and patches the Spectrum profile to use it.
+
+| Flag | Description |
+|------|-------------|
+| `--no-update-profile` | Upload the file but don't update the Spectrum profile to use it |
+
+#### Common flags
+
+| Flag | Env var | Description |
+|------|---------|-------------|
+| `-p, --project <id>` | `PHOTON_PROJECT_ID` | Target project |
+| `--api-host <url>` | `PHOTON_API_HOST` | Override the backend URL |
+| `-t, --token <token>` | `PHOTON_TOKEN` | Use this token instead of stored credentials |
+| `--json` | — | Output as JSON (where supported) |
+
+
+### Billing
+
+Source: https://photon.codes/docs/cli/billing
+
+The `photon billing` commands let you view available plans, check your current subscription, start a checkout, and manage billing through the Stripe Customer Portal.
+
+All billing commands require an active project. Set `$PHOTON_PROJECT_ID` or pass `--project <id>`.
+
+#### List available plans
+
+```sh
+photon billing plans
+```
+
+Shows all plans and their Stripe price IDs. Use the price ID with `checkout` to subscribe.
+
+#### View current subscription
+
+```sh
+photon billing show
+photon billing show --json
+```
+
+Displays the active subscription for the current project, including plan details and status.
+
+#### Start a checkout
+
+```sh
+# Interactive picker — recommended for first-time use
+photon billing checkout
+
+# Skip the picker with a positional tier
+photon billing checkout pro
+photon billing checkout business --qty 5
+
+# Use a specific Stripe price (escape hatch)
+photon billing checkout --plan price_xxx
+```
+
+When you run this command, the CLI creates a Stripe Checkout session and opens it in your browser. If you don't pass any arguments, you get an interactive picker listing the available plans. Pass a `[tier]` positional or `--plan <price-id>` to skip the picker.
+
+Available tiers: `pro`, `business`, `enterprise`.
+
+| Flag | Description |
+|------|-------------|
+| `[tier]` | Positional tier (`pro` / `business` / `enterprise`). Skips the picker. |
+| `--plan <price-id>` | Stripe price ID. Escape hatch when you need a specific price. |
+| `--qty <number>` | Quantity for the line item |
+| `--no-browser` | Print the checkout URL instead of opening it |
+| `--json` | Output `{action, url, tier?}` as JSON and skip opening the browser |
+
+For project-scoped subscription management (which smart-routes between Checkout and the Stripe Portal), use [`photon projects upgrade`](/cli/projects#upgrade-subscription) instead.
+
+#### Manage subscription (Stripe Portal)
+
+```sh
+photon billing manage
+```
+
+Opens the Stripe Customer Portal where you can update payment methods, change plans, view invoices, or cancel. Pass `--no-browser` to get the portal URL printed to the terminal.
+
+Aliases: `billing portal`.
+
+#### Common flags
+
+| Flag | Env var | Description |
+|------|---------|-------------|
+| `-p, --project <id>` | `PHOTON_PROJECT_ID` | Target project |
+| `--api-host <url>` | `PHOTON_API_HOST` | Override the backend URL |
+| `-t, --token <token>` | `PHOTON_TOKEN` | Use this token instead of stored credentials |
+| `--json` | — | Output as JSON |
+| `--no-browser` | — | Print URL instead of opening the browser |
+
+
+### Profile & utilities
+
+Source: https://photon.codes/docs/cli/profile-and-utilities
+
+#### Profile
+
+The `photon profile` commands manage your Photon developer or organization profile.
+
+##### View your profile
+
+```sh
+photon profile show
+```
+
+Displays your account details and profile information.
+
+##### Create a profile
+
+```sh
+photon profile init
+```
+
+Walks you through an interactive prompt to create a developer or organization profile. You can also pass flags directly for non-interactive use.
+
+##### Update your profile
+
+```sh
+photon profile update --display-name "Jane Doe"
+```
+
+Updates specific fields on your existing profile. The available flags differ based on whether you have a developer or organization profile.
+
+Aliases: `profile edit`.
+
+#### Utility commands
+
+##### ping
+
+Test connectivity to the Photon API:
+
+```sh
+photon ping
+```
+
+Hits the `/api/health` endpoint and prints the response. Useful for verifying that the backend is reachable and your network configuration is correct.
+
+You can also ping an arbitrary URL directly (bypasses credential resolution):
+
+```sh
+photon ping -u https://your-custom-backend.example.com
+```
+
+##### env
+
+Print the currently resolved backend:
+
+```sh
+photon env current
+```
+
+```text
+production (https://app.photon.codes)
+```
+
+Useful for confirming which backend your commands will target, especially when using `PHOTON_API_HOST`.
+
+##### whoami
+
+Show the authenticated user for the current backend:
+
+```sh
+photon whoami
+```
+
+Prints your user ID, email, and name. Returns an error with a login hint if your session has expired.
+
+##### auth status
+
+Show login state across all backends you've authenticated against:
+
+```sh
+photon auth status
+photon auth status --json
+```
+
+Lists each backend with its credential status. Flags corrupt or invalid credential files.
+
+##### config show
+
+Dump the active CLI configuration (no secrets):
+
+```sh
+photon config show
+photon config show --json
+```
+
+Displays the config directory path, current backend, active `PHOTON_PROJECT_ID`, and relevant environment variable values.

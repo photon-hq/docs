@@ -1,0 +1,217 @@
+---
+title: "Outbound calls"
+description: "Configure a SIP application to place calls through a Spectrum iMessage line."
+---
+
+Outbound calling connects your SIP application to an iMessage line owned by
+your Spectrum project.
+
+<Note>
+  Port 5061 is the **Spectrum server port**. Enter it in the server, remote, or
+  proxy port field in your SIP application. Your application does not need to
+  use 5061 as its own local or listening port.
+</Note>
+
+<Note>
+  Business profile registration is recommended for production, but it is not
+  required. Outbound calls work without any business profile registration,
+  although they may be flagged.
+</Note>
+
+## Before you start
+
+You need:
+
+- A Spectrum project.
+- An iMessage line in that project.
+- The project's ID and secret.
+- A SIP application or phone system that supports TLS or TCP and
+  username-and-password authentication. This standard SIP mechanism is called
+  SIP Digest.
+- The ability to set the caller ID, sometimes called the **From** number, for
+  outbound calls.
+
+WhatsApp numbers cannot be used for Spectrum Voice.
+
+## Set up outbound calling
+
+<Steps>
+  <Step title="Find your project credentials">
+    Sign in to the [Spectrum dashboard](https://app.photon.codes), select the
+    project that owns your iMessage line, and open its settings.
+
+    Copy the **project ID** and **project secret**. You will use them as SIP
+    credentials:
+
+    - Project ID → SIP username
+    - Project secret → SIP password
+
+    Use the project ID, not the project's display name.
+  </Step>
+  <Step title="Add a SIP account or trunk">
+    In your SIP application, create an account or trunk with these exact
+    values:
+
+    | SIP setting | Value |
+    |---|---|
+    | Server, proxy, or host | `sip.spectrum.photon.codes` |
+    | Server port | `5061` |
+    | Transport | `TLS` |
+    | Username | Your Spectrum project ID |
+    | Password | Your Spectrum project secret |
+    | Registration | Off (Spectrum is not a SIP registrar) |
+    | Caller ID or From number | An iMessage line owned by the project |
+
+    SIP products name these fields differently. The server field might be
+    called **SIP URI**, **domain**, **proxy**, or **host**. In each case, use
+    `sip.spectrum.photon.codes`. If the field requires one full URI, use:
+
+    ```text
+    sips:sip.spectrum.photon.codes:5061
+    ```
+
+    Keep TLS certificate verification enabled. The certificate must be valid
+    for `sip.spectrum.photon.codes`.
+
+    TCP remains supported for existing integrations. To use it, select TCP on
+    Spectrum server port 5060, or use
+    `sip:sip.spectrum.photon.codes:5060;transport=tcp`. TCP does not encrypt SIP
+    signaling. UDP is not supported.
+  </Step>
+  <Step title="Use a trunk or no-registration mode">
+    Many SIP applications try to register with a server before making calls.
+    Spectrum works differently: it checks the project credentials when each
+    outbound call is placed, so it does not support SIP registration.
+
+    If the application has a **Register** or **Registration** setting, turn it
+    off or choose a trunk, peer, or no-registration mode.
+
+    The application must be able to place a call without first completing SIP
+    registration. A softphone that requires a successful registration is not
+    compatible with this setup.
+  </Step>
+  <Step title="Place a test call">
+    Set the caller ID or From number to an iMessage line owned by the project,
+    then call a phone number through the configured SIP account. Use full
+    international format, such as `+14155550123`.
+
+    Spectrum asks the application for the project credentials when the call is
+    placed. The application should handle this automatically. If authentication
+    fails, confirm that the project ID and project secret come from the same
+    project and contain no extra spaces or line breaks.
+
+    Confirm that the receiving phone shows the expected iMessage line as the
+    caller ID and that audio works in both directions.
+  </Step>
+</Steps>
+
+## Example configuration
+
+These environment variable names are examples for your own application. They
+are not read automatically by `spectrum-ts`.
+
+```bash
+SPECTRUM_SIP_HOST=sip.spectrum.photon.codes
+SPECTRUM_SIP_PORT=5061
+SPECTRUM_SIP_USERNAME=your-project-id
+SPECTRUM_SIP_PASSWORD=your-project-secret
+SPECTRUM_SIP_TRANSPORT=tls
+```
+
+`SPECTRUM_SIP_HOST` and `SPECTRUM_SIP_PORT` identify the Spectrum server. They
+do not configure a local listening port.
+
+Keep the project secret in a secret manager or protected environment variable.
+Do not commit it to source control or send it to browser code.
+
+## Optional: register your business profile
+
+Outbound calling works without a registered business profile. Registration is
+still recommended because calls from an unregistered business may be flagged.
+
+To register:
+
+<Steps>
+  <Step title="Open the business profile">
+    In the dashboard, select the project that places the calls and open its
+    business profile.
+  </Step>
+  <Step title="Submit the business information">
+    Complete the requested business details and submit the profile. There is no
+    registration fee.
+  </Step>
+  <Step title="Wait for registration to finish">
+    Registration usually takes 1–2 business days. You can continue developing
+    and making outbound calls while it is being processed.
+  </Step>
+</Steps>
+
+Registration reduces the risk associated with unidentified outbound traffic,
+but it should not be treated as a guarantee that a call will never be flagged.
+
+## Before going live
+
+- The iMessage line belongs to the same project as the SIP credentials.
+- The server is exactly `sip.spectrum.photon.codes`.
+- The username is the project ID, not the project name.
+- The password is the current project secret.
+- The Spectrum server uses TLS/5061 or TCP/5060, not UDP.
+- SIP registration is disabled.
+- The caller ID or From number is an iMessage line owned by the project.
+- TLS certificate verification is enabled when using TLS.
+- A test call connects and has working two-way audio.
+- The firewall allows the SIP application's UDP RTP port range. SIP TLS does
+  not encrypt the RTP audio stream.
+- The business profile has been submitted if you want to reduce flagging risk.
+
+## Troubleshooting
+
+### The SIP application cannot connect
+
+Check the server spelling and make sure its port matches the transport: TLS
+uses 5061 and TCP uses 5060. Do not use UDP. Confirm that the network allows the
+SIP application to make an outbound connection to the selected Spectrum server
+port.
+
+### The SIP application says registration failed
+
+Spectrum does not support SIP registration. Use a trunk, peer, or
+no-registration mode and place a test call. The project ID and secret
+authenticate the call itself.
+
+### TLS certificate verification fails
+
+Connect to `sip.spectrum.photon.codes`, not an IP address or unrelated alias.
+The hostname used by the SIP application must match the hostname covered by the
+server certificate. Do not disable certificate verification as a workaround.
+
+### Authentication fails
+
+Use the project ID as the username and the project secret as the password. Make
+sure both came from the same project. If the secret was rotated, replace the
+old value in the SIP application.
+
+### The call is rejected with 403
+
+Set the caller ID or From number to an iMessage line owned by the authenticated
+project. Spectrum rejects missing phone numbers and numbers owned by another
+project.
+
+### The line is not available
+
+Confirm that the project owns an iMessage line. WhatsApp and voice-only lines
+are not currently supported for Spectrum Voice.
+
+### Calls are flagged
+
+Outbound calls can work without a registered business profile, but they may be
+flagged. Register the business profile in the dashboard and allow 1–2 business
+days for registration to complete.
+
+### The call connects but audio does not work
+
+SIP TLS protects signaling only. Audio uses RTP, so confirm that your firewall
+allows the UDP RTP port range configured in the SIP application. If the
+application is behind a router, its NAT or port-forwarding configuration must
+also allow that traffic in both directions. NAT is the router feature that lets
+devices on a private network share a public internet address.
