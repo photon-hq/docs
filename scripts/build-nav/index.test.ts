@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path'
 import process from 'node:process'
 import { test } from 'node:test'
 
-test('expands source groups inside API Reference without moving other groups', (t) => {
+test('expands source groups inside the WebSocket anchor and preserves API Endpoints', (t) => {
   const root = mkdtempSync(join(tmpdir(), 'docs-nav-'))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   function json(path: string, value: unknown) {
@@ -27,9 +27,9 @@ test('expands source groups inside API Reference without moving other groups', (
     navigation: {
       tabs: [{
         tab: 'API Reference',
-        groups: [
-          { group: 'WebSocket', pages: groups.map(({ group }) => ({ $source: 'fusor-ws', group })) },
-          endpoints,
+        anchors: [
+          { anchor: 'API Endpoints', groups: [endpoints] },
+          { anchor: 'WebSocket', groups: groups.map(({ group }) => ({ $source: 'fusor-ws', group })) },
         ],
       }],
     },
@@ -39,9 +39,9 @@ test('expands source groups inside API Reference without moving other groups', (
   copyFileSync(new URL('./index.ts', import.meta.url), script)
   execFileSync(process.execPath, [script], { cwd: root })
   const output = JSON.parse(readFileSync(join(root, 'docs.json'), 'utf8'))
-  assert.deepEqual(output.navigation.tabs[0].groups, [
-    { group: 'WebSocket', pages: groups },
-    endpoints,
+  assert.deepEqual(output.navigation.tabs[0].anchors, [
+    { anchor: 'API Endpoints', groups: [endpoints] },
+    { anchor: 'WebSocket', groups },
   ])
   assert.ok(!JSON.stringify(output).includes('$source'))
 })

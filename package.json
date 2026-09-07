@@ -9,7 +9,7 @@
     "docs:problems": "tsx scripts/build-problems/index.ts",
     "docs:llms": "tsx scripts/llms-generator/index.ts",
     "lint": "eslint .",
-    "test": "tsx --test scripts/sync-docs/assets.test.ts scripts/build-nav/index.test.ts",
+    "test": "tsx --test scripts/sync-docs/assets.test.ts scripts/build-nav/index.test.ts scripts/llms-generator/index.test.ts",
     "lint:fix": "eslint . --fix",
     "typecheck:docs": "tsx scripts/typecheck-docs/index.ts"
   },

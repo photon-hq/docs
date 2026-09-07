@@ -17,6 +17,11 @@ interface DocsConfig {
 }
 interface Tab {
   tab: string
+  groups?: Group[]
+  anchors?: Anchor[]
+}
+interface Anchor {
+  anchor: string
   groups: Group[]
 }
 interface Group {
@@ -236,8 +241,13 @@ function emitGroup(group: Group, depth: number, out: WalkNode[]) {
 
 function walkTab(tab: Tab): WalkNode[] {
   const nodes: WalkNode[] = []
-  for (const group of tab.groups)
+  for (const group of tab.groups ?? [])
     emitGroup(group, 2, nodes)
+  for (const anchor of tab.anchors ?? []) {
+    nodes.push({ kind: 'heading', depth: 2, title: anchor.anchor })
+    for (const group of anchor.groups)
+      emitGroup(group, 3, nodes)
+  }
   return nodes
 }
 
