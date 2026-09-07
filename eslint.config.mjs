@@ -11,6 +11,12 @@ export default antfu({
     markdown: 'prettier',
   },
 }, {
+  // Build tooling uses Node's test runner without an additional test dependency.
+  files: ['scripts/**/*.test.ts'],
+  rules: {
+    'test/no-import-node-test': 'off',
+  },
+}, {
   // Mintlify compiles a snippet into a function body and injects React's hooks
   // through the call scope, so they are globals here and cannot be imported.
   // See the header of snippets/problems-table.jsx.

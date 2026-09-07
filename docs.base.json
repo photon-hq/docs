@@ -86,6 +86,19 @@
             ]
           },
           {
+            "group": "WebSocket",
+            "pages": [
+              {
+                "$source": "fusor-ws",
+                "group": "WebSocket protocol"
+              },
+              {
+                "$source": "fusor-ws",
+                "group": "Frame reference"
+              }
+            ]
+          },
+          {
             "group": "Endpoints",
             "openapi": {
               "source": "https://api.staging.photon.codes/openapi.json",

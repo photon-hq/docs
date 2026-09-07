@@ -6,7 +6,7 @@ on:
   # Source repos notify us when their docs/ changes. Add one type per source in
   # scripts/sources.json; each source repo sends its own event_type.
   repository_dispatch:
-    types: [photon-cli-docs]
+    types: [photon-cli-docs, fusor-ws-docs]
   workflow_dispatch:
 
 # One running build plus at most one queued collapses bursts -- watcher
@@ -46,6 +46,7 @@ jobs:
           repositories: |
             ${{ steps.parse-repo.outputs.name }}
             cli-beta
+            fusor-v2
 
       - uses: actions/checkout@v4
         with:
@@ -103,6 +104,9 @@ jobs:
           if [ -n "$vel_out" ]; then
             git add -f $vel_out
           fi
+
+          # Source assets bypass Vellum; keep aligned with scripts/sources.json.
+          git add -f asyncapi/fusor-v2.yaml
 
           # Force-add the generated problem catalogue. It is not Vellum output,
           # so the *.vel glob above does not cover it.

@@ -9,6 +9,18 @@
       "ref": "main",
       "nav": "nav.json",
       "local": "../cli-beta/docs"
+    },
+    {
+      "name": "fusor-ws",
+      "mount": "websocket",
+      "repo": "photon-hq/fusor-v2",
+      "docsDir": "docs/public",
+      "ref": "main",
+      "nav": "nav.json",
+      "local": "../fusor-v2/docs/public",
+      "assets": {
+        "asyncapi.yaml": "asyncapi/fusor-v2.yaml"
+      }
     }
   ]
 }

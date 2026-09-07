@@ -3,6 +3,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from
 import { tmpdir } from 'node:os'
 import { basename, join, relative, resolve, sep } from 'node:path'
 import process from 'node:process'
+import { copySourceAssets } from './assets'
 
 // Assemble the vellum template tree (.vellum-src) from:
 //   1. local templates in docs-src/ (areas not yet migrated + site-owned prose),
@@ -35,6 +36,7 @@ interface Source {
   nav?: string
   local?: string
   routes?: SourceRoute[]
+  assets?: Record<string, string>
 }
 
 interface SourceRoute {
@@ -176,6 +178,8 @@ function main() {
     const navFile = join(contentDir, navName)
     const dest = join(STAGING, src.mount)
     const routes = src.routes ?? []
+
+    copySourceAssets(src.name, contentDir, ROOT, src.assets ?? {})
 
     cpSync(contentDir, dest, {
       recursive: true,

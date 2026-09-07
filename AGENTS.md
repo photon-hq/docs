@@ -42,6 +42,9 @@ Rules:
 - Adding a source repo means: an entry in `scripts/sources.json`, a `nav.json`
   fragment in that repo's docs directory, its generated `.mdx` output paths in
   `.gitignore`, and the repo added to the `repositories:` list in both workflows.
+- A source's optional `assets` maps source-relative files to site-relative output
+  paths. `docs:sync` copies their bytes without templating. Ignore these outputs
+  on `main` and explicitly stage them in the `deploy-dist` workflow.
 - Treat the existing `photon-hq/docs` site as reference material, not as the
   structure for this rewrite.
 
