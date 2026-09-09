@@ -54,6 +54,17 @@
         ]
       },
       {
+        "tab": "Cookbooks",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "cookbooks/index"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "CLI",
         "groups": [
           {
