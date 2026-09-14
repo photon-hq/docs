@@ -286,3 +286,31 @@ div:has(> #chat-assistant-sheet) {
   height: calc(100vh - 56px) !important;
   top: 56px !important;
 }
+
+/* Version icons follow docs.base.json order: Maintain, then Beta.
+   Mintlify exposes the current path without the hosting /docs prefix. */
+:root {
+  --docs-maintain-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M15%203a6%206%200%200%200-6%208l-6%206a2.8%202.8%200%200%200%204%204l6-6a6%206%200%200%200%208-6l-4%203-5-5%203-4Z%22%2F%3E%3C%2Fsvg%3E");
+  --docs-beta-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9%203h6m-5%200v6l-5.5%209.4A1.7%201.7%200%200%200%206%2021h12a1.7%201.7%200%200%200%201.5-2.6L14%209V3M8%2014h8%22%2F%3E%3C%2Fsvg%3E");
+}
+
+[data-component-part="version-select-trigger"],
+[data-component-part="version-select-item"]:nth-child(1) {
+  --docs-version-icon: var(--docs-maintain-icon);
+}
+
+html:is([data-current-path="/v2"], [data-current-path^="/v2/"]) [data-component-part="version-select-trigger"],
+[data-component-part="version-select-item"]:nth-child(2) {
+  --docs-version-icon: var(--docs-beta-icon);
+}
+
+[data-component-part="version-select-trigger"]::before,
+[data-component-part="version-select-item"]::before {
+  content: "";
+  display: block;
+  flex: 0 0 1rem;
+  width: 1rem;
+  height: 1rem;
+  background-color: currentColor;
+  mask: var(--docs-version-icon) center / contain no-repeat;
+}
