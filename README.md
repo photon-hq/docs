@@ -15,8 +15,8 @@ Navigation works the same way: [`docs.json`](docs.json) is **generated** by `scr
 
 ## Documentation versions
 
-This repository hosts both versions on one Mintlify site. Docs v1 keeps its
-existing URLs; Docs v2 lives under `/v2` (publicly `/docs/v2`).
+This repository hosts both versions on one Mintlify site. **Maintain** (v1) keeps
+its existing URLs; **Beta** (v2) lives under `/v2` (publicly `/docs/v2`).
 
 Docs v2 is authored in `photon-hq/docs-v2`. Its build exports a rendered `site/`
 directory with a `nav.json` fragment, versioned page links, API directories, and

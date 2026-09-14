@@ -38,8 +38,8 @@ test('syncs a rendered version, resolves navigation and redirects, and exports b
   file('export/asyncapi/events.yaml', 'asyncapi: 3.0.0\n')
   file('v2/stale.mdx', 'obsolete generated page')
   json('docs.base.json', { name: 'Photon', navigation: { versions: [
-    { version: 'Docs v1', default: true, tabs: [{ tab: 'CLI', groups: [{ group: 'Start', pages: ['cli'] }] }] },
-    { version: 'Docs v2', tabs: [{ $source: 'docs-v2' }] },
+    { version: 'Maintain', default: true, tabs: [{ tab: 'CLI', groups: [{ group: 'Start', pages: ['cli'] }] }] },
+    { version: 'Beta', tabs: [{ $source: 'docs-v2' }] },
   ] } })
   const run = (name: string) => execFileSync(process.execPath, [join(root, 'scripts', name, 'index.ts')], {
     cwd: root,
@@ -56,8 +56,8 @@ test('syncs a rendered version, resolves navigation and redirects, and exports b
   assert.equal(readFileSync(join(root, 'v2/asyncapi/events.yaml'), 'utf8'), 'asyncapi: 3.0.0\n')
   assert.throws(() => readFileSync(join(root, 'v2/stale.mdx')))
   assert.match(readFileSync(join(root, 'llms-cli.txt'), 'utf8'), /V1_ONLY/)
-  assert.match(readFileSync(join(root, 'llms-docs-v2-cli.txt'), 'utf8'), /V2_ONLY/)
-  assert.match(readFileSync(join(root, 'llms-docs-v2-api-reference.txt'), 'utf8'), /WEBSOCKET_ONLY/)
+  assert.match(readFileSync(join(root, 'llms-beta-cli.txt'), 'utf8'), /V2_ONLY/)
+  assert.match(readFileSync(join(root, 'llms-beta-api-reference.txt'), 'utf8'), /WEBSOCKET_ONLY/)
   const full = readFileSync(join(root, 'llms-full.txt'), 'utf8')
   for (const marker of ['V1_ONLY', 'V2_ONLY', 'WEBSOCKET_ONLY'])
     assert.equal(full.split(marker).length - 1, 1)

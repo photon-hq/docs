@@ -23,7 +23,7 @@
   "navigation": {
     "versions": [
       {
-        "version": "Docs v1",
+        "version": "Maintain",
         "default": true,
         "tabs": [
           {
@@ -198,7 +198,7 @@
         }
       },
       {
-        "version": "Docs v2",
+        "version": "Beta",
         "tabs": [
           {
             "$source": "docs-v2"
