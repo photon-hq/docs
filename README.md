@@ -16,13 +16,13 @@ Navigation works the same way: [`docs.json`](docs.json) is **generated** by `scr
 ## Documentation versions
 
 This repository hosts both versions on one Mintlify site. **Maintain** (v1) keeps
-its existing URLs; **Beta** (v2) is the default and lives under `/v2`
-(publicly `/docs/v2`).
+its existing URLs; **Beta** (v2) is the default and lives under `/beta`
+(publicly `/docs/beta`). Previous `/v2` links redirect to `/beta`.
 
 Docs v2 is authored in `photon-hq/docs-v2`. Its build exports a rendered `site/`
 directory with a `nav.json` fragment, versioned page links, API directories, and
 assets. `docs:sync` imports that directory from the `dist` branch into the
-gitignored `v2/` directory. Do not edit those synced files here.
+gitignored `beta/` directory. Do not edit those synced files here.
 
 For local development, run `pnpm docs:generate` in `../docs-v2` first, then here.
 CI uses the published `dist` export. After v2 publishes a new export, it sends

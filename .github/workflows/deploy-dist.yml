@@ -64,7 +64,7 @@ jobs:
           git add -f docs.json
 
           # Rendered v2 pages and assets bypass Vellum.
-          git add -f v2
+          git add -f beta
 
           # Force-add all Vellum-generated files (gitignored, but needed on dist).
           # Template list comes from the assembled tree (.vellum-src), not docs-src,

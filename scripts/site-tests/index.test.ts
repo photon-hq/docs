@@ -21,13 +21,13 @@ test('syncs a rendered version, resolves navigation and redirects, and exports b
     copyFileSync(new URL(`../${name}/index.ts`, import.meta.url), join(root, 'scripts', name, 'index.ts'))
   }
   json('package.json', { type: 'module' })
-  json('scripts/sources.json', { sources: [{ name: 'docs-v2', mount: 'v2', local: 'export', format: 'rendered' }] })
-  const redirects = [{ source: '/problems/rate-limited', destination: '/v2/problems/catalog#rate-limited' }]
+  json('scripts/sources.json', { sources: [{ name: 'docs-v2', mount: 'beta', local: 'export', format: 'rendered' }] })
+  const redirects = [{ source: '/problems/rate-limited', destination: '/beta/problems/catalog#rate-limited' }]
   json('export/nav.json', {
     source: 'docs-v2',
-    tabs: [{ tab: 'CLI', groups: [{ group: 'Start', pages: ['v2/cli'] }] }, {
+    tabs: [{ tab: 'CLI', groups: [{ group: 'Start', pages: ['beta/cli'] }] }, {
       tab: 'API Reference',
-      anchors: [{ anchor: 'WebSocket', groups: [{ group: 'Start', pages: ['v2/websocket'] }] }],
+      anchors: [{ anchor: 'WebSocket', groups: [{ group: 'Start', pages: ['beta/websocket'] }] }],
     }],
     redirects,
   })
@@ -36,7 +36,7 @@ test('syncs a rendered version, resolves navigation and redirects, and exports b
   file('export/cli.mdx', page('New CLI', 'V2_ONLY'))
   file('export/websocket.mdx', page('WebSocket', 'WEBSOCKET_ONLY'))
   file('export/asyncapi/events.yaml', 'asyncapi: 3.0.0\n')
-  file('v2/stale.mdx', 'obsolete generated page')
+  file('beta/stale.mdx', 'obsolete generated page')
   json('docs.base.json', { name: 'Photon', navigation: { versions: [
     { version: 'Maintain', tabs: [{ tab: 'CLI', groups: [{ group: 'Start', pages: ['cli'] }] }] },
     { version: 'Beta', default: true, tabs: [{ $source: 'docs-v2' }] },
@@ -53,8 +53,8 @@ test('syncs a rendered version, resolves navigation and redirects, and exports b
   assert.deepEqual(config.redirects, redirects)
   assert.equal(config.navigation.versions[1].tabs[1].anchors[0].anchor, 'WebSocket')
   assert.ok(config.navigation.versions.every((version: object) => !('href' in version)))
-  assert.equal(readFileSync(join(root, 'v2/asyncapi/events.yaml'), 'utf8'), 'asyncapi: 3.0.0\n')
-  assert.throws(() => readFileSync(join(root, 'v2/stale.mdx')))
+  assert.equal(readFileSync(join(root, 'beta/asyncapi/events.yaml'), 'utf8'), 'asyncapi: 3.0.0\n')
+  assert.throws(() => readFileSync(join(root, 'beta/stale.mdx')))
   assert.match(readFileSync(join(root, 'llms-cli.txt'), 'utf8'), /V1_ONLY/)
   assert.match(readFileSync(join(root, 'llms-beta-cli.txt'), 'utf8'), /V2_ONLY/)
   assert.match(readFileSync(join(root, 'llms-beta-api-reference.txt'), 'utf8'), /WEBSOCKET_ONLY/)

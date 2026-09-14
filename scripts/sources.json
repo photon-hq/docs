@@ -22,7 +22,7 @@
     },
     {
       "name": "docs-v2",
-      "mount": "v2",
+      "mount": "beta",
       "repo": "photon-hq/docs-v2",
       "docsDir": "site",
       "ref": "dist",

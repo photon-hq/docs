@@ -253,5 +253,15 @@
     "ga4": {
       "measurementId": "GT-TXXP8686"
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/v2",
+      "destination": "/beta"
+    },
+    {
+      "source": "/v2/:slug*",
+      "destination": "/beta/:slug*"
+    }
+  ]
 }

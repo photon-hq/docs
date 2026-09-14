@@ -299,7 +299,7 @@ div:has(> #chat-assistant-sheet) {
   --docs-version-icon: var(--docs-maintain-icon);
 }
 
-html:is([data-current-path="/v2"], [data-current-path^="/v2/"]) [data-component-part="version-select-trigger"],
+html:is([data-current-path="/beta"], [data-current-path^="/beta/"]) [data-component-part="version-select-trigger"],
 [data-component-part="version-select-item"]:nth-child(2) {
   --docs-version-icon: var(--docs-beta-icon);
 }
