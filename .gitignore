@@ -31,3 +31,6 @@ llms-*.txt
 # excluded directory -- so exclude the contents, not the directory.
 /problems/*
 !/problems/handling-errors.mdx
+
+# Combined staging site; its contents become the root of dist.
+/site/

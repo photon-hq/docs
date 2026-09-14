@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join, relative, resolve, sep } from 'node:path'
 import process from 'node:process'
@@ -37,6 +37,7 @@ interface Source {
   local?: string
   routes?: SourceRoute[]
   assets?: Record<string, string>
+  format?: 'mintlify'
 }
 
 interface SourceRoute {
@@ -92,8 +93,10 @@ function gitFetch(src: Source, ref: string): string | null {
   const run = (args: string[]) => execFileSync('git', args, { stdio: ['ignore', 'pipe', 'pipe'] })
   log(`fetching ${repo}#${ref}:${docsDir}`)
   run(['clone', '--filter=blob:none', '--no-checkout', '--quiet', cloneUrl(repo), tmp])
-  run(['-C', tmp, 'sparse-checkout', 'init', '--cone'])
-  run(['-C', tmp, 'sparse-checkout', 'set', docsDir])
+  if (docsDir !== '.') {
+    run(['-C', tmp, 'sparse-checkout', 'init', '--cone'])
+    run(['-C', tmp, 'sparse-checkout', 'set', docsDir])
+  }
   run(['-C', tmp, 'checkout', '--quiet', ref])
   const dir = join(tmp, docsDir)
   return existsSync(dir) ? dir : null
@@ -174,6 +177,19 @@ function main() {
   // 2. Each source's templates + nav fragment.
   for (const src of sources) {
     const contentDir = resolveContentDir(src)
+    if (src.format === 'mintlify') {
+      // Keep rendered snapshots outside Vellum's template tree. Their owning
+      // repositories have already generated and type-checked these pages.
+      const dest = join(STAGING, '.sites', src.mount)
+      cpSync(contentDir, dest, {
+        recursive: true,
+        filter: p => !['.git', 'node_modules', 'scripts', 'docs-src'].includes(basename(p)) && !p.endsWith('.vel'),
+      })
+      const config = JSON.parse(readFileSync(join(dest, 'docs.json'), 'utf8'))
+      writeFileSync(join(NAV_DIR, `${src.mount}.json`), JSON.stringify({ source: src.name, navigation: config.navigation }))
+      log(`${src.name}: copied published site to ${relative(ROOT, dest)}`)
+      continue
+    }
     const navName = src.nav ?? 'nav.json'
     const navFile = join(contentDir, navName)
     const dest = join(STAGING, src.mount)

@@ -15,8 +15,7 @@ concurrency:
   group: deploy-dist
   cancel-in-progress: false
 
-# The default GITHUB_TOKEN is only ever read here; pushing to dist and cloning
-# source repos use the App installation token minted below.
+# Checkout uses GITHUB_TOKEN; separate App tokens read sources and publish dist.
 permissions:
   contents: read
 
@@ -31,26 +30,24 @@ jobs:
           echo "owner=${GITHUB_REPOSITORY%/*}" >> "$GITHUB_OUTPUT"
           echo "name=${GITHUB_REPOSITORY#*/}" >> "$GITHUB_OUTPUT"
 
-      - name: Generate GitHub App token
-        id: app-token
+      - name: Generate read-only source token
+        id: source-token
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ steps.parse-repo.outputs.owner }}
-          # The push to dist and the source clones need repository contents
-          # only; withhold every other permission the App installation holds.
-          permission-contents: write
+          permission-contents: read
           # Add each source repo from scripts/sources.json here so the sparse
           # clone in sync-docs can reach it.
           repositories: |
-            ${{ steps.parse-repo.outputs.name }}
             cli-beta
             fusor-v2
+            docs
 
       - uses: actions/checkout@v4
         with:
-          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v4
 
@@ -67,7 +64,7 @@ jobs:
         # while Vellum extracts types from the installed package versions.
         env:
           DOCS_SOURCE_MODE: git
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          DOCS_GH_TOKEN: ${{ steps.source-token.outputs.token }}
 
       - name: Record the OpenAPI spec version this build saw
         # The aggregator serves a strong SHA-256 ETag. openapi-watch.yml
@@ -87,33 +84,28 @@ jobs:
             echo "::warning::no ETag from the aggregator; stamp omitted"
           fi
 
+      - name: Generate dist publish token
+        id: publish-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ steps.parse-repo.outputs.owner }}
+          permission-contents: write
+          repositories: ${{ steps.parse-repo.outputs.name }}
+
       - name: Push to dist branch
+        env:
+          DIST_TOKEN: ${{ steps.publish-token.outputs.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Force-add the generated navigation (gitignored, but needed on dist)
-          git add -f docs.json
-          [ -f .openapi-etag ] && git add -f .openapi-etag
-
-          # Force-add all Vellum-generated files (gitignored, but needed on dist).
-          # Template list comes from the assembled tree (.vellum-src), not docs-src,
-          # since sources may be pulled from other repos. May be empty while no
-          # source is registered, so guard against an argument-less `git add`.
-          vel_out=$(find .vellum-src -name '*.vel' | sed 's|^.vellum-src/||;s|\.vel$||')
-          if [ -n "$vel_out" ]; then
-            git add -f $vel_out
-          fi
-
-          # Source assets bypass Vellum; keep aligned with scripts/sources.json.
-          git add -f asyncapi/fusor-v2.yaml
-
-          # Force-add the generated problem catalogue. It is not Vellum output,
-          # so the *.vel glob above does not cover it.
-          git add -f problems
-
-          # Force-add custom llms.txt generator output (also gitignored)
-          git add -f llms.txt llms-full.txt llms-*.txt
+          # Publish the assembled site as the root of dist. Source files and
+          # unprefixed Beta pages stay on main and never enter the deployment.
+          [ ! -f .openapi-etag ] || cp .openapi-etag site/.openapi-etag
+          git read-tree --empty
+          git --work-tree=site add --all --force
 
           # Commit onto a detached HEAD so main is untouched
           TREE=$(git write-tree)
@@ -121,5 +113,5 @@ jobs:
           COMMIT=$(git commit-tree "$TREE" -p "$PARENT" \
             -m "build: generate docs from $(git rev-parse --short HEAD)")
 
-          git push "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}.git" \
+          git push "https://x-access-token:${DIST_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
             "$COMMIT":refs/heads/dist --force

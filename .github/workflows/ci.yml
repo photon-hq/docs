@@ -7,6 +7,9 @@ on:
   schedule:
     - cron: "0 8 * * *" # Every day at 8:00 UTC
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -37,22 +40,23 @@ jobs:
           echo "owner=${GITHUB_REPOSITORY%/*}" >> "$GITHUB_OUTPUT"
           echo "name=${GITHUB_REPOSITORY#*/}" >> "$GITHUB_OUTPUT"
 
-      - name: Generate GitHub App token
-        id: app-token
+      - name: Generate read-only source token
+        id: source-token
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ steps.parse-repo.outputs.owner }}
+          permission-contents: read
           # Keep in sync with scripts/sources.json and deploy-dist.yml.
           repositories: |
-            ${{ steps.parse-repo.outputs.name }}
             cli-beta
             fusor-v2
+            docs
 
       - uses: actions/checkout@v4
         with:
-          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v4
 
@@ -69,7 +73,7 @@ jobs:
         run: pnpm docs:generate
         env:
           DOCS_SOURCE_MODE: git
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          DOCS_GH_TOKEN: ${{ steps.source-token.outputs.token }}
 
       - name: Typecheck documentation code blocks
         run: pnpm typecheck:docs

@@ -11,3 +11,6 @@ docs-src/
 *.vel
 
 AGENTS.md
+
+# Preview and validate from site/ after docs:generate.
+site/

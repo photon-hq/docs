@@ -21,114 +21,124 @@
   },
   "favicon": "/favicon-128x128.png",
   "navigation": {
-    "tabs": [
+    "versions": [
       {
-        "tab": "Overview",
-        "groups": [
-          {
-            "group": "Get started",
-            "pages": [
-              "index"
-            ]
-          }
-        ],
-        "global": {
-          "anchors": [
-            {
-              "anchor": "Blog",
-              "href": "https://photon.codes/blog",
-              "icon": "newspaper"
-            }
-          ]
-        }
+        "$source": "maintain",
+        "version": "Maintain"
       },
       {
-        "tab": "Messaging",
-        "groups": [
+        "version": "Beta",
+        "default": true,
+        "tabs": [
           {
-            "group": "Get started",
-            "pages": [
-              "messaging/index"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Cookbooks",
-        "groups": [
-          {
-            "group": "Get started",
-            "pages": [
-              "cookbooks/index"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "CLI",
-        "groups": [
-          {
-            "$source": "photon-cli",
-            "group": "Get started"
-          },
-          {
-            "$source": "photon-cli",
-            "group": "Projects"
-          },
-          {
-            "$source": "photon-cli",
-            "group": "Account"
-          },
-          {
-            "$source": "photon-cli",
-            "group": "Compliance"
-          },
-          {
-            "$source": "photon-cli",
-            "group": "Reference"
-          }
-        ]
-      },
-      {
-        "tab": "API Reference",
-        "anchors": [
-          {
-            "anchor": "API Endpoints",
-            "icon": "code",
+            "tab": "Overview",
             "groups": [
               {
                 "group": "Get started",
                 "pages": [
-                  "api-reference/index"
+                  "index"
                 ]
-              },
-              {
-                "group": "Problems",
-                "pages": [
-                  "problems/handling-errors",
-                  "problems/catalog"
-                ]
-              },
-              {
-                "group": "Endpoints",
-                "openapi": {
-                  "source": "https://api.staging.photon.codes/openapi.json",
-                  "directory": "api-reference"
+              }
+            ],
+            "global": {
+              "anchors": [
+                {
+                  "anchor": "Blog",
+                  "href": "https://photon.codes/blog",
+                  "icon": "newspaper"
                 }
+              ]
+            }
+          },
+          {
+            "tab": "Messaging",
+            "groups": [
+              {
+                "group": "Get started",
+                "pages": [
+                  "messaging/index"
+                ]
               }
             ]
           },
           {
-            "anchor": "WebSocket",
-            "icon": "plug",
+            "tab": "Cookbooks",
             "groups": [
               {
-                "$source": "fusor-ws",
-                "group": "WebSocket protocol"
+                "group": "Get started",
+                "pages": [
+                  "cookbooks/index"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "CLI",
+            "groups": [
+              {
+                "$source": "photon-cli",
+                "group": "Get started"
               },
               {
-                "$source": "fusor-ws",
-                "group": "Frame reference"
+                "$source": "photon-cli",
+                "group": "Projects"
+              },
+              {
+                "$source": "photon-cli",
+                "group": "Account"
+              },
+              {
+                "$source": "photon-cli",
+                "group": "Compliance"
+              },
+              {
+                "$source": "photon-cli",
+                "group": "Reference"
+              }
+            ]
+          },
+          {
+            "tab": "API Reference",
+            "anchors": [
+              {
+                "anchor": "API Endpoints",
+                "icon": "code",
+                "groups": [
+                  {
+                    "group": "Get started",
+                    "pages": [
+                      "api-reference/index"
+                    ]
+                  },
+                  {
+                    "group": "Problems",
+                    "pages": [
+                      "problems/handling-errors",
+                      "problems/catalog"
+                    ]
+                  },
+                  {
+                    "group": "Endpoints",
+                    "openapi": {
+                      "source": "https://api.staging.photon.codes/openapi.json",
+                      "directory": "api-reference"
+                    }
+                  }
+                ]
+              },
+              {
+                "anchor": "WebSocket",
+                "icon": "plug",
+                "groups": [
+                  {
+                    "$source": "fusor-ws",
+                    "group": "WebSocket protocol"
+                  },
+                  {
+                    "$source": "fusor-ws",
+                    "group": "Frame reference"
+                  }
+                ]
               }
             ]
           }
@@ -171,6 +181,11 @@
       "github": "https://github.com/photon-hq",
       "linkedin": "https://www.linkedin.com/company/photonhq",
       "discord": "https://discord.gg/4c3VJzDfNA"
+    }
+  },
+  "seo": {
+    "metatags": {
+      "canonical": "https://photon-staging.mintlify.site"
     }
   }
 }

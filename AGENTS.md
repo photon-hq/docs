@@ -7,8 +7,8 @@
 - Pages are MDX files with YAML frontmatter.
 - Site configuration lives in `docs.base.json`; `docs.json` is generated.
 - Run `pnpm install`, then `pnpm docs:generate` before previewing.
-- Run `mint dev` to preview locally.
-- Run `mint validate` and `mint broken-links` before publishing.
+- Run `mint dev` from the generated `site/` directory to preview locally.
+- Run `mint validate` and `mint broken-links` from `site/` before publishing.
 - Use Node.js 24 for the build pipeline and Mintlify CLI commands.
 
 ## Content ownership
@@ -44,7 +44,12 @@ Rules:
   `.gitignore`, and the repo added to the `repositories:` list in both workflows.
 - A source's optional `assets` maps source-relative files to site-relative output
   paths. `docs:sync` copies their bytes without templating. Ignore these outputs
-  on `main` and explicitly stage them in the `deploy-dist` workflow.
+  on `main` and include them in the assembled `site/` output. The deploy
+  workflow publishes that directory as the root of `dist`.
+- The `maintain` source is a published Mintlify snapshot from `photon-hq/docs`
+  `dist`. Its `docs.json` supplies the navigation; it does not need a new
+  `nav.json` or changes in the production repository. Never edit the synced
+  `.vellum-src/.sites/` snapshot or generated `site/` output.
 - Treat the existing `photon-hq/docs` site as reference material, not as the
   structure for this rewrite.
 
@@ -56,6 +61,9 @@ Rules:
   stays owned by this repo while page lists stay owned by the source.
 - Add every visible page to the navigation, either directly in `docs.base.json`
   or in the owning source's `nav.json`.
+- A `{"$source": "maintain", "version": "Maintain"}` marker inserts the
+  published site's navigation. Beta stays independently authored here and is
+  mounted at `/beta` when `docs:export` assembles `site/`.
 - Group names in a source's `nav.json` are a cross-repo contract. `build-nav`
   hard-fails on a marker whose group is missing, and sources are pulled at their
   `ref` at build time — so renaming a group in a source repo breaks this build

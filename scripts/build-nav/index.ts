@@ -26,12 +26,14 @@ interface Source {
 
 interface NavFragment {
   source: string
-  groups: { group: string, [k: string]: unknown }[]
+  groups?: { group: string, [k: string]: unknown }[]
+  navigation?: Record<string, unknown>
 }
 
 interface Marker {
   $source: string
   group?: string
+  version?: string
 }
 
 function isMarker(node: unknown): node is Marker {
@@ -55,9 +57,17 @@ function resolveMarker(marker: Marker, fragments: Map<string, NavFragment>): unk
   const fragment = fragments.get(marker.$source)
   if (!fragment)
     throw new Error(`nav: no fragment for source "${marker.$source}" (is it synced? does sources.json list it?)`)
-  if (marker.group === undefined)
+  if (marker.version !== undefined) {
+    if (!fragment.navigation)
+      throw new Error(`nav: source "${marker.$source}" has no site navigation`)
+    return [{ version: marker.version, ...fragment.navigation }]
+  }
+  if (marker.group === undefined) {
+    if (!fragment.groups)
+      throw new Error(`nav: source "${marker.$source}" has no groups`)
     return fragment.groups
-  const group = fragment.groups.find(g => g.group === marker.group)
+  }
+  const group = fragment.groups?.find(g => g.group === marker.group)
   if (!group)
     throw new Error(`nav: source "${marker.$source}" has no group "${marker.group}"`)
   return [group]
