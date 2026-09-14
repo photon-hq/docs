@@ -23,3 +23,6 @@ llms.txt
 llms-full.txt
 llms-*.txt
 
+
+# Rendered docs-v2 site, synced from its dist branch.
+/v2/

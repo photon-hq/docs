@@ -13,6 +13,20 @@ This repo is an **aggregator**: some doc areas are authored here in [`docs-src/`
 
 Navigation works the same way: [`docs.json`](docs.json) is **generated** by `scripts/build-nav` from [`docs.base.json`](docs.base.json) (the site skeleton) plus a `nav.json` fragment contributed by each source. A source can route selected subdirectories to separate mounts, so it can own pages such as `/integrations/*` and `/best-practices/*` without changing their public URLs. Don't edit `docs.json` directly — edit `docs.base.json` or the fragment.
 
+## Documentation versions
+
+This repository hosts both versions on one Mintlify site. Docs v1 keeps its
+existing URLs; Docs v2 lives under `/v2` (publicly `/docs/v2`).
+
+Docs v2 is authored in `photon-hq/docs-v2`. Its build exports a rendered `site/`
+directory with a `nav.json` fragment, versioned page links, API directories, and
+assets. `docs:sync` imports that directory from the `dist` branch into the
+gitignored `v2/` directory. Do not edit those synced files here.
+
+For local development, run `pnpm docs:generate` in `../docs-v2` first, then here.
+CI uses the published `dist` export. After v2 publishes a new export, it sends
+`docs-v2-docs` to rebuild this combined site.
+
 ## How to edit
 
 1. **Edit the source, not the output.** Sources are `.mdx.vel` files in [`docs-src/`](docs-src/) (this repo) or the source repo docs directory configured in [`scripts/sources.json`](scripts/sources.json). The rendered `.mdx` files and `docs.json` at the repo root are build artifacts — gitignored on `main`, only present on the `dist` branch. Don't edit them directly; they get overwritten on every deploy.

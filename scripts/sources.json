@@ -19,6 +19,16 @@
           "mount": "best-practices"
         }
       ]
+    },
+    {
+      "name": "docs-v2",
+      "mount": "v2",
+      "repo": "photon-hq/docs-v2",
+      "docsDir": "site",
+      "ref": "dist",
+      "nav": "nav.json",
+      "local": "../docs-v2/site",
+      "format": "rendered"
     }
   ]
 }

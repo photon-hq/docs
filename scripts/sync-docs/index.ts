@@ -31,6 +31,7 @@ interface Source {
   ref?: string | null
   nav?: string
   local?: string
+  format?: 'rendered'
   routes?: SourceRoute[]
 }
 
@@ -174,7 +175,12 @@ function main() {
     const contentDir = resolveContentDir(src)
     const navName = src.nav ?? 'nav.json'
     const navFile = join(contentDir, navName)
-    const dest = join(STAGING, src.mount)
+    const dest = join(src.format === 'rendered' ? ROOT : STAGING, src.mount)
+    if (src.format === 'rendered') {
+      if (!resolve(dest).startsWith(`${ROOT}${sep}`))
+        throw new Error(`source "${src.name}": rendered mount must stay inside the site root`)
+      rmSync(dest, { recursive: true, force: true })
+    }
     const routes = src.routes ?? []
 
     cpSync(contentDir, dest, {

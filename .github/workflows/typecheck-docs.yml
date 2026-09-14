@@ -25,6 +25,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Test documentation tooling
+        run: pnpm test
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -44,6 +47,7 @@ jobs:
           repositories: |
             ${{ steps.parse-repo.outputs.name }}
             spectrum-ts
+            docs-v2
 
       - uses: actions/checkout@v4
         with:

@@ -9,3 +9,6 @@ drafts/
 node_modules/
 *.vel
 CLAUDE.md
+
+# Navigation fragment consumed by build-nav.
+v2/nav.json

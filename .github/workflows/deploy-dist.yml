@@ -4,8 +4,12 @@ on:
   push:
     branches: [main]
   repository_dispatch:
-    types: [spectrum-cloud-release, spectrum-ts-docs]
+    types: [spectrum-cloud-release, spectrum-ts-docs, docs-v2-docs]
   workflow_dispatch:
+
+concurrency:
+  group: deploy-dist
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -28,6 +32,7 @@ jobs:
           repositories: |
             ${{ steps.parse-repo.outputs.name }}
             spectrum-ts
+            docs-v2
 
       - uses: actions/checkout@v4
         with:
@@ -57,6 +62,9 @@ jobs:
 
           # Force-add the generated navigation (gitignored, but needed on dist)
           git add -f docs.json
+
+          # Rendered v2 pages and assets bypass Vellum.
+          git add -f v2
 
           # Force-add all Vellum-generated files (gitignored, but needed on dist).
           # Template list comes from the assembled tree (.vellum-src), not docs-src,

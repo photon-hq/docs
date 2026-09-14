@@ -25,7 +25,9 @@ interface Source {
 
 interface NavFragment {
   source: string
-  groups: { group: string, [k: string]: unknown }[]
+  groups?: { group: string, [k: string]: unknown }[]
+  tabs?: unknown[]
+  redirects?: unknown[]
 }
 
 interface Marker {
@@ -54,9 +56,13 @@ function resolveMarker(marker: Marker, fragments: Map<string, NavFragment>): unk
   const fragment = fragments.get(marker.$source)
   if (!fragment)
     throw new Error(`nav: no fragment for source "${marker.$source}" (is it synced? does sources.json list it?)`)
-  if (marker.group === undefined)
-    return fragment.groups
-  const group = fragment.groups.find(g => g.group === marker.group)
+  if (marker.group === undefined) {
+    const entries = fragment.tabs ?? fragment.groups
+    if (!entries)
+      throw new Error(`nav: source "${marker.$source}" has neither tabs nor groups`)
+    return entries
+  }
+  const group = fragment.groups?.find(g => g.group === marker.group)
   if (!group)
     throw new Error(`nav: source "${marker.$source}" has no group "${marker.group}"`)
   return [group]
@@ -85,7 +91,10 @@ function walk(node: unknown, fragments: Map<string, NavFragment>): unknown {
 function main() {
   const base = JSON.parse(readFileSync(BASE, 'utf8'))
   const fragments = loadFragments()
-  const merged = walk(base, fragments)
+  const merged = walk(base, fragments) as Record<string, unknown>
+  const redirects = [...(base.redirects ?? []), ...[...fragments.values()].flatMap(fragment => fragment.redirects ?? [])]
+  if (redirects.length)
+    merged.redirects = redirects
   writeFileSync(OUT, `${JSON.stringify(merged, null, 2)}\n`)
   process.stdout.write(`wrote docs.json (merged ${fragments.size} nav fragment(s))\n`)
 }

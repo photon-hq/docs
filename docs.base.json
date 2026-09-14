@@ -21,177 +21,191 @@
   },
   "favicon": "/favicon-128x128.png",
   "navigation": {
-    "tabs": [
+    "versions": [
       {
-        "tab": "Spectrum",
-        "groups": [
+        "version": "Docs v1",
+        "default": true,
+        "tabs": [
           {
-            "$source": "spectrum-ts",
-            "group": "Get started"
-          },
-          {
-            "$source": "spectrum-ts",
-            "group": "Core concepts"
-          },
-          {
-            "$source": "spectrum-ts",
-            "group": "Content"
-          },
-          {
-            "$source": "spectrum-ts",
-            "group": "Providers"
-          },
-          {
-            "$source": "spectrum-ts",
-            "group": "Advanced"
-          },
-          {
-            "$source": "spectrum-ts",
-            "group": "Integrations"
-          },
-          {
-            "$source": "spectrum-ts",
-            "group": "Best Practices"
-          },
-          {
-            "$source": "spectrum-ts",
-            "group": "Troubleshooting"
-          }
-        ]
-      },
-      {
-        "tab": "CLI",
-        "groups": [
-          {
-            "group": "Getting Started",
-            "pages": [
-              "cli/overview",
-              "cli/installation",
-              "cli/authentication"
-            ]
-          },
-          {
-            "group": "Commands",
-            "pages": [
-              "cli/projects",
-              "cli/spectrum",
-              "cli/billing",
-              "cli/profile-and-utilities"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Webhooks",
-        "groups": [
-          {
-            "group": "Getting Started",
-            "pages": [
-              "webhooks/overview",
-              "webhooks/quickstart",
-              "webhooks/events"
-            ]
-          },
-          {
-            "group": "Implementation",
-            "pages": [
-              "webhooks/verifying-signatures",
-              "webhooks/delivery",
-              "webhooks/managing-webhooks",
-              "webhooks/troubleshooting"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Low-level SDKs",
-        "groups": [
-          {
-            "group": "Advanced Kits",
-            "pages": [
+            "tab": "Spectrum",
+            "groups": [
               {
-                "group": "iMessage",
-                "icon": "apple",
+                "$source": "spectrum-ts",
+                "group": "Get started"
+              },
+              {
+                "$source": "spectrum-ts",
+                "group": "Core concepts"
+              },
+              {
+                "$source": "spectrum-ts",
+                "group": "Content"
+              },
+              {
+                "$source": "spectrum-ts",
+                "group": "Providers"
+              },
+              {
+                "$source": "spectrum-ts",
+                "group": "Advanced"
+              },
+              {
+                "$source": "spectrum-ts",
+                "group": "Integrations"
+              },
+              {
+                "$source": "spectrum-ts",
+                "group": "Best Practices"
+              },
+              {
+                "$source": "spectrum-ts",
+                "group": "Troubleshooting"
+              }
+            ]
+          },
+          {
+            "tab": "CLI",
+            "groups": [
+              {
+                "group": "Getting Started",
                 "pages": [
-                  "advanced-kits/imessage/getting-started",
-                  "advanced-kits/imessage/messages",
-                  "advanced-kits/imessage/chats",
-                  "advanced-kits/imessage/groups",
-                  "advanced-kits/imessage/attachments",
-                  "advanced-kits/imessage/polls",
-                  "advanced-kits/imessage/addresses",
-                  "advanced-kits/imessage/locations",
-                  "advanced-kits/imessage/events",
-                  "advanced-kits/imessage/error-handling"
+                  "cli/overview",
+                  "cli/installation",
+                  "cli/authentication"
                 ]
               },
               {
-                "group": "WhatsApp Business",
-                "icon": "whatsapp",
+                "group": "Commands",
                 "pages": [
-                  "advanced-kits/whatsapp/getting-started",
-                  "advanced-kits/whatsapp/messages",
-                  "advanced-kits/whatsapp/interactive-messages",
-                  "advanced-kits/whatsapp/templates",
-                  "advanced-kits/whatsapp/events",
-                  "advanced-kits/whatsapp/media",
-                  "advanced-kits/whatsapp/error-handling"
-                ]
-              },
-              {
-                "group": "Legacy",
-                "icon": "hat-cowboy",
-                "pages": [
-                  "legacy/imessage"
+                  "cli/projects",
+                  "cli/spectrum",
+                  "cli/billing",
+                  "cli/profile-and-utilities"
                 ]
               }
             ]
           },
           {
-            "group": "Opensource Kits",
-            "pages": [
-              "opensource/imessage-kit"
+            "tab": "Webhooks",
+            "groups": [
+              {
+                "group": "Getting Started",
+                "pages": [
+                  "webhooks/overview",
+                  "webhooks/quickstart",
+                  "webhooks/events"
+                ]
+              },
+              {
+                "group": "Implementation",
+                "pages": [
+                  "webhooks/verifying-signatures",
+                  "webhooks/delivery",
+                  "webhooks/managing-webhooks",
+                  "webhooks/troubleshooting"
+                ]
+              }
             ]
           },
           {
-            "group": "Utilities",
-            "pages": [
-              "utilities/heif2jpeg"
+            "tab": "Low-level SDKs",
+            "groups": [
+              {
+                "group": "Advanced Kits",
+                "pages": [
+                  {
+                    "group": "iMessage",
+                    "icon": "apple",
+                    "pages": [
+                      "advanced-kits/imessage/getting-started",
+                      "advanced-kits/imessage/messages",
+                      "advanced-kits/imessage/chats",
+                      "advanced-kits/imessage/groups",
+                      "advanced-kits/imessage/attachments",
+                      "advanced-kits/imessage/polls",
+                      "advanced-kits/imessage/addresses",
+                      "advanced-kits/imessage/locations",
+                      "advanced-kits/imessage/events",
+                      "advanced-kits/imessage/error-handling"
+                    ]
+                  },
+                  {
+                    "group": "WhatsApp Business",
+                    "icon": "whatsapp",
+                    "pages": [
+                      "advanced-kits/whatsapp/getting-started",
+                      "advanced-kits/whatsapp/messages",
+                      "advanced-kits/whatsapp/interactive-messages",
+                      "advanced-kits/whatsapp/templates",
+                      "advanced-kits/whatsapp/events",
+                      "advanced-kits/whatsapp/media",
+                      "advanced-kits/whatsapp/error-handling"
+                    ]
+                  },
+                  {
+                    "group": "Legacy",
+                    "icon": "hat-cowboy",
+                    "pages": [
+                      "legacy/imessage"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Opensource Kits",
+                "pages": [
+                  "opensource/imessage-kit"
+                ]
+              },
+              {
+                "group": "Utilities",
+                "pages": [
+                  "utilities/heif2jpeg"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "API reference",
+            "groups": [
+              {
+                "group": "Getting Started",
+                "pages": [
+                  "api-reference/introduction",
+                  "api-reference/oauth",
+                  "api-reference/rate-limit"
+                ]
+              },
+              {
+                "group": "Dashboard API",
+                "openapi": "api-reference/dashboard-openapi.json"
+              },
+              {
+                "group": "Spectrum API",
+                "openapi": "https://spectrum.photon.codes/openapi/json"
+              }
             ]
           }
-        ]
+        ],
+        "global": {
+          "anchors": [
+            {
+              "anchor": "Blog",
+              "href": "https://photon.codes/blog",
+              "icon": "newspaper"
+            }
+          ]
+        }
       },
       {
-        "tab": "API reference",
-        "groups": [
+        "version": "Docs v2",
+        "tabs": [
           {
-            "group": "Getting Started",
-            "pages": [
-              "api-reference/introduction",
-              "api-reference/oauth",
-              "api-reference/rate-limit"
-            ]
-          },
-          {
-            "group": "Dashboard API",
-            "openapi": "api-reference/dashboard-openapi.json"
-          },
-          {
-            "group": "Spectrum API",
-            "openapi": "https://spectrum.photon.codes/openapi/json"
+            "$source": "docs-v2"
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Blog",
-          "href": "https://photon.codes/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
+    ]
   },
   "logo": {
     "light": "/logo/light.svg",
