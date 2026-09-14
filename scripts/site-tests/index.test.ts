@@ -38,8 +38,8 @@ test('syncs a rendered version, resolves navigation and redirects, and exports b
   file('export/asyncapi/events.yaml', 'asyncapi: 3.0.0\n')
   file('v2/stale.mdx', 'obsolete generated page')
   json('docs.base.json', { name: 'Photon', navigation: { versions: [
-    { version: 'Maintain', default: true, tabs: [{ tab: 'CLI', groups: [{ group: 'Start', pages: ['cli'] }] }] },
-    { version: 'Beta', tabs: [{ $source: 'docs-v2' }] },
+    { version: 'Maintain', tabs: [{ tab: 'CLI', groups: [{ group: 'Start', pages: ['cli'] }] }] },
+    { version: 'Beta', default: true, tabs: [{ $source: 'docs-v2' }] },
   ] } })
   const run = (name: string) => execFileSync(process.execPath, [join(root, 'scripts', name, 'index.ts')], {
     cwd: root,
