@@ -15,7 +15,7 @@
       "mount": "websocket",
       "repo": "photon-hq/fusor-v2",
       "docsDir": "docs/public",
-      "ref": "a05326df8920875579928dad47f00e760507e567",
+      "ref": "c638237a341af14d9fdbf2a67ba8b5c22d7b4277",
       "nav": "nav.json",
       "local": "../fusor-v2/docs/public",
       "assets": {
