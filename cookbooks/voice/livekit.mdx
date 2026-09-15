@@ -1,0 +1,384 @@
+---
+title: "Connect Photon to LiveKit with SIP"
+sidebarTitle: "LiveKit"
+description: "Receive calls in LiveKit rooms and place outgoing calls through your Photon number, with optional LiveKit agent dispatch."
+---
+
+Connect a Photon number to your LiveKit application. You configure SIP trunks
+in LiveKit and a Voice profile in Photon, then check both call directions.
+Each phone caller joins a LiveKit room as a SIP participant. Other participants
+can be people using your app, SDK clients that process audio, or voice agents.
+A LiveKit agent is optional.
+
+Incoming call: caller → Photon number → Voice profile → LiveKit inbound trunk
+→ LiveKit room.
+
+Outgoing call: LiveKit room → outbound trunk → Photon → recipient's phone.
+
+This walkthrough uses the dashboards for configuration and the LiveKit CLI
+to start an outgoing test call. You can configure either direction independently.
+
+## Before you start
+
+- A Photon project with an eligible **SMS number** or **dedicated iMessage
+  line**. Shared iMessage assignments do not support Voice.
+- Permission to manage the project's Voice profiles.
+- A LiveKit Cloud project.
+- For two-way audio testing, a LiveKit application or SDK client that can join
+  the call's room, publish audio, and play the phone participant's audio. You
+  can use a deployed LiveKit agent instead.
+- A separate phone you can answer during testing.
+- For the outgoing test, the [LiveKit CLI](https://docs.livekit.io/reference/developer-tools/livekit-cli/)
+  installed on your computer.
+
+Your application supplies the other side of the conversation. A room with
+only a phone participant has nobody to talk to. See LiveKit's
+[rooms, participants, and tracks](https://docs.livekit.io/intro/basics/rooms-participants-tracks/)
+for the underlying model.
+
+Keep these two numbers distinct throughout the walkthrough:
+
+| Number | Where you use it |
+| --- | --- |
+| **Photon number** | LiveKit's trunk **Numbers** fields. It receives incoming calls and supplies the caller ID for outgoing calls. |
+| **Test phone number** | The outgoing call's `sip_call_to` field. Use a separate phone you can answer, including `+` and the country code. |
+
+## 1. Prepare your Photon Voice profile
+
+Select your Photon project and open **Voice**. Under **Lines**, find the Photon
+number you want to connect and open its SIP Voice profile.
+
+If your project has no default profile, select **Set up default**, choose
+**SIP**, and select **Create profile**.
+
+![Create the default Photon Voice profile with SIP selected.](/images/cookbooks/voice/get-started/create-default-profile.webp)
+
+Lines without an additional profile follow the default profile. Changes to a
+profile affect new calls on every line using it. If your number uses an
+additional profile, configure that profile.
+
+The two call settings have separate purposes:
+
+| Photon section | Purpose |
+| --- | --- |
+| **Inbound calls** | Send calls arriving at your Photon number to LiveKit. |
+| **Outbound calls** | Provide the SIP credential LiveKit uses to call through Photon. |
+
+Leave Photon's **Media encryption** at **Auto** for this walkthrough. In
+LiveKit, choose **Media encryption enabled** on each trunk. These settings
+allow encrypted audio when available. **TLS** encrypts SIP signaling; **SRTP**
+encrypts the audio.
+
+To require encrypted audio, enable **Require encrypted calls** in Photon's
+media settings and use **Media encryption required** in LiveKit. Every
+configured direction must use TLS and support SRTP.
+[LiveKit secure trunking](https://docs.livekit.io/telephony/features/secure-trunking/).
+
+## 2. Create a LiveKit inbound trunk
+
+For outgoing calls only, skip to [Prepare Photon outbound credentials](#5-prepare-photon-outbound-credentials).
+
+In your LiveKit project, open **Telephony → SIP trunks** and select
+**Create new trunk**.
+
+![LiveKit SIP trunks page with Create new trunk highlighted.](/images/cookbooks/voice/livekit/create-trunk.webp)
+
+Select **Inbound**. Enter your Photon number and a recognizable name, such as
+`Photon Voice Demo`.
+
+![LiveKit inbound trunk form with Photon Voice Demo entered, the number concealed, and Optional settings expanded.](/images/cookbooks/voice/livekit/inbound-trunk-form.webp)
+
+The screenshot shows the initial **Media encryption disabled** setting.
+Change it to **Media encryption enabled** before creating the trunk.
+
+| LiveKit field | What to enter |
+| --- | --- |
+| **Trunk name** | `Photon Voice Demo`, or your own label. |
+| **Numbers** | Your Photon number, including `+` and the country code. |
+| **Allowed addresses** | Leave empty when using the username/password authentication configured below. |
+| **Media encryption (SRTP)** | **Media encryption enabled**. |
+| **Include headers** | **No headers** for this walkthrough. |
+| **Enable Krisp** | Leave unchecked for the initial test. |
+
+### Add incoming-call authentication
+
+Choose a username and a strong password for Photon to use when connecting to
+this LiveKit trunk. Save them securely; you will enter the same pair in Photon.
+
+Open **JSON editor** and add `authUsername` and `authPassword` to the trunk
+object. Keep the number and media setting you configured. A complete example
+looks like this; replace both placeholders before saving:
+
+```json
+{
+  "name": "Photon Voice Demo",
+  "numbers": ["YOUR_PHOTON_NUMBER"],
+  "authUsername": "photon-livekit",
+  "authPassword": "YOUR_INBOUND_PASSWORD",
+  "mediaEncryption": "SIP_MEDIA_ENCRYPT_ALLOW"
+}
+```
+
+Select **Create**. The trunk appears under **Inbound**.
+[LiveKit inbound trunks](https://docs.livekit.io/telephony/accepting-calls/inbound-trunk/).
+
+## 3. Route incoming calls to rooms
+
+A SIP dispatch rule selects the room for calls arriving on your inbound trunk.
+You need this rule even when you do not use an agent. Open **Telephony →
+Dispatch rules** and select **Create new dispatch rule**.
+
+![LiveKit Dispatch rules page with Create new dispatch rule highlighted.](/images/cookbooks/voice/livekit/create-dispatch-rule.webp)
+
+Use these settings:
+
+| LiveKit field | What to enter |
+| --- | --- |
+| **Rule name** | `Photon inbound calls`, or your own label. |
+| **Rule type** | **Individual**, which creates a separate room for each call. |
+| **Room prefix** | `photon-`. |
+| **Agent dispatch** | Leave without an agent for the room-only setup. If an agent entry is present, select **Remove agent**. |
+
+Under **Inbound routing**, select **Trunks** and check the inbound trunk you
+just created. The example uses **Photon Voice Demo**.
+
+![LiveKit Individual dispatch rule with the photon- prefix, no agent added, and the Photon Voice Demo trunk selected.](/images/cookbooks/voice/livekit/dispatch-room.webp)
+
+The screenshot's rule name is only a label. The **Add agent** button shows
+that no agent entry has been added to this rule.
+
+Your number is provided by Photon, so the **Phone numbers** tab can show
+**No phone numbers owned**. Use the **Trunks** tab for this connection.
+
+Select **Create**, or **Update** when editing an existing rule, as shown.
+Each incoming call gets a separate room whose name starts with `photon-`.
+Your application must join that call's actual room name, including its suffix.
+
+If your application uses predetermined room names, choose a
+[LiveKit room routing option](https://docs.livekit.io/telephony/accepting-calls/dispatch-rule/#dispatch-to-rooms)
+that matches your application instead.
+
+<Accordion title="Optional: dispatch a LiveKit agent">
+  To have an agent join each incoming call, use an existing deployed agent in
+  the same LiveKit project. If you need one, follow the
+  [LiveKit voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai/).
+
+  Edit the dispatch rule and select **Add agent**:
+
+  | LiveKit field | What to enter |
+  | --- | --- |
+  | **Agent name** | Your deployed agent's exact dispatch name. The example uses `photon_voice_demo`. |
+  | **Deployment** | The deployment to run, such as **production**. |
+  | **Restart policy** | Keep **Restart on failure**, as shown. |
+  | **Dispatch metadata** | Leave empty for this test. |
+
+  ![Optional agent dispatch with photon_voice_demo and the production deployment.](/images/cookbooks/voice/livekit/dispatch-agent.webp)
+
+  Keep your inbound trunk selected and save the rule. LiveKit will dispatch
+  the agent into each new room created by this rule.
+</Accordion>
+
+## 4. Set Photon's receiving destination
+
+Copy your project's **SIP URI** from LiveKit's **SIP trunks** page or project
+settings. It resembles `sip:YOUR_PROJECT.sip.livekit.cloud`.
+
+Return to the Photon Voice profile used by your number. Under **Inbound
+calls**, select **Enable inbound**.
+
+![Photon inbound form showing the SIP address, transport, username, and password fields before configuration.](/images/cookbooks/voice/retell/voice_inbound_2.webp)
+
+Fill in the form:
+
+| Photon field | What to enter |
+| --- | --- |
+| **SIP address** | Your LiveKit SIP URI with TLS selected, such as `sips:YOUR_PROJECT.sip.livekit.cloud`. Use the actual hostname you copied. |
+| **Transport** | **TLS**. The empty form above initially shows **UDP**. |
+| **SIP username** | The LiveKit inbound trunk's `authUsername`, such as `photon-livekit`. |
+| **SIP password** | The matching `authPassword` you chose for that trunk. |
+
+Photon formats a TLS address as `sips:`. If you paste a URI ending in
+`;transport=tls`, it can be reformatted to the equivalent `sips:` address.
+Check that **TLS** remains selected.
+
+Use the project's SIP endpoint here. The dispatch rule supplies the room
+routing and any optional agent dispatch. LiveKit's WebSocket URL, which begins
+with `wss://`, is a separate endpoint used by your application.
+
+Select **Enable inbound**. For an existing configuration, update the
+destination and credentials, then check the saved values.
+
+### Check an incoming call
+
+1. Call your Photon number from your separate phone.
+2. Open **Telephony → Calls** in LiveKit and inspect the call's session to find
+   its room name. It should start with `photon-` for the rule above.
+3. Connect your LiveKit application to that exact room using an
+   [access token](https://docs.livekit.io/frontends/reference/tokens-grants/)
+   for the room. Publish your microphone audio and
+   [subscribe to and play the phone participant's audio](https://docs.livekit.io/transport/media/subscribe/).
+   If you configured agent dispatch, the agent can supply this audio instead.
+4. Confirm the phone and your application or agent can hear each other, then
+   hang up and check the call's outcome.
+
+A room or SIP participant appearing confirms routing progressed. Confirm
+two-way audio with your application or agent before treating the test as complete.
+
+## 5. Prepare Photon outbound credentials
+
+Skip the remaining setup if you only receive calls.
+
+Open **Outbound calls** in the Photon profile used by your number. For a new
+credential, select **SHA-256 (recommended)** under **Digest algorithm**, then
+select **Enable outbound**.
+
+![Photon outbound settings with SHA-256 selected and Enable outbound highlighted.](/images/cookbooks/voice/retell/voice_outbound_1.webp)
+
+Photon opens **Save the outbound password**. Copy the password to a secure
+location, then select **I saved it**. Photon displays it once. If outbound
+is already enabled, use the existing details and your saved password.
+
+Copy the **Username**, **SIP connection** server, and **TLS** port. The production
+TLS connection is `sip.photon.codes:5061`; use the values displayed in your own
+profile so the endpoint and credential belong to the same environment.
+
+**Authentication realm** can differ from the SIP server. Use **SIP connection**
+for LiveKit's address.
+
+These generated credentials authenticate LiveKit to Photon for outgoing calls.
+The incoming-call credentials you chose earlier authenticate Photon to LiveKit.
+
+## 6. Create a LiveKit outbound trunk
+
+In LiveKit, return to **Telephony → SIP trunks**, select **Create new trunk**,
+and choose **Outbound**.
+
+![LiveKit outbound trunk form before the address, transport, and numbers are entered.](/images/cookbooks/voice/livekit/outbound-trunk-form.webp)
+
+Enter the connection details, then expand **Optional settings** to configure
+media encryption and authentication:
+
+| LiveKit field | What to enter |
+| --- | --- |
+| **Trunk name** | `Photon Voice outbound`, or your own label. |
+| **Address** | The Photon SIP server and TLS port, such as `sip.photon.codes:5061`. Enter the hostname and port without a `sip:` or `sips:` prefix. |
+| **Transport** | **TLS**. |
+| **Numbers** | Your Photon number, including `+` and the country code. This is the outgoing caller ID. |
+| **Media encryption (SRTP)** | **Media encryption enabled**. |
+| **Username** | Your Photon profile's outbound **Username**. |
+| **Password** | The outbound password you saved from Photon. |
+
+Select **Create**. Copy the **Trunk ID**, which begins with `ST_`, from the
+**Outbound** list. You will use it to start the call.
+[LiveKit outbound trunks](https://docs.livekit.io/telephony/making-calls/outbound-trunk/).
+
+## 7. Place an outgoing test call
+
+Create a SIP participant to call a phone through the outbound trunk. The
+recipient joins the room you specify. Your application or an optional agent
+exchanges audio with that phone participant.
+
+### Connect the CLI to your project
+
+Follow the [LiveKit CLI installation guide](https://docs.livekit.io/reference/developer-tools/livekit-cli/)
+if needed. In your terminal, run:
+
+```bash
+lk cloud auth
+```
+
+Authorize the project containing your trunks. If it is already
+linked, continue with:
+
+```bash
+lk project list
+```
+
+Use the configured project's **Name** in the call command below.
+
+### Prepare the room's audio
+
+Choose the room your recipient should join, such as `photon-outbound-test-1`.
+Connect your application to that room in the same LiveKit project, with audio
+publishing and playback enabled. Use that exact name for `YOUR_ROOM_NAME` below.
+For another test, choose a new room and connect your application to it.
+
+<Accordion title="Optional: use a LiveKit agent for the test">
+  You can use a deployed agent to supply the room's audio. Before starting
+  the phone call, replace the placeholders and run:
+
+  ```bash
+  lk --project "YOUR_LIVEKIT_PROJECT" dispatch create \
+    --agent-name "YOUR_AGENT_NAME" \
+    --room "YOUR_ROOM_NAME"
+  ```
+
+  Use your agent's exact dispatch name and the same project and room name
+  as the outgoing call. This requests the agent in the room; the SIP
+  participant command below starts dialing. For another test, use the new
+  room name in both commands.
+
+  The inbound SIP dispatch rule applies to incoming calls. It does not
+  dispatch an agent for this outgoing test.
+</Accordion>
+
+### Start the call
+
+Replace these placeholders before running the block in Bash or zsh:
+
+| Placeholder | Value |
+| --- | --- |
+| `YOUR_LIVEKIT_PROJECT` | The project name from `lk project list`. |
+| `YOUR_ROOM_NAME` | The room your application or agent joined, such as `photon-outbound-test-1`. |
+| `YOUR_OUTBOUND_TRUNK_ID` | The `ST_` ID of the outbound trunk. |
+| `YOUR_TEST_PHONE_NUMBER` | Your separate phone's number, including `+` and the country code. |
+
+<Note>
+  **Call your separate test phone.** Your Photon number is already configured
+  as caller ID on the trunk. Putting it in `sip_call_to` calls that Photon line
+  and can route back through your inbound dispatch rule.
+</Note>
+
+Paste the whole block after replacing the placeholders:
+
+```bash
+lk --project "YOUR_LIVEKIT_PROJECT" sip participant create - <<'JSON'
+{
+  "sip_trunk_id": "YOUR_OUTBOUND_TRUNK_ID",
+  "sip_call_to": "YOUR_TEST_PHONE_NUMBER",
+  "room_name": "YOUR_ROOM_NAME",
+  "participant_identity": "test-recipient",
+  "wait_until_answered": true
+}
+JSON
+```
+
+With `wait_until_answered` set to `true`, the CLI waits for the call to be
+answered before returning participant details.
+[LiveKit outbound calls](https://docs.livekit.io/telephony/making-calls/outbound-calls/).
+
+Answer your test phone. Check the Photon caller ID and confirm audio in both
+directions with your application or agent. End the call and check its outcome in
+LiveKit **Telephony → Calls**.
+
+For calls triggered by your application, use LiveKit's
+[SIP participant API](https://docs.livekit.io/telephony/making-calls/outbound-calls/).
+If you also use an agent, request it with the
+[agent dispatch API](https://docs.livekit.io/agents/server/agent-dispatch/).
+
+## Troubleshooting
+
+| What you see | What to check |
+| --- | --- |
+| An incoming call does not reach the expected room | Check the Photon destination and credentials, the LiveKit inbound trunk's number, and the dispatch rule's selected trunk and room settings. |
+| The room has a phone participant but nobody responds | Connect your application to the exact room and enable audio publishing, subscription, and playback, or configure optional agent dispatch. |
+| **No phone numbers owned** in the dispatch form | Select **Trunks** and choose the Photon inbound trunk. |
+| An outgoing call returns to your inbound setup | Replace `sip_call_to` with a separate test phone number. |
+| SIP authentication fails | Check the credential direction: LiveKit inbound credentials go into Photon inbound; Photon outbound credentials go into LiveKit outbound. Use the current saved passwords. |
+| The outgoing call cannot connect | Check the Photon **SIP connection** hostname, **TLS**, matching port, recipient number, and reported SIP response in LiveKit **Telephony → Calls**. |
+| Audio is missing or works in one direction | Check the room name, microphone permissions, audio publishing, subscription, and playback in your application. Inspect the call's media details and encryption settings on both platforms. |
+| An optional agent does not join, or **No named agents found** appears | Check that the agent is deployed in the same project, its exact dispatch name and deployment match, and dispatch targets the call's room. A browser preview alone does not establish deployment for calls. |
+
+Record the attempt time and SIP call ID when investigating a failed call.
+See [LiveKit's SIP troubleshooting guide](https://docs.livekit.io/reference/telephony/troubleshooting/)
+for interpreting the call's signaling and media details.

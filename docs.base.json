@@ -70,7 +70,8 @@
                 "group": "Voice",
                 "pages": [
                   "cookbooks/voice/retell",
-                  "cookbooks/voice/elevenlabs"
+                  "cookbooks/voice/elevenlabs",
+                  "cookbooks/voice/livekit"
                 ]
               }
             ]
