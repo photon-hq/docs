@@ -10,6 +10,9 @@ docs-src/
 .vellum-src/
 *.vel
 
+# Draft cookbooks, review exports, and internal test notes
+plans/
+
 AGENTS.md
 
 # Preview and validate from site/ after docs:generate.
