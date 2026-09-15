@@ -1,0 +1,264 @@
+---
+title: "Set up Photon with ElevenLabs"
+sidebarTitle: "ElevenLabs"
+description: "Connect your ElevenLabs agent to a Photon number with SIP trunking for incoming and outgoing calls."
+---
+
+Connect your existing ElevenLabs agent to a Photon number through SIP trunking.
+Your number stays with Photon. You configure the receiving destination in
+Photon and import the number into ElevenLabs.
+
+This walkthrough configures both incoming and outgoing calls.
+
+Incoming call: caller → Photon number → Voice profile → ElevenLabs agent.
+
+Outgoing call: ElevenLabs agent → Photon SIP connection → recipient's phone.
+
+This walkthrough uses **TLS** for SIP signaling. Audio encryption is a separate
+setting on each platform. ElevenLabs provides a **From SIP Trunk** import option
+for this connection; you do not need its Twilio integration.
+[ElevenLabs SIP trunking](https://elevenlabs.io/docs/eleven-agents/phone-numbers/sip-trunking).
+
+## Before you start
+
+- A Photon project with an eligible **SMS number** or **dedicated iMessage line**.
+  Shared iMessage assignments do not support Voice.
+- Permission to manage the project's Voice profiles.
+- An ElevenLabs account with a published voice agent ready to use.
+- A separate phone you can use to check incoming and outgoing calls.
+
+Use your own agent, prompt, and voice. If you need an agent, follow the
+[ElevenLabs quickstart](https://elevenlabs.io/docs/eleven-agents/quickstart).
+You can check its behavior with **Preview** in the agent editor before
+connecting your number.
+
+## 1. Prepare your Photon Voice profile
+
+Select your Photon project and open **Voice**. Under **Lines**, find the number
+you want to connect.
+
+Open the SIP Voice profile used by that number. If your project has no default
+profile, select **Set up default**.
+
+![Photon Voice page with an eligible number under Lines and Set up default highlighted.](/images/cookbooks/voice/elevenlabs/photon-voice.png)
+
+Select **SIP**, then select **Create profile**.
+
+![Create the default profile with SIP selected.](/images/cookbooks/voice/get-started/create-default-profile.png)
+
+Lines without an additional profile follow the default profile. Changes to a
+profile affect new calls on every line using it. If your number already uses
+an additional profile, configure that profile.
+
+The profile has two independent sections:
+
+| Photon section | Purpose |
+| --- | --- |
+| **Inbound calls** | Deliver calls arriving at your Photon number to ElevenLabs. |
+| **Outbound calls** | Provide the SIP credentials ElevenLabs uses to place calls through Photon. |
+
+### Check media encryption
+
+For this walkthrough, use **Auto** in Photon and **Allowed** in ElevenLabs.
+These settings allow audio encryption to be negotiated. They do not require
+every call to use encrypted audio.
+
+If you require encrypted audio, use **Change** beside Photon's **Media
+encryption**, enable **Require encrypted calls**, and select **Save**. Use
+**Required** in the corresponding ElevenLabs media settings. Both directions
+must support encrypted audio, and this walkthrough uses TLS for both.
+
+## 2. Prepare Photon outbound credentials
+
+For outgoing calls, ElevenLabs needs the outbound credential from the Photon
+profile used by your number. If outbound is already enabled, use its current
+connection details and the password you saved.
+
+To enable it, open **Outbound calls**. For a new credential, select
+**SHA-256 (recommended)** under **Digest algorithm**, then select
+**Enable outbound**.
+
+![Photon Outbound calls with SHA-256 selected and Enable outbound highlighted.](/images/cookbooks/voice/elevenlabs/enable-outbound.png)
+
+Photon opens **Save the outbound password**. Copy the password to a secure
+location, then select **I saved it**. Photon displays this password once.
+
+![Photon one-time password dialog with the password concealed.](/images/cookbooks/voice/elevenlabs/save-outbound-password.png)
+
+Keep these values available for the ElevenLabs form:
+
+| Photon value | Where you use it in ElevenLabs |
+| --- | --- |
+| Server and port under **SIP connection** | **Outbound Configuration → Address**, such as `sip.photon.codes:5061` |
+| **TLS** connection | **Transport Type: TLS**; check the corresponding port in Photon |
+| **Username** | **Outbound Configuration → SIP Trunk Username** |
+| Saved outbound password | **Outbound Configuration → SIP Trunk Password** |
+
+![Photon outbound settings with SHA-256 selected and sip.photon.codes shown as the SIP connection, with TLS on port 5061.](/images/cookbooks/voice/elevenlabs/photon-outbound-configured.png)
+
+Copy the connection details from the same environment and profile as the
+credential. **Authentication realm** can differ from the SIP server; use the
+server under **SIP connection** for **Address**. The ElevenLabs form shown here
+has no separate realm or port field.
+
+These are SIP credentials, separate from your Photon API key. If you lose the
+password, use **Rotate** in Photon and update every service using that
+credential.
+
+## 3. Import your Photon number into ElevenLabs
+
+In ElevenLabs, open **Phone Numbers** under **Deploy**. Select **Import number**.
+
+![ElevenLabs Phone Numbers page with Import number highlighted.](/images/cookbooks/voice/elevenlabs/import-number.png)
+
+Choose **From SIP Trunk**.
+
+![Import number menu with From SIP Trunk highlighted.](/images/cookbooks/voice/elevenlabs/choose-sip-trunk.png)
+
+In **Import SIP Trunk**, enter:
+
+| Field | What to enter |
+| --- | --- |
+| **Label** | A name you will recognize, such as `Photon demo`. |
+| **Phone number** | Your Photon number in international format, including `+` and the country code. |
+
+### Configure incoming calls
+
+**Inbound Configuration** controls calls that Photon sends to ElevenLabs.
+Use these settings for this walkthrough:
+
+| ElevenLabs field | Setting used in this walkthrough |
+| --- | --- |
+| **Media Encryption** | **Allowed** |
+| **Allowed Numbers (Optional)** | Leave empty; the saved configuration shows **All numbers**. |
+| **Allowed Source IP Addresses (Optional)** | `0.0.0.0/0`; the saved configuration shows **All addresses**. |
+| **Remote Domains (Optional)** | Leave empty for the initial configuration. |
+| **SIP Trunk Username** | Leave empty for this walkthrough. |
+| **SIP Trunk Password** | Leave empty for this walkthrough. |
+
+![ElevenLabs import form showing the Photon label and number, Allowed media encryption, and optional inbound controls.](/images/cookbooks/voice/elevenlabs/inbound-configuration.png)
+
+This configuration has no source-IP restriction or inbound SIP password.
+If your deployment requires authenticated incoming calls, define credentials
+in ElevenLabs' **Inbound Configuration** and enter the same pair in Photon's
+**Inbound calls** settings. That is a separate pair from Photon's generated
+outbound credential.
+
+### Configure outgoing calls
+
+Scroll to **Outbound Configuration**. This is where ElevenLabs sends calls
+through Photon.
+
+| ElevenLabs field | What to enter |
+| --- | --- |
+| **Address** | The SIP server and TLS port from your Photon profile, such as `sip.photon.codes:5061`. Omit the `sip:` or `sips:` URI prefix. |
+| **Transport Type** | **TLS** |
+| **Media Encryption** | **Allowed** for this walkthrough |
+| **Enabled Codecs** | Keep **G.722**, **PCMU**, and **PCMA** selected, as shown. |
+| **Custom Headers (Optional)** | Leave empty for this walkthrough. |
+| **SIP Trunk Username** | Your Photon profile's outbound **Username**. |
+| **SIP Trunk Password** | The outbound password you saved from Photon. |
+
+![ElevenLabs outbound settings with sip.photon.codes:5061, TLS, Allowed media encryption, the three codecs selected, and the existing SIP credential.](/images/cookbooks/voice/elevenlabs/outbound-configuration.png)
+
+Although ElevenLabs labels authentication optional, supply both Photon SIP
+credential fields when importing the number. The screenshot shows an existing
+number being edited, where leaving **SIP Trunk Password** empty keeps the saved
+password. On first import, enter the password you saved from Photon.
+
+Select **Import**. The number appears in **Phone Numbers** with
+**Provider: SIP Trunk**. Open it to configure the agent.
+
+![Imported Photon demo number with SIP Trunk as the provider and no agent assigned yet.](/images/cookbooks/voice/elevenlabs/number-imported.png)
+
+## 4. Assign your incoming-call agent
+
+On the imported number's page, open the **Agent** dropdown, initially set to
+**No agent**, and select the agent that should answer incoming calls.
+
+![Saved Photon number with Photon test agent assigned and Follow traffic split selected.](/images/cookbooks/voice/elevenlabs/phone-setup.png)
+
+The example uses **Photon test agent**. Your agent can have any name or prompt.
+If **Branch** appears, **Follow traffic split** uses your agent's configured
+traffic distribution. Select a specific branch if your setup calls for one.
+[ElevenLabs agent versioning](https://elevenlabs.io/docs/eleven-agents/operate/versioning).
+
+Check that the intended agent appears in the saved number settings. The agent
+you choose for an outgoing call is selected separately in its call dialog.
+
+## 5. Set the receiving destination in Photon
+
+Return to the Photon Voice profile used by your number. Under **Inbound
+calls**, select **Enable inbound** if it is not already enabled.
+
+| Photon field | Value |
+| --- | --- |
+| **SIP address** when enabling, or **Destination** when editing | `sips:sip.rtc.elevenlabs.io:5061` |
+| **Transport** | **TLS** |
+| Inbound SIP credentials | Leave empty to match the ElevenLabs inbound configuration above. |
+
+If you configured inbound authentication in ElevenLabs, enter that same
+username and password here instead. On an enabled Photon profile, use **Add**
+beside **No SIP credentials** to enter them.
+
+Complete **Enable inbound** when creating the destination. For an existing
+destination, edit the field and move focus out of it to save. Check that the
+saved value and **TLS** remain visible.
+
+![Photon inbound destination set to sips:sip.rtc.elevenlabs.io:5061, with TLS selected and no SIP credentials.](/images/cookbooks/voice/elevenlabs/photon-inbound-configured.png)
+
+Call your Photon number from another phone. Check that your selected
+ElevenLabs agent answers, hears you, and responds audibly. End the call and
+check that it finishes in ElevenLabs.
+
+## 6. Place an outgoing call
+
+In ElevenLabs, open the imported Photon number and select **Outbound call**.
+
+In **Outbound Call**:
+
+1. Select the agent you want to use for this call.
+2. Leave **Branch** at **Follow traffic split**, or choose the intended branch.
+3. Enter the recipient's number in **Phone number**, including `+` and the
+   country code. This is the phone that will receive the call.
+4. Select **Send Test Call**.
+
+![Outbound Call dialog with Photon test agent selected, the default branch option, and the recipient number field.](/images/cookbooks/voice/elevenlabs/outbound-call-dialog.png)
+
+Answer the recipient phone and check its caller ID, the agent's greeting,
+audio in both directions, and call termination. A saved trunk or a request
+acceptance message alone does not establish that the recipient received a call.
+
+## Review your configuration
+
+| Connection | Check these settings |
+| --- | --- |
+| Incoming calls | Your Photon number is imported in ElevenLabs, **Agent** and **Branch** select the intended agent, and Photon inbound points to `sips:sip.rtc.elevenlabs.io:5061` with **TLS**. |
+| Outgoing calls | Photon outbound uses **SHA-256**. ElevenLabs has the profile's **SIP connection** and TLS port, such as `sip.photon.codes:5061`, with **TLS** and the matching outbound username and password. |
+| Audio | Photon uses **Auto**, and both ElevenLabs media settings use **Allowed** for this walkthrough. |
+
+Confirm that both directions use the same Photon number and Voice profile.
+
+## Troubleshooting
+
+| What you see | What to check |
+| --- | --- |
+| The agent works in **Preview**, but an incoming phone call fails | Confirm the imported Photon number, assigned agent and branch, the profile used by the line, and the Photon receiving destination. |
+| The outgoing request is rejected | Record the exact message. Check the selected agent and branch, recipient number, and required call fields. |
+| The UI shows “initiated”, but the phone does not ring | Look for the attempt in **Conversations** and inspect its outcome. Check the saved outbound hostname against the Photon profile's connection details. |
+| SIP authentication fails | Check the outbound username and password, their environment, and that **SHA-256** is selected in Photon. These are separate from API keys and ElevenLabs inbound credentials. |
+| The call connects with missing or one-way audio | Check the negotiated codec and both platforms' media-encryption settings. |
+| TLS hangup or transfer requests fail | Check certificate validation and **Remote Domains**, following ElevenLabs' TLS guidance. |
+| You lost the Photon outbound password | Rotate it in Photon and update the connected services with the replacement. |
+
+**Remote Domains** is used for TLS certificate validation. If later requests
+such as hangup fail certificate validation, add the domain covered by your
+Photon SIP server's certificate. See
+[ElevenLabs' TLS guidance](https://elevenlabs.io/docs/eleven-agents/phone-numbers/sip-trunking#follow-up-connections).
+
+The imported number page includes **SIP Messages**. When enabled, it records
+SIP signaling for troubleshooting; the page also points to messages in the
+conversation history. Capture the attempt time, conversation ID when one
+exists, and the reported SIP response before changing connection settings.
+
+See [ElevenLabs SIP troubleshooting](https://elevenlabs.io/docs/eleven-agents/phone-numbers/sip-trunking#troubleshooting).

@@ -10,4 +10,7 @@ docs-src/
 .vellum-src/
 *.vel
 
+# Draft cookbooks, review exports, and internal test notes
+plans/
+
 AGENTS.md
