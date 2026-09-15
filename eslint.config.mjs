@@ -1,6 +1,7 @@
 import antfu from '@antfu/eslint-config'
 
 export default antfu({
+  ignores: ['site/**'],
   typescript: true,
   vue: false,
   jsonc: false,

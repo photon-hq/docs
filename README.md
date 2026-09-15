@@ -17,12 +17,13 @@ the repo they document and pulled in at build time.
 
 Registered sources:
 
-| Source       | Repo                                                        | Mount       | Owns                                                                            |
-| ------------ | ----------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------- |
-| `photon-cli` | [photon-hq/cli-beta](https://github.com/photon-hq/cli-beta) | `cli`       | The whole **CLI** tab, from that repo's `docs/` on `main`                       |
-| `fusor-ws`   | [photon-hq/fusor-v2](https://github.com/photon-hq/fusor-v2) | `websocket` | The **WebSocket** anchor under **API Reference**, from `docs/public/` on `main` |
+| Source       | Repo                                                        | Mount          | Owns                                                                            |
+| ------------ | ----------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------- |
+| `photon-cli` | [photon-hq/cli-beta](https://github.com/photon-hq/cli-beta) | `cli`          | The whole **CLI** tab, from that repo's `docs/` on `main`                       |
+| `fusor-ws`   | [photon-hq/fusor-v2](https://github.com/photon-hq/fusor-v2) | `websocket`    | The **WebSocket** anchor under **API Reference**, from `docs/public/` on `main` |
+| `maintain`   | [photon-hq/docs](https://github.com/photon-hq/docs)         | existing paths | The published **Maintain** version, from `dist`                                 |
 
-The **API Reference** tab has two anchors: **API Endpoints** for the REST
+Beta's **API Reference** tab has two anchors: **API Endpoints** for the REST
 introduction, problems, and endpoints, and **WebSocket** for the protocol
 guides and frame reference. The **Blog** anchor is scoped to **Overview**.
 
@@ -63,18 +64,21 @@ which runs:
    source's docs directory at its configured `ref`). Each source's `nav.json` is
    copied to `.vellum-src/.nav/<mount>.json`. Optional `assets` mappings copy
    source-relative files directly to site-relative paths, without templating;
-   missing files fail the build.
-2. `scripts/build-problems` — reads the OpenAPI schema and writes `problems.mdx`,
-   the catalogue of every RFC 9457 problem type the API publishes, appended to
-   the hand-owned prose in `scripts/build-problems/intro.mdx`.
+   missing files fail the build. The rendered Maintain snapshot is stored
+   separately under `.vellum-src/.sites/` and is not processed by Vellum.
+2. `scripts/build-problems` — reads the OpenAPI schema and writes
+   `problems/catalog.mdx`, using the hand-owned prose in
+   `scripts/build-problems/catalog-header.mdx`.
 3. `scripts/build-nav` — merges `docs.base.json` with those nav fragments and
    writes `docs.json`.
 4. `vellum build` — renders `.vellum-src/**/*.mdx.vel` to `.mdx` at the repo root.
-5. `scripts/llms-generator` — writes `llms.txt`, `llms-full.txt`, and a
-   per-tab `llms-<tab>.txt` from `docs.json` and the rendered pages.
+5. `scripts/export-site` — assembles the complete staging site in `site/`, with
+   Maintain's existing paths and Beta under `/beta`.
+6. `scripts/llms-generator` — writes `site/llms.txt`, `site/llms-full.txt`, and
+   per-tab exports from `site/docs.json` and the assembled pages.
 
 `docs.json`, `.vellum-src/`, `llms*.txt`, `problems/` (except its hand-owned
-`handling-errors.mdx`), generated `.mdx`, and `asyncapi/fusor-v2.yaml` are
+`handling-errors.mdx`), generated `.mdx`, `site/`, and `asyncapi/fusor-v2.yaml` are
 gitignored. **Don't edit `docs.json` directly** — edit `docs.base.json` or
 the source's `nav.json` fragment.
 
@@ -130,7 +134,7 @@ supplemented from `scripts/build-problems/chassis.json`; grouping lives in
 7. For files that must be served unchanged, add an `assets` mapping such as
    `{"asyncapi.yaml": "asyncapi/fusor-v2.yaml"}`. Both paths must stay within
    their respective source and site roots. Add the output to `.gitignore` and
-   the explicit `git add -f` asset list in `deploy-dist.yml` so it reaches `dist`.
+   the site export so it reaches `dist`.
 
 Note the split: prose comes from the source repo's `ref` (usually `main`), while
 type symbols come from the package version installed _here_. The nightly CI run
@@ -142,6 +146,7 @@ Use Node.js 24, then run:
 
 ```bash
 pnpm docs:generate
+cd site
 npx --yes mint@latest dev
 ```
 
@@ -154,7 +159,9 @@ Before pushing changes, run:
 ```bash
 pnpm lint
 pnpm test
+pnpm docs:generate
 pnpm typecheck:docs
+cd site
 npx --yes mint@latest validate
 npx --yes mint@latest broken-links
 ```
@@ -162,7 +169,29 @@ npx --yes mint@latest broken-links
 ## Deployment
 
 `.github/workflows/deploy-dist.yml` runs the pipeline with
-`DOCS_SOURCE_MODE=git` and force-pushes the generated tree to the **`dist`**
-branch, which is the branch Mintlify serves. `main` is never modified by the
-build. It triggers on push to `main`, on `workflow_dispatch`, and on
-`repository_dispatch` from a source repo.
+`DOCS_SOURCE_MODE=git` and publishes the contents of `site/` at the root of
+**`dist`**, which Mintlify serves at `https://photon-staging.mintlify.site`.
+`main` is never modified by the build. It triggers on push to `main`, on
+`workflow_dispatch`, and on `repository_dispatch` from a source repo.
+
+## Combined staging site
+
+This repository owns the combined site and its **Maintain / Beta** selector.
+**Beta** is the default and lives under `/beta`. The Beta pages are authored
+here or pulled from the SDK sources declared in `scripts/sources.json`.
+
+**Maintain** comes from the published `photon-hq/docs` `dist` branch and retains
+its existing page paths. `docs:sync` stores that snapshot under the gitignored
+`.vellum-src/.sites/maintain/` directory. Its complete navigation is inserted at
+the `{"$source": "maintain", "version": "Maintain"}` marker in `docs.base.json`.
+The production repository needs no changes for this staging build.
+
+`docs:export` assembles both versions into the gitignored `site/` directory,
+including `site/docs.json`, pages, assets, and the staging site's styles.
+It prefixes Beta's documentation links, snippet imports, and API directories
+without rewriting code examples. LLM exports are generated from the assembled
+site, with links to the staging hostname. Edit the original sources, never the
+assembled files. Preview and validate from `site/`.
+
+Beta has not been published, so this build adds no compatibility redirects
+from `/v2`. Published problem type identifiers still resolve to the catalogue.
