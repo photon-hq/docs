@@ -71,7 +71,8 @@
                 "pages": [
                   "cookbooks/voice/retell",
                   "cookbooks/voice/elevenlabs",
-                  "cookbooks/voice/livekit"
+                  "cookbooks/voice/livekit",
+                  "cookbooks/voice/twilio"
                 ]
               }
             ]

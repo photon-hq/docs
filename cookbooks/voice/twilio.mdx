@@ -1,0 +1,511 @@
+---
+title: "Set up Photon with Twilio"
+sidebarTitle: "Twilio"
+description: "Connect a Photon number to Twilio with SIP for incoming and outgoing calls."
+---
+
+Connect your Photon number to Twilio for incoming and outgoing calls. Start by
+preparing your Photon Voice profile, then configure Twilio and connect the two.
+The walkthrough covers incoming-call forwarding to a phone and outgoing calls
+through Photon.
+
+Incoming call: caller → Photon number → Twilio SIP Domain → destination phone.
+
+Outgoing call: Twilio application → Photon → recipient's phone.
+
+## Before you start
+
+- A Photon project with an existing, voice-eligible **SMS number**, **WhatsApp number**, or
+  **dedicated iMessage line**. Shared iMessage assignments do not support Voice.
+- Permission to manage the project's Voice profiles.
+- A Twilio account with permission to configure SIP Domains and call handling.
+- For call forwarding, a destination phone you can answer and a caller ID that
+  is either a Twilio number or a number verified with Twilio. To display your
+  Photon number, verify it with Twilio first.
+- To test forwarding, access to a separate calling endpoint, such as another
+  person's phone or a computer app that can call phone numbers. Two physical
+  phones are not required.
+
+Purchase or set up your Photon number before starting this cookbook. Have your
+SMS number, WhatsApp number, or dedicated iMessage line available in the Photon
+project you will use for the connection.
+
+User-entered names in the screenshots are examples. Choose your own labels
+and use your own numbers. Copy generated credentials and assigned connection addresses
+from your account; the field instructions identify values that must match.
+
+For incoming calls only, complete steps 1–7. For outgoing calls only, prepare
+your profile in step 1, then skip to [Make an outgoing call through Photon](#8-make-an-outgoing-call-through-photon).
+
+## 1. Prepare your Photon Voice profile
+
+### Choose a profile
+
+A Voice profile stores the call settings for one or more numbers in your project.
+
+| Profile | Which numbers use it | When to use it |
+| --- | --- | --- |
+| **Default profile** | Numbers without an additional profile, including newly added numbers. They follow it automatically. | Use it for the settings your numbers share. A project can have one default. |
+| **Additional profile** | Only the numbers you explicitly assign to it. | Use it when selected numbers need a different provider, agent, or call configuration. |
+
+Create the default before creating an additional profile. Creating an additional
+profile does not move any numbers; assign the intended numbers to it afterward.
+
+The screenshots below show default-profile setup. If your number uses an
+additional profile, apply the connection settings to that profile instead.
+Changes affect new calls on every number using the edited profile. Check its
+**Lines** count to see how many numbers share the settings.
+
+### Open Voice
+
+Select your Photon project and open **Voice** in the sidebar. Under **Lines**,
+find the number you want to connect to Twilio.
+
+If your number already uses a SIP Voice profile, open that profile and continue
+to **Understand your profile** below. Otherwise, create the default profile.
+
+### Create the default profile
+
+In the **Default profile** section, select **Set up default**.
+
+![Photon Voice page showing a number under Lines and the Set up default button highlighted.](/images/cookbooks/voice/retell/Voice1.webp)
+
+On **Create the default profile**, select **SIP**, then **Create profile**.
+
+![Create the default profile page with SIP selected and Create profile highlighted.](/images/cookbooks/voice/retell/create-default-profile.webp)
+
+### Understand your profile
+
+After creation, Photon opens **Default profile**. The example shows **SIP** as
+the protocol and **1 line** using the profile.
+
+![Photon Default profile showing SIP, one line, and inbound and outbound calls not enabled.](/images/cookbooks/voice/retell/Voice3.webp)
+
+The profile has two independent call settings:
+
+| Section | What you will configure |
+| --- | --- |
+| **Inbound calls** | The Twilio SIP address where Photon delivers calls to your number, plus the username and password you create in Twilio. |
+| **Outbound calls** | The credentials Twilio uses to place calls through Photon. Photon provides these credentials. |
+
+Both sections show **Not enabled** in a new profile. You will configure them
+later in this walkthrough. Keep this profile available while you set up Twilio;
+you will return to it for both directions.
+
+## 2. Create a Twilio credential list
+
+Twilio needs a way to check that Photon is allowed to send calls to your
+account. You will create a SIP username and password for this connection.
+
+The receiving platform determines whether you need these credentials. Twilio
+SIP Domains require a credential list, a list of approved source IP addresses,
+or both. This guide uses a credential list, so you will fill in Photon's
+**SIP username** and **SIP password** fields for inbound delivery to Twilio.
+These credentials identify Photon to Twilio; people calling your number dial
+as usual.
+[Twilio authentication requirements](https://www.twilio.com/docs/voice/api/sending-sip).
+
+Twilio stores these login details in a **credential list**: a named collection
+of usernames and passwords allowed to connect. This walkthrough needs one
+entry for Photon. Later, you will select this list on your Twilio SIP Domain
+and enter the same username and password in Photon's **Inbound calls** settings.
+When Photon delivers a call, Twilio checks those details before accepting it.
+
+1. In Twilio Console, open **Communications → Voice → SIP domains**.
+2. Select the **Credential Lists** tab, then **Create Credential List**.
+
+![Twilio Credential Lists tab and Create Credential List button highlighted in order.](/images/cookbooks/voice/twilio/open-credential-lists.webp)
+
+3. Enter a **Credential list friendly name** you will recognize, such as
+   `Photon Voice`. You will use this label to find the list later.
+4. Under **Add credentials**, choose a **Username**, such as `photon`. Save your
+   chosen username; you will enter that exact value in Photon later.
+5. Generate a unique **Password** with at least 12 characters, uppercase and
+   lowercase letters, and a digit. Save it with the username in your password
+   manager; you will need both in Photon.
+6. Select **Create**.
+
+![Twilio Create new credential list form with friendly name, username, password, and Create button.](/images/cookbooks/voice/twilio/create-credential-list.webp)
+
+Your saved list contains the login Photon will use. The screenshot shows
+`Photon Voice` as the list name and `photon` as the username; yours can differ.
+[Twilio credential-list setup](https://www.twilio.com/docs/voice/tutorials/how-to-add-programmability-to-your-existing-sip-network).
+[Twilio password requirements](https://www.twilio.com/docs/voice/api/sending-sip).
+
+![Twilio Photon Voice credential list showing photon under Username.](/images/cookbooks/voice/twilio/credential-list-details.webp)
+
+The list can show **0 Associated SIP Domains** at this point. You will attach
+it to a domain in the next step.
+
+## 3. Create your Twilio SIP Domain
+
+Return to **Communications → Voice → SIP domains**. Select the **SIP Domains**
+tab, then **Create SIP Domain**. This example uses the **United States (US1)**
+region.
+
+![Twilio SIP Domains tab and Create SIP Domain button highlighted in order.](/images/cookbooks/voice/twilio/open-create-sip-domain.webp)
+
+Fill in the fields using your own names and the list you just created:
+
+| Field | What to enter |
+| --- | --- |
+| **SIP domain friendly name** | A descriptive label of your choice, such as `Photon Voice Demo`. |
+| **SIP URI** | An available domain prefix of your choice. The screenshot uses `photon-voice-demo`; the form adds `.sip.twilio.com`. |
+| **IP access control lists** | Leave unselected. This walkthrough uses the username and password you just created to control access. |
+| **Credential lists** | Select the list you created in step 2, using the name you gave it. |
+
+![Twilio SIP Domain form filled with Photon Voice Demo, photon-voice-demo, and the Photon Voice credential list, with IP access control lists unselected.](/images/cookbooks/voice/twilio/create-sip-domain.webp)
+
+The SIP domain name must be globally unique. If your chosen prefix is taken,
+choose another. Copy your full domain for the Photon destination step; the
+friendly name is only a label and does not determine the SIP address.
+
+After selecting the credential list, select **Create**. Next, create the TwiML
+Bin containing your forwarding instructions. You will attach it to this domain
+after saving it.
+
+## 4. Create a TwiML Bin for call forwarding
+
+Your SIP Domain provides an address where Twilio can receive calls. Next, give
+Twilio instructions for what to do when a call arrives.
+
+For call forwarding, you will use a **TwiML Bin**: a small document containing
+call instructions that Twilio hosts for you. TwiML is Twilio's XML format for
+those instructions. This example tells Twilio to dial your destination phone
+and connect the caller when you answer.
+[About TwiML Bins](https://www.twilio.com/docs/serverless/twiml-bins).
+
+### Open TwiML Bins
+
+1. Open **Builder tools → TwiML host & config → TwiML bins** in Twilio Console.
+   You can also open
+   [TwiML Bins directly](https://www.twilio.com/console/twiml-bins).
+
+![Twilio sidebar with Builder tools, TwiML host & config, and TwiML bins highlighted in order.](/images/cookbooks/voice/twilio/open-twiml-bins.webp)
+
+2. Select **Create a new TwiML Bin**, or the **+** button if you already have bins.
+
+### Add your forwarding instructions
+
+1. Enter a **Friendly Name** you will recognize, such as `Photon Voice Demo`.
+   This label identifies the bin when you select it for your SIP Domain. It
+   can differ from your domain's friendly name and your credential list's name.
+2. Replace the **TwiML** editor's contents with the following, including the
+   XML declaration:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Dial callerId="YOUR_CALLER_ID">
+    <Number>YOUR_DESTINATION_NUMBER</Number>
+  </Dial>
+</Response>
+```
+
+![Twilio TwiML Bin creation page with the TwiML editor highlighted and the Friendly Name field and Create button visible.](/images/cookbooks/voice/twilio/create-twiml-bin.webp)
+
+Replace both placeholders before saving:
+
+| Placeholder | What to enter |
+| --- | --- |
+| `YOUR_CALLER_ID` | The number Twilio presents to the recipient. Use a Twilio number or a number you have verified with Twilio. |
+| `YOUR_DESTINATION_NUMBER` | The separate phone number you want Twilio to ring when someone calls your Photon number. |
+
+Use international E.164 format for both values: `+`, country code, and number,
+such as `+12025550123`. For calls received over SIP, Twilio requires an eligible
+caller ID even when the call originally arrived at a Photon number.
+[Twilio caller ID requirements](https://www.twilio.com/docs/voice/twiml/dial#callerid).
+
+3. After replacing both placeholders, check that Twilio reports valid TwiML,
+   then select **Create**.
+[Create a TwiML Bin](https://www.twilio.com/docs/serverless/twiml-bins/getting-started).
+
+Confirm that the bin is saved under your chosen name before continuing. The
+next step selects this saved bin to handle calls to your SIP Domain.
+
+## 5. Connect the TwiML Bin to your SIP Domain
+
+Choose the instructions Twilio will run when Photon delivers a call to your
+SIP Domain. Use the bin you created and saved under your chosen name in
+[step 4](#4-create-a-twiml-bin-for-call-forwarding). Its `<Number>` value
+determines which phone Twilio rings.
+
+The **primary** configuration handles incoming calls normally. The **fallback**
+configuration supplies instructions if Twilio encounters an error retrieving
+or executing the primary instructions, such as a timeout or invalid TwiML.
+[Twilio call control and fallback](https://www.twilio.com/docs/voice/api/sending-sip#fallback-url).
+
+1. Open **Voice → SIP Domains** and select the domain you created.
+2. Under **Voice authentication**, confirm that **Credential lists** shows
+   the list you created in step 2.
+3. Under **Call control configuration**, select **Edit configuration**.
+
+![Twilio Photon Voice Demo domain details showing its SIP URI, Photon Voice credential list, and Edit configuration under Call control configuration.](/images/cookbooks/voice/twilio/sip-domain-details.webp)
+
+4. In **Edit call control configuration**, find **Primary call control configuration**.
+5. Open **Configure method** and select **TwiML bin**.
+
+![Twilio Edit call control configuration dialog with the primary Configure method menu open and TwiML bin listed beneath Webhook.](/images/cookbooks/voice/twilio/choose-twiml-bin.webp)
+
+6. In **TwiML bin**, select your saved forwarding bin by the name you gave it.
+   The screenshot shows `Photon Voice Demo` as an example. Twilio hosts the
+   bin, so you do not need to enter a webhook URL for this method.
+
+![Twilio primary TwiML bin menu with Photon Voice Demo highlighted for selection.](/images/cookbooks/voice/twilio/select-twiml-bin.webp)
+
+If the bin is missing from the menu, return to **TwiML bins** in the same
+Twilio account and confirm that you saved it with **Create** in step 4.
+
+### Set the fallback fields
+
+Twilio documents fallback as optional. If the Console asks you to complete the
+fallback fields before saving, you can reuse the existing bin for this walkthrough:
+
+| Field under **Fallback call control configuration** | What to select |
+| --- | --- |
+| **Backup method** | **TwiML bin** |
+| **TwiML bin** | The same forwarding bin selected above, using your saved bin's name. |
+
+You do not need to create a second bin to match this example. Both settings
+point to the same instructions, so an error in that bin can also cause the
+fallback to fail. To provide different behavior after a primary-handler error,
+you would configure a separate fallback, such as instructions that play an
+unavailability message.
+
+Fallback does not define what happens when the destination phone is busy or
+unanswered. Configure that behavior in your call instructions if you need it.
+
+![Twilio call control configuration with TwiML bin selected as both methods and Photon Voice Demo selected for both primary and fallback.](/images/cookbooks/voice/twilio/primary-and-fallback-bin.webp)
+
+Select **Save**. On the domain's settings page, check that **A call comes in**
+shows your selected bin. If you configured the fallback above, check
+**Primary handler fails** as well.
+
+This connects the SIP Domain to your forwarding instructions. Next, you will
+configure Photon to send incoming calls to the domain using the SIP address
+and the username and password you created earlier.
+
+## 6. Set Photon's receiving destination
+
+In Photon, **Inbound calls** controls where calls arriving at your Photon
+number are delivered. Point it to the Twilio SIP Domain, then supply the login
+from the credential list attached to that domain.
+
+1. Return to the Photon SIP profile you prepared in step 1.
+2. Under **Inbound calls**, select **Enable inbound** if it is not enabled yet.
+3. Enter your Twilio domain in **SIP address**, or **Destination** when editing,
+   and select **TLS** as the transport. Use the full domain copied from Twilio,
+   such as `photon-voice-demo.sip.twilio.com`. Photon displays the example as
+   `sips:photon-voice-demo.sip.twilio.com` with TLS selected.
+4. Enter the credentials you created in Twilio:
+
+| Credential | What to enter |
+| --- | --- |
+| Username | The username inside your Twilio credential list, such as `photon`. |
+| Password | The matching password you created for that username. |
+
+The credential list's friendly name is a label. Use the username inside that
+list and its matching password in Photon so Twilio can authenticate incoming
+calls. In the screenshot, the username is `photon`; enter the one you chose.
+
+If you are enabling inbound calls for the first time, finish with **Enable
+inbound**. If you are adding credentials to an enabled profile, as shown below,
+select **Save credentials**. Entering a username and password in the editor
+does not save them by itself.
+
+![Photon inbound settings with the Twilio destination and TLS selector highlighted, along with username photon, a masked password, and Save credentials.](/images/cookbooks/voice/twilio/photon-inbound-credentials.webp)
+
+After saving, confirm that the profile no longer reports **No SIP credentials**
+and that the destination still contains your Twilio domain with **TLS** selected.
+Photon stores the password without displaying it again.
+
+## 7. Test an incoming call
+
+Use two independent call endpoints: one to call your Photon number and one
+to receive the forwarded call. For example, have someone call from their phone
+and answer on your destination phone, or call from a computer app that supports
+calling phone numbers and answer on your phone. You do not need to own two
+physical phones.
+
+1. From the calling endpoint, call your Photon number.
+2. Confirm that the destination phone specified in your TwiML Bin rings.
+3. Answer and check that both people can hear each other.
+
+The expected path is caller → Photon number → Twilio SIP Domain → destination
+phone. A successful call confirms that Photon can deliver calls to Twilio and
+Twilio can run your forwarding instructions.
+
+### If the call fails
+
+Start by checking the credentials on both sides:
+
+1. In your Twilio SIP Domain, confirm that **Credential lists** includes the
+   list containing the login you created for Photon.
+2. In Photon's **Inbound calls** settings, use that exact username and its
+   matching password. The list name, such as `Photon Voice`, is different from
+   the username, such as `photon`.
+3. Select **Save credentials**, then make another test call.
+
+If you inspect logs, a SIP `407` is an authentication challenge; a subsequent
+`403` indicates rejection. Check credentials and access settings before changing
+the forwarding instructions. The response alone does not identify which setting
+is incorrect.
+[Twilio SIP authentication](https://www.twilio.com/docs/voice/api/sending-sip).
+
+## 8. Make an outgoing call through Photon
+
+Run this part in your computer's terminal. You will send a request to Twilio
+that calls a separate phone through Photon and plays a short message when
+answered. The call instructions are included in the request, so this test does
+not need another TwiML Bin or an outbound configuration page in Twilio Console.
+
+### Enable outbound in Photon
+
+<Warning>
+Twilio requires **MD5 (legacy)** for outbound SIP authentication with Photon.
+Select it even though Photon defaults to **SHA-256 (recommended)**. Keep **TLS**
+as the transport.
+</Warning>
+
+Return to the Photon SIP profile used by your caller number. Under **Outbound
+calls**, select **MD5 (legacy)** for **Digest algorithm**, then select
+**Enable outbound**.
+
+Photon opens **Save the outbound password**. Copy the generated password to
+your password manager, then select **I saved it**. Photon displays it only once.
+
+![Photon one-time outbound password dialog with the password concealed and I saved it highlighted.](/images/cookbooks/voice/retell/voice_outbound_2.webp)
+
+If outbound is already enabled, select **Change** beside **Digest algorithm**,
+choose **MD5 (legacy)**, and select **Save algorithm**. Your existing username
+and password stay unchanged. Changing a profile's algorithm affects every
+service using its outbound credentials; use an additional profile for Twilio
+if another service needs different settings.
+
+Confirm that **Digest algorithm** shows **MD5 (legacy)** before continuing.
+
+![Photon Outbound calls settings with MD5 (legacy) highlighted under Digest algorithm.](/images/cookbooks/voice/twilio/photon-outbound-md5.webp)
+
+If you have lost the password, use **Rotate** in Photon and update each service
+using that profile's credentials with the replacement.
+
+### Gather your connection details
+
+Copy the **Username** from **Outbound calls** and the **SIP connection** hostname
+and **TLS** port from that same profile. Use the saved outbound password.
+For production, the example connection is `sip.photon.codes:5061`.
+**Authentication realm** can differ from the SIP server; use **SIP connection**
+for the destination address.
+
+These Photon-generated credentials let Twilio place calls through Photon.
+The Twilio credential list from step 2 authenticates calls in the other direction.
+
+From your Twilio account dashboard, obtain the **Account SID** and **Auth Token**.
+The commands prompt for the token privately. Use your eligible Photon number
+as `From`; Photon authorizes that number against the profile's outbound
+credentials. For a SIP destination, Twilio puts `From` in the SIP From header.
+The Twilio-verified caller ID required by the earlier forwarding bin applies
+to that bin's phone-network leg.
+[Twilio SIP call parameters](https://www.twilio.com/docs/voice/api/sip-making-calls).
+
+### Set the test values
+
+The commands work in Bash or Zsh. Replace every placeholder, then run:
+
+```sh
+TWILIO_ACCOUNT_SID='YOUR_TWILIO_ACCOUNT_SID'
+PHOTON_SIP_SERVER='YOUR_PHOTON_SIP_HOST:TLS_PORT'
+PHOTON_SIP_USERNAME='YOUR_PHOTON_OUTBOUND_USERNAME'
+PHOTON_NUMBER='YOUR_PHOTON_NUMBER'
+RECIPIENT_NUMBER='YOUR_TEST_PHONE_NUMBER'
+```
+
+| Variable | What to enter |
+| --- | --- |
+| `TWILIO_ACCOUNT_SID` | Your Twilio account identifier, beginning with `AC`. |
+| `PHOTON_SIP_SERVER` | Photon's **SIP connection** hostname and TLS port, such as `sip.photon.codes:5061`. Enter only `hostname:port`. |
+| `PHOTON_SIP_USERNAME` | The outbound **Username** from the Photon profile used by your caller number. |
+| `PHOTON_NUMBER` | Your voice-enabled Photon caller number, in E.164 format, such as `+12025550123`. |
+| `RECIPIENT_NUMBER` | A separate phone you can answer, also in E.164 format. |
+
+Run the following command by itself, paste your saved **Photon outbound SIP
+password**, and press Enter. The input remains hidden:
+
+```sh
+read -rs PHOTON_SIP_PASSWORD
+```
+
+### Place the call
+
+Run the command below. When curl prompts for the password for your Twilio
+Account SID, enter your **Twilio Auth Token**. This sends the call request:
+
+```sh
+printf '%s' "$PHOTON_SIP_PASSWORD" |
+  curl --silent --show-error \
+    "https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls.json" \
+    --user "$TWILIO_ACCOUNT_SID" \
+    --data-urlencode "To=sip:${RECIPIENT_NUMBER}@${PHOTON_SIP_SERVER};transport=tls;secure=true" \
+    --data-urlencode "From=${PHOTON_NUMBER}" \
+    --data-urlencode "SipAuthUsername=${PHOTON_SIP_USERNAME}" \
+    --data-urlencode 'SipAuthPassword@-' \
+    --data-urlencode 'Twiml=<Response><Say>This is a test call from Twilio through Photon.</Say><Hangup/></Response>' \
+    --write-out '\nHTTP %{http_code}\n'
+```
+
+`To` routes the recipient's number through Photon. `transport=tls` encrypts
+SIP signaling, and `secure=true` requests encrypted audio with SRTP.
+`SipAuthUsername` and `SipAuthPassword` authenticate that SIP call. `Twiml`
+tells Twilio what to play after the recipient answers.
+[Twilio SIP calling and encryption](https://www.twilio.com/docs/voice/api/sip-making-calls).
+
+Answer the recipient phone. Confirm that you hear the test message and see
+your Photon number as the caller ID. This test needs one phone to answer;
+the terminal initiates the call.
+
+### Check the result
+
+An HTTP `201` response means Twilio accepted the request. An initial `queued`
+status does not confirm that the phone rang or the call connected. Copy the
+`sid` beginning with `CA` from that response. After the call ends, replace the
+placeholder and run:
+
+```sh
+TWILIO_CALL_SID='YOUR_CALL_SID'
+
+curl --silent --show-error \
+  "https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${TWILIO_CALL_SID}.json" \
+  --user "$TWILIO_ACCOUNT_SID" \
+  --write-out '\nHTTP %{http_code}\n'
+```
+
+Enter your **Twilio Auth Token** when prompted again. Check `status` and
+`duration`; a finished, answered test should report `completed`. Confirm the
+audible message as well as the API status.
+[Twilio call status](https://www.twilio.com/docs/voice/api/call-resource).
+
+If the call fails, use the new call SID and test time when inspecting logs.
+For a SIP `403 Forbidden`, first confirm that the Photon profile's **Digest
+algorithm** is **MD5 (legacy)**.
+Check the outbound username/password, Photon endpoint, and caller number's
+profile next. If the request returns an HTTP error, inspect the
+response's `code` and `message` before placing another call.
+
+When you finish testing, clear the password variable:
+
+```sh
+unset PHOTON_SIP_PASSWORD
+```
+
+## Use your own Twilio call flow
+
+Forwarding gives you a simple way to test the connection. Once it works, you can
+use the same Photon number and SIP Domain with your own Twilio call handling.
+In the domain's **Call control configuration**, set the primary handler to your
+application's webhook, a Twilio Function, or a Studio flow. That handler determines
+what callers hear and where their calls go.
+[Twilio SIP call control](https://www.twilio.com/docs/voice/api/sending-sip).
+
+To connect an AI voice agent, the call handler must also connect the call to your
+agent application. That requires the application's own integration instructions;
+the forwarding bin above does not create or connect an agent.

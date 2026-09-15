@@ -21,8 +21,8 @@ for this connection; you do not need its Twilio integration.
 
 ## Before you start
 
-- A Photon project with an eligible **SMS number** or **dedicated iMessage line**.
-  Shared iMessage assignments do not support Voice.
+- A Photon project with an eligible **SMS number**, **WhatsApp number**, or
+  **dedicated iMessage line**. Shared iMessage assignments do not support Voice.
 - Permission to manage the project's Voice profiles.
 - An ElevenLabs account with a published voice agent ready to use.
 - A separate phone you can use to check incoming and outgoing calls.
@@ -32,13 +32,37 @@ Use your own agent, prompt, and voice. If you need an agent, follow the
 You can check its behavior with **Preview** in the agent editor before
 connecting your number.
 
+User-entered names in the screenshots are examples. Choose your own labels
+and use your own numbers. Copy generated credentials and assigned connection addresses
+from your account; the field instructions identify values that must match.
+
 ## 1. Prepare your Photon Voice profile
+
+### Choose a profile
+
+A Voice profile stores the call settings for one or more numbers in your project.
+
+| Profile | Which numbers use it | When to use it |
+| --- | --- | --- |
+| **Default profile** | Numbers without an additional profile, including newly added numbers. They follow it automatically. | Use it for the settings your numbers share. A project can have one default. |
+| **Additional profile** | Only the numbers you explicitly assign to it. | Use it when selected numbers need a different provider, agent, or call configuration. |
+
+Create the default before creating an additional profile. Creating an additional
+profile does not move any numbers; assign the intended numbers to it afterward.
+
+The screenshots below show default-profile setup. If your number uses an
+additional profile, apply the connection settings to that profile instead.
+Changes affect new calls on every number using the edited profile. Check its
+**Lines** count to see how many numbers share the settings.
+
+### Open or create your profile
 
 Select your Photon project and open **Voice**. Under **Lines**, find the number
 you want to connect.
 
-Open the SIP Voice profile used by that number. If your project has no default
-profile, select **Set up default**.
+If your number already uses a SIP Voice profile, open it and continue to
+**Understand your profile** below. If your project has no default profile,
+select **Set up default**.
 
 ![Photon Voice page with an eligible number under Lines and Set up default highlighted.](/images/cookbooks/voice/elevenlabs/photon-voice.webp)
 
@@ -46,9 +70,7 @@ Select **SIP**, then select **Create profile**.
 
 ![Create the default profile with SIP selected.](/images/cookbooks/voice/get-started/create-default-profile.webp)
 
-Lines without an additional profile follow the default profile. Changes to a
-profile affect new calls on every line using it. If your number already uses
-an additional profile, configure that profile.
+### Understand your profile
 
 The profile has two independent sections:
 
@@ -119,7 +141,7 @@ In **Import SIP Trunk**, enter:
 
 | Field | What to enter |
 | --- | --- |
-| **Label** | A name you will recognize, such as `Photon demo`. |
+| **Label** | A label of your choice that you will recognize, such as `Photon demo`. |
 | **Phone number** | Your Photon number in international format, including `+` and the country code. |
 
 ### Configure incoming calls

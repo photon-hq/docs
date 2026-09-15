@@ -20,8 +20,8 @@ to start an outgoing test call. You can configure either direction independently
 
 ## Before you start
 
-- A Photon project with an eligible **SMS number** or **dedicated iMessage
-  line**. Shared iMessage assignments do not support Voice.
+- A Photon project with an eligible **SMS number**, **WhatsApp number**, or
+  **dedicated iMessage line**. Shared iMessage assignments do not support Voice.
 - Permission to manage the project's Voice profiles.
 - A LiveKit Cloud project.
 - For two-way audio testing, a LiveKit application or SDK client that can join
@@ -43,19 +43,41 @@ Keep these two numbers distinct throughout the walkthrough:
 | **Photon number** | LiveKit's trunk **Numbers** fields. It receives incoming calls and supplies the caller ID for outgoing calls. |
 | **Test phone number** | The outgoing call's `sip_call_to` field. Use a separate phone you can answer, including `+` and the country code. |
 
+User-entered names in the screenshots are examples. Choose your own labels
+and use your own numbers. Copy generated credentials and assigned connection addresses
+from your account; the field instructions identify values that must match.
+
 ## 1. Prepare your Photon Voice profile
 
+### Choose a profile
+
+A Voice profile stores the call settings for one or more numbers in your project.
+
+| Profile | Which numbers use it | When to use it |
+| --- | --- | --- |
+| **Default profile** | Numbers without an additional profile, including newly added numbers. They follow it automatically. | Use it for the settings your numbers share. A project can have one default. |
+| **Additional profile** | Only the numbers you explicitly assign to it. | Use it when selected numbers need a different provider, agent, or call configuration. |
+
+Create the default before creating an additional profile. Creating an additional
+profile does not move any numbers; assign the intended numbers to it afterward.
+
+The screenshots below show default-profile setup. If your number uses an
+additional profile, apply the connection settings to that profile instead.
+Changes affect new calls on every number using the edited profile. Check its
+**Lines** count to see how many numbers share the settings.
+
+### Open or create your profile
+
 Select your Photon project and open **Voice**. Under **Lines**, find the Photon
-number you want to connect and open its SIP Voice profile.
+number you want to connect. If it already uses a SIP Voice profile, open that
+profile and continue to **Understand your profile** below.
 
 If your project has no default profile, select **Set up default**, choose
 **SIP**, and select **Create profile**.
 
 ![Create the default Photon Voice profile with SIP selected.](/images/cookbooks/voice/get-started/create-default-profile.webp)
 
-Lines without an additional profile follow the default profile. Changes to a
-profile affect new calls on every line using it. If your number uses an
-additional profile, configure that profile.
+### Understand your profile
 
 The two call settings have separate purposes:
 
@@ -93,7 +115,7 @@ Change it to **Media encryption enabled** before creating the trunk.
 
 | LiveKit field | What to enter |
 | --- | --- |
-| **Trunk name** | `Photon Voice Demo`, or your own label. |
+| **Trunk name** | A label of your choice, such as `Photon Voice Demo`. |
 | **Numbers** | Your Photon number, including `+` and the country code. |
 | **Allowed addresses** | Leave empty when using the username/password authentication configured below. |
 | **Media encryption (SRTP)** | **Media encryption enabled**. |
@@ -106,18 +128,22 @@ Choose a username and a strong password for Photon to use when connecting to
 this LiveKit trunk. Save them securely; you will enter the same pair in Photon.
 
 Open **JSON editor** and add `authUsername` and `authPassword` to the trunk
-object. Keep the number and media setting you configured. A complete example
-looks like this; replace both placeholders before saving:
+object. Keep the name, number, and media setting you configured. A complete
+example looks like this; replace every `YOUR_...` placeholder before saving:
 
 ```json
 {
-  "name": "Photon Voice Demo",
+  "name": "YOUR_TRUNK_NAME",
   "numbers": ["YOUR_PHOTON_NUMBER"],
-  "authUsername": "photon-livekit",
+  "authUsername": "YOUR_INBOUND_USERNAME",
   "authPassword": "YOUR_INBOUND_PASSWORD",
   "mediaEncryption": "SIP_MEDIA_ENCRYPT_ALLOW"
 }
 ```
+
+Use your chosen trunk label for `YOUR_TRUNK_NAME` and your chosen SIP login for
+`YOUR_INBOUND_USERNAME` and `YOUR_INBOUND_PASSWORD`. You will copy that same
+username and password into Photon.
 
 Select **Create**. The trunk appears under **Inbound**.
 [LiveKit inbound trunks](https://docs.livekit.io/telephony/accepting-calls/inbound-trunk/).
@@ -134,9 +160,9 @@ Use these settings:
 
 | LiveKit field | What to enter |
 | --- | --- |
-| **Rule name** | `Photon inbound calls`, or your own label. |
+| **Rule name** | A label of your choice, such as `Photon inbound calls`. |
 | **Rule type** | **Individual**, which creates a separate room for each call. |
-| **Room prefix** | `photon-`. |
+| **Room prefix** | A prefix of your choice for call-room names, such as `photon-`. |
 | **Agent dispatch** | Leave without an agent for the room-only setup. If an agent entry is present, select **Remove agent**. |
 
 Under **Inbound routing**, select **Trunks** and check the inbound trunk you
@@ -151,7 +177,7 @@ Your number is provided by Photon, so the **Phone numbers** tab can show
 **No phone numbers owned**. Use the **Trunks** tab for this connection.
 
 Select **Create**, or **Update** when editing an existing rule, as shown.
-Each incoming call gets a separate room whose name starts with `photon-`.
+Each incoming call gets a separate room whose name starts with your chosen prefix.
 Your application must join that call's actual room name, including its suffix.
 
 If your application uses predetermined room names, choose a
@@ -212,7 +238,7 @@ destination and credentials, then check the saved values.
 
 1. Call your Photon number from your separate phone.
 2. Open **Telephony → Calls** in LiveKit and inspect the call's session to find
-   its room name. It should start with `photon-` for the rule above.
+   its room name. It should start with the prefix you chose in the dispatch rule.
 3. Connect your LiveKit application to that exact room using an
    [access token](https://docs.livekit.io/frontends/reference/tokens-grants/)
    for the room. Publish your microphone audio and
@@ -260,7 +286,7 @@ media encryption and authentication:
 
 | LiveKit field | What to enter |
 | --- | --- |
-| **Trunk name** | `Photon Voice outbound`, or your own label. |
+| **Trunk name** | A label of your choice, such as `Photon Voice outbound`. |
 | **Address** | The Photon SIP server and TLS port, such as `sip.photon.codes:5061`. Enter the hostname and port without a `sip:` or `sips:` prefix. |
 | **Transport** | **TLS**. |
 | **Numbers** | Your Photon number, including `+` and the country code. This is the outgoing caller ID. |
