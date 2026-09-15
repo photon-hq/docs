@@ -15,11 +15,11 @@
       "mount": "websocket",
       "repo": "photon-hq/fusor-v2",
       "docsDir": "docs/public",
-      "ref": "main",
+      "ref": "a05326df8920875579928dad47f00e760507e567",
       "nav": "nav.json",
       "local": "../fusor-v2/docs/public",
       "assets": {
-        "asyncapi.yaml": "asyncapi/fusor-v2.yaml"
+        "event-delivery-websocket.yaml": "asyncapi/event-delivery-websocket.yaml"
       }
     },
     {

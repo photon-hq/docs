@@ -18,7 +18,7 @@ test('expands source groups nested inside the WebSocket group and preserves the 
   json('package.json', { type: 'module' })
   json('scripts/sources.json', { sources: [{ name: 'fusor-ws', mount: 'websocket' }] })
   const groups = [
-    { group: 'WebSocket protocol', pages: ['websocket/index', 'websocket/connect'] },
+    { group: 'Event Delivery WebSocket', pages: ['websocket/index', 'websocket/connect'] },
     { group: 'Frame reference', pages: ['websocket/frames'] },
   ]
   json('.vellum-src/.nav/websocket.json', { source: 'fusor-ws', groups })

@@ -125,11 +125,11 @@
                 }
               },
               {
-                "group": "WebSocket",
+                "group": "Event Delivery WebSocket",
                 "pages": [
                   {
                     "$source": "fusor-ws",
-                    "group": "WebSocket protocol"
+                    "group": "Event Delivery WebSocket"
                   },
                   {
                     "$source": "fusor-ws",

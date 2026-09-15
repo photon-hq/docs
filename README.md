@@ -36,11 +36,11 @@ the `dist` branch, and `openapi-watch.yml` compares it against the live
 document every ten minutes, redeploying on drift so the reference tracks the
 API without a manual rebuild.
 
-The **WebSocket** group nests the source's two groups — eight protocol guides
+The **Event Delivery WebSocket** group nests the source's two groups — eight protocol guides
 and a frame reference — through `$source` markers inside its `pages`, so it
 sits beside `Endpoints` in the same sidebar rather than behind its own anchor.
 The source's AsyncAPI contract is copied verbatim to
-`asyncapi/fusor-v2.yaml`, and the frame page references its `subscribe` channel
+`asyncapi/event-delivery-websocket.yaml`, and the frame page references its `subscribe` channel
 through native Mintlify `asyncapi` frontmatter. The page retains prose and a
 download link when the native renderer is unavailable. Check rendered channel
 content separately: `mint validate` can pass while the CLI omits the schema.
@@ -81,7 +81,7 @@ which runs:
    per-tab exports from `site/docs.json` and the assembled pages.
 
 `docs.json`, `.vellum-src/`, `llms*.txt`, `problems/` (except its hand-owned
-`handling-errors.mdx`), generated `.mdx`, `site/`, and `asyncapi/fusor-v2.yaml` are
+`handling-errors.mdx`), generated `.mdx`, `site/`, and `asyncapi/event-delivery-websocket.yaml` are
 gitignored. **Don't edit `docs.json` directly** — edit `docs.base.json` or
 the source's `nav.json` fragment.
 
@@ -135,7 +135,7 @@ supplemented from `scripts/build-problems/chassis.json`; grouping lives in
    `repository_dispatch` here when its docs change, and accept its event type
    in `deploy-dist.yml`.
 7. For files that must be served unchanged, add an `assets` mapping such as
-   `{"asyncapi.yaml": "asyncapi/fusor-v2.yaml"}`. Both paths must stay within
+   `{"event-delivery-websocket.yaml": "asyncapi/event-delivery-websocket.yaml"}`. Both paths must stay within
    their respective source and site roots. Add the output to `.gitignore` and
    the site export so it reaches `dist`.
 
