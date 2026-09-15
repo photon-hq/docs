@@ -1,10 +1,11 @@
 import type { VellumConfig } from '@vellum-docs/core'
+import { fileURLToPath } from 'node:url'
 import { NunjucksEngine } from '@vellum-docs/engine-nunjucks'
 import { TypeScriptExtractor } from '@vellum-docs/extractor-typescript'
 import { MintlifyProfile } from '@vellum-docs/profile-mintlify'
 
 const config: VellumConfig = {
-  root: new URL('.', import.meta.url).pathname,
+  root: fileURLToPath(new URL('.', import.meta.url)),
   sources: {
     ts: {
       include: [],

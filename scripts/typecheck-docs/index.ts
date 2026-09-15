@@ -1,5 +1,5 @@
 import type { TypecheckConfig } from './config'
-import { execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 import process from 'node:process'
@@ -297,10 +297,9 @@ async function main() {
     }, null, 2))
 
     // Run type checker
-    const cmd = `tsgo --project ${batchTsconfig} --noEmit`
     console.log(`  Running: tsgo --noEmit\n`)
     try {
-      execSync(cmd, { cwd: ROOT, stdio: 'pipe', encoding: 'utf-8' })
+      execFileSync('tsgo', ['--project', batchTsconfig, '--noEmit'], { cwd: ROOT, stdio: 'pipe', encoding: 'utf-8' })
       console.log(`  All ${checkable.length} code blocks type-check successfully!`)
     }
     catch (err: any) {
@@ -342,7 +341,7 @@ async function main() {
 
     console.log(`\n  Running: oxfmt --check\n`)
     try {
-      execSync(`oxfmt --check ${fmtDir}`, { cwd: ROOT, stdio: 'pipe', encoding: 'utf-8' })
+      execFileSync('oxfmt', ['--check', fmtDir], { cwd: ROOT, stdio: 'pipe', encoding: 'utf-8' })
       console.log(`  All ${fmtBlocks.length} code blocks are formatted correctly!`)
     }
     catch (fmtErr: any) {

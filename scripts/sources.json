@@ -7,7 +7,7 @@
       "package": "spectrum-ts",
       "repo": "photon-hq/spectrum-ts",
       "docsDir": "docs",
-      "ref": "main",
+      "ref": "1076b93d961dec969eefd3bf8f07be0aeb639e51",
       "nav": "nav.json",
       "routes": [
         {

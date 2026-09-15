@@ -83,7 +83,13 @@ function gitFetch(src: Source, ref: string): string | null {
   const repo = src.repo!
   const docsDir = src.docsDir ?? 'docs'
   const tmp = mkdtempSync(join(tmpdir(), `vellum-${src.name}-`))
-  const run = (args: string[]) => execFileSync('git', args, { stdio: ['ignore', 'pipe', 'pipe'] })
+  // Git hooks export repository-local variables; do not let them redirect the
+  // source checkout back into this docs repository.
+  const env = { ...process.env }
+  const localGitVariables = execFileSync('git', ['rev-parse', '--local-env-vars'], { encoding: 'utf8' }).trim().split('\n')
+  for (const name of localGitVariables)
+    delete env[name]
+  const run = (args: string[]) => execFileSync('git', args, { env, stdio: ['ignore', 'pipe', 'pipe'] })
   log(`fetching ${repo}#${ref}:${docsDir}`)
   run(['clone', '--filter=blob:none', '--no-checkout', '--quiet', cloneUrl(repo), tmp])
   run(['-C', tmp, 'sparse-checkout', 'init', '--cone'])
