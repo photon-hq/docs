@@ -45,7 +45,7 @@ The webhook tells you **what happened** and **enough about it to decide what to 
 - **Resolved link previews.** The `richlink` arm ships the `url` only. To render an OG-style title, summary, or cover image, fetch the URL yourself and parse the tags — the worker doesn't do that on your behalf, both to keep delivery latency bounded and to avoid making the worker an attack surface for hostile URLs.
 - **Recursive message trees.** A reaction ships a slim *reference* to the message it targets (`id`, `platform`, `timestamp`, an 80-char `contentPreview`) — not the full target. Look it up in your own store using `target.id`. See [Events → Target refs](/webhooks/events#target-refs) for the exact shape.
 
-**The webhook is the doorbell, not the package.** Use it to know an event happened and to route into your own handling; pull heavyweight payloads on demand when you actually need them.
+This is the same shape Twilio, Stripe, and most other webhook providers use: **the webhook is the doorbell, not the package.** Use it to know an event happened and to route into your own handling; pull heavyweight payloads on demand when you actually need them.
 
 ## How this guide flows
 
