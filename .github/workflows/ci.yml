@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [codex/docs-v2]
+    branches: [main, codex/docs-v2]
   schedule:
     - cron: "0 8 * * *" # Every day at 8:00 UTC
 

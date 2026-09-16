@@ -34,8 +34,8 @@ test('imports a published Maintain site and builds both versions entirely in doc
   file('published/cli/overview.mdx', page('Maintain CLI', 'MAINTAIN_ONLY'))
   file('cli/index.mdx', page('Beta CLI', 'BETA_ONLY [CLI](/cli)'))
   json('docs.base.json', { name: 'Photon', navigation: { versions: [
-    { $source: 'maintain', version: 'Maintain' },
-    { version: 'Beta', default: true, tabs: [{ tab: 'CLI', groups: [{ group: 'Start', pages: ['cli/index'] }] }] },
+    { $source: 'maintain', version: 'Maintain', default: true },
+    { version: 'Beta', tabs: [{ tab: 'CLI', groups: [{ group: 'Start', pages: ['cli/index'] }] }] },
   ] } })
   const run = (name: string, ...args: string[]) => execFileSync(resolve(import.meta.dirname, '../../node_modules/.bin/tsx'), [join(root, 'scripts', name, 'index.ts'), ...args], {
     cwd: root,
@@ -47,7 +47,8 @@ test('imports a published Maintain site and builds both versions entirely in doc
   exportSite(root)
   run('llms-generator', join(root, 'site'))
   const config = JSON.parse(readFileSync(join(root, 'site/docs.json'), 'utf8'))
-  assert.deepEqual(config.navigation.versions[0], { version: 'Maintain', ...maintainNavigation })
+  assert.deepEqual(config.navigation.versions[0], { version: 'Maintain', ...maintainNavigation, default: true })
+  assert.equal(config.navigation.versions[1].default, undefined)
   assert.deepEqual(config.navigation.versions[1].tabs[0].groups[0].pages, ['beta/cli/index'])
   assert.deepEqual(config.redirects, [])
   assert.ok(config.navigation.versions.every((version: object) => !('href' in version)))

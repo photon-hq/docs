@@ -34,6 +34,7 @@ interface Marker {
   $source: string
   group?: string
   version?: string
+  default?: boolean
 }
 
 function isMarker(node: unknown): node is Marker {
@@ -60,7 +61,7 @@ function resolveMarker(marker: Marker, fragments: Map<string, NavFragment>): unk
   if (marker.version !== undefined) {
     if (!fragment.navigation)
       throw new Error(`nav: source "${marker.$source}" has no site navigation`)
-    return [{ version: marker.version, ...fragment.navigation }]
+    return [{ version: marker.version, ...fragment.navigation, ...(marker.default !== undefined ? { default: marker.default } : {}) }]
   }
   if (marker.group === undefined) {
     if (!fragment.groups)

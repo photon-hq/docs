@@ -2,13 +2,12 @@ name: Deploy dist
 
 on:
   push:
-    branches: [codex/docs-v2]
+    branches: [main]
   # Source repos notify us when their docs/ changes. Add one type per source in
   # scripts/sources.json; each source repo sends its own event_type.
   repository_dispatch:
-    types: [photon-cli-docs, fusor-ws-docs]
+    types: [spectrum-cloud-release, spectrum-ts-docs, photon-cli-docs, fusor-ws-docs]
   workflow_dispatch:
-  workflow_call:
 
 # One running build plus at most one queued collapses bursts -- watcher
 # dispatches and source updates alike -- into a single trailing deploy.
@@ -22,7 +21,8 @@ permissions:
 
 jobs:
   deploy:
-    if: github.ref == 'refs/heads/codex/docs-v2' || github.ref == 'refs/heads/main'
+    # Source-branch pushes and PRs must never publish before the cutover is merged.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Parse repository

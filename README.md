@@ -178,16 +178,16 @@ The source branch is **`codex/docs-v2`** in `photon-hq/docs`, imported from
 `photon-hq/docs-v2` commit `5b3a59d1ccf8ab77d4ee94f9b4c8000d5ea36723`.
 The build always checks out this branch and never modifies it.
 
-Pushes to `codex/docs-v2` and manual dispatches deploy directly. The workflow
-on `main` delegates to this branch's reusable deployment workflow, so source
-repository dispatches and pushes to `main` also build `codex/docs-v2`.
-The OpenAPI watcher runs from `main` and dispatches this branch when the live
-schema changes. Keep the watcher workflow on both branches in sync.
+Pushes to `codex/docs-v2` run CI without publishing. Deployment runs only from
+`main`, after the migration PR is merged: pushes, manual dispatches, and source
+repository dispatches all check out `codex/docs-v2` and publish its build.
+The OpenAPI watcher runs from `main` and dispatches the deployment workflow on
+`main` when the live schema changes.
 
 ## Combined site
 
 This repository owns the combined site and its **Maintain / Beta** selector.
-**Beta** is the default and lives under `/beta`. The Beta pages are authored
+**Maintain** is the default. **Beta** lives under `/beta`. The Beta pages are authored
 here or pulled from the SDK sources declared in `scripts/sources.json`.
 
 **Maintain** comes from the `photon-hq/docs` tag `maintain-before-docs-v2` and
