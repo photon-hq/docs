@@ -17,7 +17,7 @@
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Access token obtained via the device login flow."
+        "description": "Access token obtained via the device login flow, or an OAuth 2.1 access token — see the OAuth guide."
       }
     },
     "schemas": {

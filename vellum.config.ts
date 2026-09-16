@@ -6,12 +6,23 @@ import { MintlifyProfile } from '@vellum-docs/profile-mintlify'
 const config: VellumConfig = {
   root: new URL('.', import.meta.url).pathname,
   sources: {
-    ts: { include: [], packages: ['@photon-ai/advanced-imessage', '@photon-ai/imessage-kit', '@photon-ai/whatsapp-business', 'spectrum-ts'] },
+    ts: {
+      include: [],
+      packages: [
+        '@photon-ai/advanced-imessage',
+        '@photon-ai/imessage-kit',
+        '@photon-ai/whatsapp-business',
+        'chat',
+        'eve/channels/photon',
+        'spectrum-ts',
+      ],
+    },
   },
   templates: '.vellum-src',
   outDir: '.',
   extractors: [new TypeScriptExtractor()],
-  engine: new NunjucksEngine(),
+  // Preserve 0.2 behavior until every synced template is strict-safe.
+  engine: new NunjucksEngine({ strict: false }),
   profile: new MintlifyProfile(),
 }
 

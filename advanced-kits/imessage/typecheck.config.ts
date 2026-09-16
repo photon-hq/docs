@@ -12,7 +12,7 @@ import type {
   Message,
   Poll,
   UploadAttachmentResult,
-} from "@photon-ai/advanced-imessage";
+} from "@photon-ai/advanced-imessage/grpc";
 
 import {
   AuthenticationError,
@@ -25,7 +25,7 @@ import {
   TextEffect,
   ValidationError,
   createClient,
-} from "@photon-ai/advanced-imessage";
+} from "@photon-ai/advanced-imessage/grpc";
 `.trim(),
   declarePreamble: `
 declare const im: AdvancedIMessage;

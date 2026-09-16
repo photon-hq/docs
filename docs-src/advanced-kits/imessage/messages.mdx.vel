@@ -246,6 +246,43 @@ The server enforces these rules at send time:
   `layout.image` must be JPEG bytes. The server checks the JPEG SOI marker (`FF D8`) and rejects any other format. Convert PNG, WebP, HEIC, or anything else to JPEG before calling.
 </Warning>
 
+### Receive Mini App Content
+
+When a received message includes an iMessage app card, `message.content.miniApp` contains decoded metadata about the extension and visible card text. Messages without app cards have `miniApp` set to `undefined`.
+
+```ts
+for await (const event of im.messages.subscribeEvents()) {
+  if (event.type === "message.received" && event.message.content.miniApp) {
+    const { miniApp } = event.message.content;
+    console.log(miniApp.appName, miniApp.extensionBundleId);
+    console.log(miniApp.layout?.caption);
+  }
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `teamId` | `string` | Apple Team ID parsed from the balloon id |
+| `extensionBundleId` | `string` | iMessage extension bundle identifier |
+| `appName` | `string \| undefined` | Display name embedded by the sending extension |
+| `url` | `string \| undefined` | URL delivered to the extension when the recipient opens the card |
+| `sessionId` | `string \| undefined` | Stable session identifier shared by updates to the same card |
+| `appStoreId` | `number \| undefined` | App Store identifier when supplied by the sender |
+| `live` | `boolean` | Whether the payload carries live-layout metadata |
+| `layout` | `MiniAppLayoutInfo \| undefined` | Visible template fields decoded from the payload |
+
+When `layout` is present, it contains the visible text slots from the card:
+
+| Field | Description |
+|---|---|
+| `caption` | Top-left, bold. The most prominent text slot |
+| `subcaption` | Below `caption`, on the left |
+| `trailingCaption` | Top-right |
+| `trailingSubcaption` | Below `trailingCaption`, on the right |
+| `imageTitle` | Overlay text shown above the image |
+| `imageSubtitle` | Overlay text below `imageTitle`, above the image edge |
+| `summary` | Fallback text for surfaces that cannot render the full card |
+
 ## Reply to a Message
 
 To reply to a message, pass the target message GUID as `replyTo`:
