@@ -21,7 +21,7 @@ Registered sources:
 | ------------ | ----------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------ |
 | `photon-cli` | [photon-hq/cli-beta](https://github.com/photon-hq/cli-beta) | `cli`          | The whole **CLI** tab, from that repo's `docs/` on `main`                      |
 | `fusor-ws`   | [photon-hq/fusor-v2](https://github.com/photon-hq/fusor-v2) | `websocket`    | The **WebSocket** group under **API Reference**, from `docs/public/` on `main` |
-| `maintain`   | [photon-hq/docs](https://github.com/photon-hq/docs)         | existing paths | The published **Maintain** version, from `dist`                                |
+| `maintain`   | [photon-hq/docs](https://github.com/photon-hq/docs)         | existing paths | The **Maintain** snapshot, from the `maintain-before-docs-v2` tag              |
 
 Beta's **API Reference** tab is a single sidebar: **Get started** and
 **Problems** for the REST introduction and error handling, **Endpoints** for
@@ -173,28 +173,37 @@ npx --yes mint@latest broken-links
 
 `.github/workflows/deploy-dist.yml` runs the pipeline with
 `DOCS_SOURCE_MODE=git` and publishes the contents of `site/` at the root of
-**`dist`**, which Mintlify serves at `https://photon-staging.mintlify.site`.
-`main` is never modified by the build. It triggers on push to `main`, on
-`workflow_dispatch`, and on `repository_dispatch` from a source repo.
+**`dist`**, which Mintlify serves at `https://photon.codes/docs`.
+The source branch is **`codex/docs-v2`** in `photon-hq/docs`, imported from
+`photon-hq/docs-v2` commit `5b3a59d1ccf8ab77d4ee94f9b4c8000d5ea36723`.
+The build always checks out this branch and never modifies it.
 
-## Combined staging site
+Pushes to `codex/docs-v2` and manual dispatches deploy directly. The workflow
+on `main` delegates to this branch's reusable deployment workflow, so source
+repository dispatches and pushes to `main` also build `codex/docs-v2`.
+The OpenAPI watcher runs from `main` and dispatches this branch when the live
+schema changes. Keep the watcher workflow on both branches in sync.
+
+## Combined site
 
 This repository owns the combined site and its **Maintain / Beta** selector.
 **Beta** is the default and lives under `/beta`. The Beta pages are authored
 here or pulled from the SDK sources declared in `scripts/sources.json`.
 
-**Maintain** comes from the published `photon-hq/docs` `dist` branch and retains
-its existing page paths. `docs:sync` stores that snapshot under the gitignored
+**Maintain** comes from the `photon-hq/docs` tag `maintain-before-docs-v2` and
+retains its existing page paths. This tag preserves the last `dist` before the
+switch (`95e697ab1d4ca0c989cf41074f0d193df4aed1cc`). Do not point this source at
+`dist`: that branch now contains the combined site, so doing so would import
+the previous build into the next build. `docs:sync` stores the snapshot under the gitignored
 `.vellum-src/.sites/maintain/` directory. Its complete navigation is inserted at
 the `{"$source": "maintain", "version": "Maintain"}` marker in `docs.base.json`.
-The production repository needs no changes for this staging build.
 
 `docs:export` assembles both versions into the gitignored `site/` directory,
-including `site/docs.json`, pages, assets, and the staging site's styles.
+including `site/docs.json`, pages, assets, and the site's styles.
 It prefixes Beta's documentation links, snippet imports, and API directories
 without rewriting code examples. LLM exports are generated from the assembled
-site, with links to the staging hostname. Edit the original sources, never the
+site, with links to `https://photon.codes/docs`. Edit the original sources, never the
 assembled files. Preview and validate from `site/`.
 
-Beta has not been published, so this build adds no compatibility redirects
-from `/v2`. Published problem type identifiers still resolve to the catalogue.
+This build adds no compatibility redirects from `/v2`. Published problem type
+identifiers still resolve to the catalogue.

@@ -10,12 +10,12 @@
   "fonts": {
     "heading": {
       "family": "PolySansArabicVF",
-      "source": "/fonts/PolySansArabicVF.woff2",
+      "source": "https://photon.codes/docs/fonts/PolySansArabicVF.woff2",
       "format": "woff2"
     },
     "body": {
       "family": "PolySansArabicVF",
-      "source": "/fonts/PolySansArabicVF.woff2",
+      "source": "https://photon.codes/docs/fonts/PolySansArabicVF.woff2",
       "format": "woff2"
     }
   },
@@ -187,7 +187,7 @@
   },
   "seo": {
     "metatags": {
-      "canonical": "https://photon-staging.mintlify.site"
+      "canonical": "https://photon.codes/docs"
     }
   }
 }

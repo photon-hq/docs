@@ -27,7 +27,7 @@
       "mount": "maintain",
       "repo": "photon-hq/docs",
       "docsDir": ".",
-      "ref": "dist",
+      "ref": "maintain-before-docs-v2",
       "format": "mintlify"
     }
   ]
