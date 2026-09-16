@@ -17,7 +17,7 @@ test('imports a published Maintain site and builds both versions entirely in doc
   function json(path: string, value: unknown) {
     file(path, JSON.stringify(value))
   }
-  for (const name of ['sync-docs/index.ts', 'sync-docs/assets.ts', 'build-nav/index.ts', 'llms-generator/index.ts']) {
+  for (const name of ['sync-docs/index.ts', 'sync-docs/assets.ts', 'sync-docs/git.ts', 'build-nav/index.ts', 'llms-generator/index.ts']) {
     const target = join(root, 'scripts', name)
     mkdirSync(dirname(target), { recursive: true })
     copyFileSync(new URL(`../${name}`, import.meta.url), target)

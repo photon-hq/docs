@@ -1,9 +1,9 @@
-import { execFileSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join, relative, resolve, sep } from 'node:path'
 import process from 'node:process'
 import { copySourceAssets } from './assets'
+import { runSourceGit } from './git'
 
 // Assemble the vellum template tree (.vellum-src) from:
 //   1. local templates in docs-src/ (areas not yet migrated + site-owned prose),
@@ -90,14 +90,13 @@ function gitFetch(src: Source, ref: string): string | null {
   const docsDir = src.docsDir ?? 'docs'
   const tmp = mkdtempSync(join(tmpdir(), `vellum-${src.name}-`))
   tempDirs.push(tmp)
-  const run = (args: string[]) => execFileSync('git', args, { stdio: ['ignore', 'pipe', 'pipe'] })
   log(`fetching ${repo}#${ref}:${docsDir}`)
-  run(['clone', '--filter=blob:none', '--no-checkout', '--quiet', cloneUrl(repo), tmp])
+  runSourceGit(['clone', '--filter=blob:none', '--no-checkout', '--quiet', cloneUrl(repo), tmp])
   if (docsDir !== '.') {
-    run(['-C', tmp, 'sparse-checkout', 'init', '--cone'])
-    run(['-C', tmp, 'sparse-checkout', 'set', docsDir])
+    runSourceGit(['-C', tmp, 'sparse-checkout', 'init', '--cone'])
+    runSourceGit(['-C', tmp, 'sparse-checkout', 'set', docsDir])
   }
-  run(['-C', tmp, 'checkout', '--quiet', ref])
+  runSourceGit(['-C', tmp, 'checkout', '--quiet', ref])
   const dir = join(tmp, docsDir)
   return existsSync(dir) ? dir : null
 }
