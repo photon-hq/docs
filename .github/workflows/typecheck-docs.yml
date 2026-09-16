@@ -25,6 +25,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Test documentation tooling
+        run: pnpm test
+
   build:
     runs-on: ubuntu-latest
     steps:

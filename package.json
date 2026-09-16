@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck:docs": "tsx scripts/typecheck-docs/index.ts",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test": "tsx --test scripts/sync-docs/git.test.ts"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^4.19.0",

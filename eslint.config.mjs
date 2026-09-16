@@ -10,4 +10,10 @@ export default antfu({
   formatters: {
     markdown: 'prettier',
   },
+}, {
+  // Build tooling uses Node's test runner without an additional dependency.
+  files: ['scripts/**/*.test.ts'],
+  rules: {
+    'test/no-import-node-test': 'off',
+  },
 })
