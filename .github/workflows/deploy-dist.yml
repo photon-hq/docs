@@ -78,7 +78,7 @@ jobs:
         # watcher skips when its own probe fails, so the two converge on the
         # next cycle in which the aggregator is up.
         run: |
-          etag=$(curl -sSfI --max-time 30 https://api.staging.photon.codes/openapi.json \
+          etag=$(curl -sSfI --max-time 30 https://api.photon.codes/openapi.json \
             | tr -d '\r' | awk 'tolower($1)=="etag:" {print $2}') || etag=""
           if [ -n "$etag" ]; then
             printf '%s\n' "$etag" > .openapi-etag

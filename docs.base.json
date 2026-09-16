@@ -120,7 +120,7 @@
               {
                 "group": "Endpoints",
                 "openapi": {
-                  "source": "https://api.staging.photon.codes/openapi.json",
+                  "source": "https://api.photon.codes/openapi.json",
                   "directory": "api-reference"
                 }
               },

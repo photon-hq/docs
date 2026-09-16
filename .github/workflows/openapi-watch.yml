@@ -24,7 +24,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          live=$(curl -sSfI --max-time 30 https://api.staging.photon.codes/openapi.json \
+          live=$(curl -sSfI --max-time 30 https://api.photon.codes/openapi.json \
             | tr -d '\r' | awk 'tolower($1)=="etag:" {print $2}') || live=""
           if [ -z "$live" ]; then
             echo "::warning::no ETag from the aggregator; skipping this cycle"

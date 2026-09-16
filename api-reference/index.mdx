@@ -8,15 +8,14 @@ operate messaging and voice lines, handle 10DLC and call registry compliance,
 configure webhooks, and administer accounts, members, and billing.
 
 <Note>
-  This reference is generated from the **staging** OpenAPI schema, and every
-  endpoint page — including the interactive playground — targets
-  `https://api.staging.photon.codes`. Do not use it against production data.
+  This reference uses the production API at `https://api.photon.codes`,
+  including requests sent from the interactive playground.
 </Note>
 
 ## Base URL
 
 ```
-https://api.staging.photon.codes
+https://api.photon.codes
 ```
 
 Every endpoint is versioned under `/v1`.
@@ -60,9 +59,9 @@ away. To replace a key you lost, revoke it and create another. See
 `POST /v1/account/service-keys`.
 
 <Warning>
-  The playground sends real requests, so anything you paste is a live credential.
-  Create a key against staging for this, never paste a production one, and revoke
-  it when you are done.
+  The playground sends real requests to production. Use a credential scoped to
+  the project you intend to work with, and revoke temporary credentials when you
+  are done.
 </Warning>
 
 A handful of endpoints under `/v1/auth` are public and ignore the header.
@@ -89,10 +88,10 @@ Each `type` URI resolves to the page documenting that problem. See
 
 The **Endpoints** group in the sidebar lists every operation, grouped by the area
 it belongs to. Each page documents the parameters, request body, and responses,
-and lets you send a request against staging.
+and lets you send a request to the production API.
 
 You can also read the schema directly at
-[`/openapi.json`](https://api.staging.photon.codes/openapi.json).
+[`/openapi.json`](https://api.photon.codes/openapi.json).
 
 The **WebSocket** group below it covers
 [event delivery over WebSocket](/websocket): how to connect, start a session,

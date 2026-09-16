@@ -25,7 +25,7 @@ const CHASSIS = join(import.meta.dirname, 'chassis.json')
 const SNAPSHOT = join(import.meta.dirname, 'catalog.json')
 const REDIRECTS = join(ROOT, '.vellum-src/.redirects/problems.json')
 
-const SPEC_URL = process.env.PHOTON_OPENAPI_URL ?? 'https://api.staging.photon.codes/openapi.json'
+const SPEC_URL = process.env.PHOTON_OPENAPI_URL ?? 'https://api.photon.codes/openapi.json'
 const TYPE_BASE = 'https://photon.codes/docs/problems/'
 const LEGACY_URN = 'urn:photon:problem:'
 
