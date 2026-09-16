@@ -4,73 +4,16 @@ on:
   push:
     branches: [main]
   repository_dispatch:
-    types: [spectrum-cloud-release, spectrum-ts-docs]
+    types: [spectrum-cloud-release, spectrum-ts-docs, photon-cli-docs, fusor-ws-docs]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+# Repository dispatches run from the default branch. Delegate all publication
+# to the docs-v2 source branch so main cannot overwrite dist with the old site.
 jobs:
   deploy:
-    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Parse repository
-        id: parse-repo
-        run: |
-          echo "owner=${GITHUB_REPOSITORY%/*}" >> "$GITHUB_OUTPUT"
-          echo "name=${GITHUB_REPOSITORY#*/}" >> "$GITHUB_OUTPUT"
-
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-          owner: ${{ steps.parse-repo.outputs.owner }}
-          repositories: |
-            ${{ steps.parse-repo.outputs.name }}
-            spectrum-ts
-
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ steps.app-token.outputs.token }}
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: "pnpm"
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Generate docs from Vellum templates
-        run: pnpm docs:generate
-        # sync-docs pulls per-source authored docs from the configured git ref
-        # while Vellum extracts types from the installed package versions.
-        env:
-          DOCS_SOURCE_MODE: git
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-
-      - name: Push to dist branch
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Force-add the generated navigation (gitignored, but needed on dist)
-          git add -f docs.json
-
-          # Force-add all Vellum-generated files (gitignored, but needed on dist).
-          # Template list comes from the assembled tree (.vellum-src), not docs-src,
-          # since sources may be pulled from other repos.
-          git add -f $(find .vellum-src -name '*.vel' | sed 's|^.vellum-src/||;s|\.vel$||')
-
-          # Force-add custom llms.txt generator output (also gitignored)
-          git add -f llms.txt llms-full.txt llms-*.txt
-
-          # Commit onto a detached HEAD so main is untouched
-          TREE=$(git write-tree)
-          PARENT=$(git rev-parse HEAD)
-          COMMIT=$(git commit-tree "$TREE" -p "$PARENT" \
-            -m "build: generate docs from $(git rev-parse --short HEAD)")
-
-          git push "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}.git" \
-            "$COMMIT":refs/heads/dist --force
+    if: github.ref == 'refs/heads/main'
+    uses: photon-hq/docs/.github/workflows/deploy-dist.yml@codex/docs-v2
+    secrets: inherit

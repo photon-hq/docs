@@ -1,5 +1,9 @@
 # Photon Docs
 
+Production documentation is built from [`codex/docs-v2`](https://github.com/photon-hq/docs/tree/codex/docs-v2).
+Use that branch for site changes. The source below remains on `main` for reference;
+the published Maintain version is preserved by the `maintain-before-docs-v2` tag.
+
 The documentation site at [photon.codes](https://photon.codes/), built with [Mintlify](https://mintlify.com/) and driven by [vellum](https://github.com/photon-hq/vellum). Vellum extracts type information from installed npm packages and renders `.mdx.vel` templates into the `.mdx` files Mintlify ships.
 
 This repo is an **aggregator**: some doc areas are authored here in [`docs-src/`](docs-src/), and others are authored in the SDK repos they document and pulled in at build time (see [Where docs live](#where-docs-live)).
@@ -38,11 +42,11 @@ Navigation works the same way: [`docs.json`](docs.json) is **generated** by `scr
 
 ## How deployment works
 
-Push to `main` → [.github/workflows/deploy-dist.yml](.github/workflows/deploy-dist.yml) runs `pnpm docs:generate` and force-pushes the rendered tree to the `dist` branch → Mintlify rebuilds from `dist`.
+Pushes to `main` and repository dispatches reach [.github/workflows/deploy-dist.yml](.github/workflows/deploy-dist.yml), which calls the reusable workflow on `codex/docs-v2`. That workflow always checks out `codex/docs-v2`, builds the combined Beta/Maintain site, and publishes `site/` to `dist`. Mintlify rebuilds from `dist`.
 
-The Spectrum API reference is generated from a remote OpenAPI spec configured in [docs.json](docs.json), fetched at build time, so every rebuild picks up the latest API surface without a docs commit.
+Pushes to `codex/docs-v2` also deploy directly. The OpenAPI watcher runs on `main` and dispatches `codex/docs-v2` when the live schema changes.
 
-Source-repo doc updates can also trigger deploy through `repository_dispatch` type `spectrum-ts-docs`. Use that when `photon-hq/spectrum-ts` changes `docs/**` without a package release.
+The workflow accepts `photon-cli-docs` and `fusor-ws-docs` source events, plus the existing `spectrum-cloud-release` and `spectrum-ts-docs` events. All of them build the new source branch. Changes to the legacy sources on `main` do not update the frozen Maintain snapshot.
 
 ## Auto-updates from SDK releases
 
