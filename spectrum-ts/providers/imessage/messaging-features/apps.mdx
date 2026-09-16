@@ -1,0 +1,156 @@
+---
+title: "iMessage Apps"
+sidebarTitle: "iMessage Apps"
+description: "Send and update customized iMessage App cards."
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+Send a customized iMessage App card: a cloud-only rich bubble that shows app
+metadata, a deep link, and a visual layout. Import `customizedMiniApp` from the
+iMessage provider:
+
+```ts
+import { customizedMiniApp } from "spectrum-ts/providers/imessage";
+
+const sent = await space.send(
+  customizedMiniApp({
+    appName: "My App",
+    extensionBundleId: "com.example.myapp.imessage",
+    teamId: "ABCDE12345",
+    url: "https://example.com/deep-link",
+    layout: {
+      caption: "Check this out",
+      subcaption: "Tap to open",
+    },
+  })
+);
+```
+
+`space.send(customizedMiniApp(...))` returns the sent message record. Unlike
+`background` and `read`, iMessage App cards are real outbound messages.
+
+`appStoreId` is optional. Omit it to send a card whose extension isn't
+published on the App Store. When set, recipients without the extension are
+directed to its App Store entry.
+
+Set `live: true` when you want Messages to render the installed extension's
+live UI instead of only showing the static layout preview:
+
+```ts
+const sent = await space.send(
+  customizedMiniApp({
+    appName: "My App",
+    extensionBundleId: "com.example.myapp.imessage",
+    live: true,
+    teamId: "ABCDE12345",
+    url: "https://example.com/live",
+    layout: {
+      caption: "Open live dashboard",
+    },
+  })
+);
+```
+
+The recipient must have the matching iMessage extension installed. Omit
+`live`, or set it to `false`, to keep the static layout preview.
+
+
+
+
+
+`customizedMiniApp()` accepts a
+<TypeTooltip name="CustomizedMiniAppInput" type={``} />.
+Its `layout` field uses
+<TypeTooltip name="CustomizedMiniAppLayout" type={``} />.
+
+<AccordionGroup>
+  <Accordion title="CustomizedMiniAppInput" description="Fields for building an iMessage App card.">
+    | Field | Type | Description |
+    |---|---|---|
+    | `appName` | `string` | Display name of the owning app, shown by Messages fallback UI. |
+    | `appStoreId` | `number` (optional) | Apple App Store numeric id of the owning app. When set, must be a positive integer. |
+    | `extensionBundleId` | `string` | Bundle identifier of the iMessage extension target. Must not contain `:`. |
+    | `layout` | `MiniAppLayout` | Visible card layout. |
+    | `live` | `boolean` (optional) | Render with the installed extension's live UI when available. Defaults to `false`. |
+    | `teamId` | `string` | 10-character uppercase alphanumeric Apple Team ID. |
+    | `url` | `string` | Absolute HTTP or HTTPS URL delivered to the installed extension on tap. |
+    
+  </Accordion>
+  <Accordion title="CustomizedMiniAppLayout" description="Layout fields for an iMessage App card.">
+    | Field | Type | Description |
+    |---|---|---|
+    | `caption` | `string` (optional) | Top-left, bold. The most prominent text slot. |
+    | `image` | `Uint8Array` (optional) | JPEG preview image bytes. |
+    | `imageSubtitle` | `string` (optional) | Overlay text shown below `imageTitle`. Requires `image`. |
+    | `imageTitle` | `string` (optional) | Overlay text shown above the image. Must be set together with `image`. |
+    | `subcaption` | `string` (optional) | Below `caption`, on the left. |
+    | `summary` | `string` (optional) | Fallback text for surfaces that cannot render the full card. |
+    | `trailingCaption` | `string` (optional) | Top-right. |
+    | `trailingSubcaption` | `string` (optional) | Below `trailingCaption`, on the right. |
+    
+  </Accordion>
+</AccordionGroup>
+
+## Update an iMessage App
+
+Keep the message returned by the original send and use it as the target of
+`edit()`. The following example updates the card's URL, caption, and rendering
+mode without sending a new bubble:
+
+```ts
+import { edit } from "spectrum-ts";
+import { customizedMiniApp } from "spectrum-ts/providers/imessage";
+
+const cardIdentity = {
+  appName: "My App",
+  extensionBundleId: "com.example.myapp.imessage",
+  teamId: "ABCDE12345",
+};
+
+const card = await space.send(
+  customizedMiniApp({
+    ...cardIdentity,
+    url: "https://example.com/order/123",
+    layout: {
+      caption: "Preparing order",
+    },
+  })
+);
+
+await space.send(
+  edit(
+    customizedMiniApp({
+      ...cardIdentity,
+      live: true,
+      url: "https://example.com/order/123?status=ready",
+      layout: {
+        caption: "Ready for pickup",
+      },
+    }),
+    card
+  )
+);
+```
+
+`card` includes the `miniAppCardSession` metadata required for the update.
+Spectrum manages and refreshes that session automatically, so reuse `card` for
+later updates instead of constructing the metadata yourself. The edit operation
+returns `undefined`.
+
+
+<Note>
+  iMessage Apps require `@spectrum-ts/imessage`. With
+  `@spectrum-ts/imessage-local`, `customizedMiniApp()` throws an
+  <TypeTooltip name="UnsupportedError" type={`declare class UnsupportedError extends Error {
+    readonly kind: UnsupportedKind;
+    readonly platform?: string;
+    readonly contentType?: string;
+    readonly action?: string;
+    readonly detail?: string;
+    constructor(opts: UnsupportedErrorOptions);
+    static content(contentType: string, platform?: string, detail?: string): UnsupportedError;
+    static action(action: string, platform?: string, detail?: string): UnsupportedError;
+    withPlatform(platform: string): UnsupportedError;
+}`} />.
+</Note>
