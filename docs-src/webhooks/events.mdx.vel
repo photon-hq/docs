@@ -209,6 +209,7 @@ The arms a current provider (iMessage, WhatsApp Business) delivers inbound today
 | `attachment` | A file attachment — photo, video, audio, voice memo, or document. | `id: string`, `name: string`, `mimeType: string`, `size?: number` |
 | `contact` | A contact card — all fields optional. Full shape: [`Contact`](/spectrum-ts/content). | `name?: { formatted?, first?, last? }`, `phones?: [{ value, type? }]`, `photo?: { mimeType }`, `raw?` |
 | `richlink` | A link preview — URL only on the wire; OG metadata is not pre-fetched. | `url: string` |
+| `app` | An iMessage mini app card (e.g. a GamePigeon move). iMessage-only today. | `url: string`, `layout: { caption?, subcaption?, trailingCaption?, trailingSubcaption?, summary? }`, `live?: boolean` |
 | `reaction` | An emoji reaction targeting another message. | `emoji: string`, [`target: MessageRef`](#target-refs) |
 | `group` | An **album** — multiple attachments (e.g. several photos) sent as one message. | [`items`](#message)`: SerializedInboundMessage[]` — each entry is a full inbound message with its own `content` (typically `attachment`), `id`, `sender`, `timestamp`. Albums don't nest. See example below. |
 
@@ -217,6 +218,7 @@ A few cross-cutting points the table doesn't surface:
 - **Byte-bearing arms** (`attachment`, `contact.photo`) ship metadata only — see the [warning above](#content-shapes). The SDK's `read()` / `stream()` thunks and the internal filesystem `path` are dropped before delivery. iMessage voice memos arrive as `attachment` with an `audio/*` `mimeType`, not as a distinct arm.
 - **`target` on `reaction`** is the slim shape documented under [Target refs](#target-refs) below, not a full nested message.
 - **`richlink`** ships only `url` — OG fetches happen in your handler, since resolving them inline at delivery time would tie latency to the slowest target site.
+- **`app`** carries the card's text layout and URL. On iMessage, third-party app cards (GamePigeon, OpenTable, etc.) now arrive as `app` content instead of falling through to unsupported. The `layout` object contains only the text slots decoded from the sender's balloon — no image bytes.
 
 A `group` (album) nests each attachment as a full inbound message in `items` — here, two photos sent together:
 
@@ -248,7 +250,7 @@ Each item has the same shape as the top-level [`message`](#message) and carries 
 
 ##### Arms you won't receive inbound
 
-Two arms you might expect arrive as something else: inbound **replies come as plain `text`** (there's no `reply` arm on the wire — the thread link isn't surfaced), and **voice memos come as `attachment`** (`audio/*`). Anything else in the SDK's [`Content`](/spectrum-ts/content) union is send-only or a rare provider-specific case — don't build on receiving it inbound.
+Two arms you might expect arrive as something else: inbound **replies come as plain `text`** (there's no `reply` arm on the wire — the thread link isn't surfaced), and **voice memos come as `attachment`** (`audio/*`). Most other arms in the SDK's [`Content`](/spectrum-ts/content) union are send-only — don't build on receiving them inbound.
 
 Don't branch on arms you can't receive — but always keep a `default:` case, so an arm a future SDK/provider bump starts delivering (forwarded generically as `type: string` plus its JSON-safe fields) can't break your handler.
 
@@ -296,6 +298,9 @@ switch (content.type) {
     if (content.mimeType.startsWith('image/')) handleImage(content);
     else if (content.mimeType.startsWith('audio/')) handleAudio(content);
     else handleGenericAttachment(content);
+    break;
+  case 'app':
+    handleApp(content.url, content.layout);
     break;
   case 'reaction':
     handleReaction(content.emoji, content.target.id);
