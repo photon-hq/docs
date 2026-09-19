@@ -21,177 +21,132 @@
   },
   "favicon": "/favicon-128x128.png",
   "navigation": {
-    "tabs": [
+    "versions": [
       {
-        "tab": "Spectrum",
-        "groups": [
+        "version": "Beta",
+        "tabs": [
           {
-            "$source": "spectrum-ts",
-            "group": "Get started"
-          },
-          {
-            "$source": "spectrum-ts",
-            "group": "Core concepts"
-          },
-          {
-            "$source": "spectrum-ts",
-            "group": "Content"
-          },
-          {
-            "$source": "spectrum-ts",
-            "group": "Providers"
-          },
-          {
-            "$source": "spectrum-ts",
-            "group": "Advanced"
-          },
-          {
-            "$source": "spectrum-ts",
-            "group": "Integrations"
-          },
-          {
-            "$source": "spectrum-ts",
-            "group": "Best Practices"
-          },
-          {
-            "$source": "spectrum-ts",
-            "group": "Troubleshooting"
-          }
-        ]
-      },
-      {
-        "tab": "CLI",
-        "groups": [
-          {
-            "group": "Getting Started",
-            "pages": [
-              "cli/overview",
-              "cli/installation",
-              "cli/authentication"
-            ]
-          },
-          {
-            "group": "Commands",
-            "pages": [
-              "cli/projects",
-              "cli/spectrum",
-              "cli/billing",
-              "cli/profile-and-utilities"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Webhooks",
-        "groups": [
-          {
-            "group": "Getting Started",
-            "pages": [
-              "webhooks/overview",
-              "webhooks/quickstart",
-              "webhooks/events"
-            ]
-          },
-          {
-            "group": "Implementation",
-            "pages": [
-              "webhooks/verifying-signatures",
-              "webhooks/delivery",
-              "webhooks/managing-webhooks",
-              "webhooks/troubleshooting"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Low-level SDKs",
-        "groups": [
-          {
-            "group": "Advanced Kits",
-            "pages": [
+            "tab": "Overview",
+            "groups": [
               {
-                "group": "iMessage",
-                "icon": "apple",
+                "group": "Get started",
                 "pages": [
-                  "advanced-kits/imessage/getting-started",
-                  "advanced-kits/imessage/messages",
-                  "advanced-kits/imessage/chats",
-                  "advanced-kits/imessage/groups",
-                  "advanced-kits/imessage/attachments",
-                  "advanced-kits/imessage/polls",
-                  "advanced-kits/imessage/addresses",
-                  "advanced-kits/imessage/locations",
-                  "advanced-kits/imessage/events",
-                  "advanced-kits/imessage/error-handling"
+                  "index"
                 ]
-              },
+              }
+            ],
+            "global": {
+              "anchors": [
+                {
+                  "anchor": "Blog",
+                  "href": "https://photon.codes/blog",
+                  "icon": "newspaper"
+                }
+              ]
+            }
+          },
+          {
+            "tab": "Messaging",
+            "groups": [
               {
-                "group": "WhatsApp Business",
-                "icon": "whatsapp",
+                "group": "Get started",
                 "pages": [
-                  "advanced-kits/whatsapp/getting-started",
-                  "advanced-kits/whatsapp/messages",
-                  "advanced-kits/whatsapp/interactive-messages",
-                  "advanced-kits/whatsapp/templates",
-                  "advanced-kits/whatsapp/events",
-                  "advanced-kits/whatsapp/media",
-                  "advanced-kits/whatsapp/error-handling"
-                ]
-              },
-              {
-                "group": "Legacy",
-                "icon": "hat-cowboy",
-                "pages": [
-                  "legacy/imessage"
+                  "messaging/index"
                 ]
               }
             ]
           },
           {
-            "group": "Opensource Kits",
-            "pages": [
-              "opensource/imessage-kit"
+            "tab": "Cookbooks",
+            "groups": [
+              {
+                "group": "Get started",
+                "pages": [
+                  "cookbooks/index"
+                ]
+              },
+              {
+                "group": "Voice",
+                "pages": [
+                  "cookbooks/voice/retell",
+                  "cookbooks/voice/elevenlabs",
+                  "cookbooks/voice/livekit",
+                  "cookbooks/voice/twilio"
+                ]
+              }
             ]
           },
           {
-            "group": "Utilities",
-            "pages": [
-              "utilities/heif2jpeg"
+            "tab": "CLI",
+            "groups": [
+              {
+                "$source": "photon-cli",
+                "group": "Get started"
+              },
+              {
+                "$source": "photon-cli",
+                "group": "Projects"
+              },
+              {
+                "$source": "photon-cli",
+                "group": "Account"
+              },
+              {
+                "$source": "photon-cli",
+                "group": "Compliance"
+              },
+              {
+                "$source": "photon-cli",
+                "group": "Reference"
+              }
+            ]
+          },
+          {
+            "tab": "API Reference",
+            "groups": [
+              {
+                "group": "Get started",
+                "pages": [
+                  "api-reference/index"
+                ]
+              },
+              {
+                "group": "Problems",
+                "pages": [
+                  "problems/handling-errors",
+                  "problems/catalog"
+                ]
+              },
+              {
+                "group": "Endpoints",
+                "openapi": {
+                  "source": "https://api.photon.codes/openapi.json",
+                  "directory": "api-reference"
+                }
+              },
+              {
+                "group": "Event Delivery WebSocket",
+                "pages": [
+                  {
+                    "$source": "fusor-ws",
+                    "group": "Event Delivery WebSocket"
+                  },
+                  {
+                    "$source": "fusor-ws",
+                    "group": "Frame reference"
+                  }
+                ]
+              }
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
-        "groups": [
-          {
-            "group": "Getting Started",
-            "pages": [
-              "api-reference/introduction",
-              "api-reference/oauth",
-              "api-reference/rate-limit"
-            ]
-          },
-          {
-            "group": "Dashboard API",
-            "openapi": "api-reference/dashboard-openapi.json"
-          },
-          {
-            "group": "Spectrum API",
-            "openapi": "https://spectrum.photon.codes/openapi/json"
-          }
-        ]
+        "$source": "maintain",
+        "version": "Maintain",
+        "default": true
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Blog",
-          "href": "https://photon.codes/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
+    ]
   },
   "logo": {
     "light": "/logo/light.svg",
@@ -233,11 +188,6 @@
   "seo": {
     "metatags": {
       "canonical": "https://photon.codes/docs"
-    }
-  },
-  "integrations": {
-    "ga4": {
-      "measurementId": "GT-TXXP8686"
     }
   }
 }

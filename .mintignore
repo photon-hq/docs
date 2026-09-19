@@ -2,10 +2,18 @@
 # .git, .github, .claude, .agents, .idea, node_modules,
 # README.md, LICENSE.md, CHANGELOG.md, CONTRIBUTING.md
 
-# Draft content
-drafts/
-*.draft.mdx
-
 node_modules/
+
+# Build pipeline: templates and tooling, not publishable pages
+scripts/
+docs-src/
+.vellum-src/
 *.vel
-CLAUDE.md
+
+# Draft cookbooks, review exports, and internal test notes
+plans/
+
+AGENTS.md
+
+# Preview and validate from site/ after docs:generate.
+site/

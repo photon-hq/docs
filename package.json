@@ -1,23 +1,23 @@
 {
-  "name": "docs",
+  "name": "docs-v2",
   "type": "module",
   "private": true,
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "docs:generate": "pnpm docs:sync && tsx scripts/build-nav/index.ts && vellum build && tsx scripts/llms-generator/index.ts",
+    "docs:generate": "pnpm docs:sync && tsx scripts/build-problems/index.ts && tsx scripts/build-nav/index.ts && vellum build && pnpm docs:export && pnpm docs:llms",
     "docs:sync": "tsx scripts/sync-docs/index.ts",
-    "docs:llms": "tsx scripts/llms-generator/index.ts",
+    "docs:problems": "tsx scripts/build-problems/index.ts",
+    "docs:llms": "tsx scripts/llms-generator/index.ts site",
     "lint": "eslint .",
+    "test": "tsx --test scripts/sync-docs/git.test.ts scripts/sync-docs/assets.test.ts scripts/build-nav/index.test.ts scripts/llms-generator/index.test.ts scripts/export-site/index.test.ts scripts/export-site/pipeline.test.ts",
     "lint:fix": "eslint . --fix",
     "typecheck:docs": "tsx scripts/typecheck-docs/index.ts",
-    "prepare": "husky"
+    "docs:export": "tsx scripts/export-site/index.ts",
+    "docs:dev": "cd site && mint dev"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^4.19.0",
-    "@photon-ai/advanced-imessage": "^2.1.0",
-    "@photon-ai/advanced-imessage-kit": "^1.14.3",
-    "@photon-ai/imessage-kit": "^2.1.2",
-    "@photon-ai/whatsapp-business": "^0.1.1",
+    "@mdx-js/mdx": "^3.1.1",
     "@types/node": "^25.6.0",
     "@typescript/native-preview": "7.0.0-dev.20260413.1",
     "@vellum-docs/cli": "^0.3.0",
@@ -25,14 +25,13 @@
     "@vellum-docs/engine-nunjucks": "^0.3.0",
     "@vellum-docs/extractor-typescript": "^0.3.0",
     "@vellum-docs/profile-mintlify": "^0.3.0",
-    "chat": "4.34.0",
     "eslint": "^9.39.4",
     "eslint-plugin-format": "^2.0.1",
-    "eve": "0.30.8",
-    "husky": "^9.1.7",
+    "mdast-util-from-markdown": "^2.0.3",
     "oxfmt": "^0.44.0",
-    "spectrum-ts": "12.8.0",
+    "remark-frontmatter": "^5.0.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "yaml": "^2.9.1"
   }
 }

@@ -1,0 +1,65 @@
+---
+title: "Handling errors"
+description: "How Photon reports errors, and what every field means."
+---
+
+Every Photon API error is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)
+problem document, served as `application/problem+json`. One shape covers every
+failure, so you write the handling once.
+
+```json
+{
+  "type": "https://photon.codes/docs/problems/validation-failed",
+  "code": "VALIDATION_FAILED",
+  "title": "Request Validation Failed",
+  "status": 422,
+  "detail": "expiresAt must be in the future.",
+  "requestId": "01JAV6R2K9XQ0YB3M7T4E8N5PD"
+}
+```
+
+## Fields
+
+| Field | Always present | What it is |
+| --- | --- | --- |
+| `type` | Yes | A URI identifying the problem. Stable, and the page you are reading this on. |
+| `code` | Yes | A `SCREAMING_SNAKE_CASE` identifier for the same problem. Stable. |
+| `title` | Yes | A short human-readable summary. Do not match on it. |
+| `status` | Yes | The HTTP status code, repeated in the body. |
+| `detail` | No | What went wrong on this specific request. Do not match on it. |
+| `instance` | No | The request path that produced the problem. |
+| `remediation` | No | An `action` describing how to fix it, and sometimes a `documentation` URL. |
+| `requestId` | No | Quote this when you contact support. |
+
+A problem may also carry extension fields specific to it — `validation-failed`
+adds `issues`, listing every field that failed. The pages in this section
+document the extensions each problem defines.
+
+## Handle problems by type or code
+
+`type` and `code` are wire contracts: once published, neither changes without a
+breaking change. Match on either one.
+
+```ts
+const res = await fetch(url, { headers })
+if (!res.ok) {
+  const problem = await res.json()
+  if (problem.code === 'RATE_LIMITED') {
+    // Retry-After carries the delay, as a header rather than a body field.
+    const retryAfter = Number(res.headers.get('Retry-After') ?? 1)
+    await new Promise(r => setTimeout(r, retryAfter * 1000))
+  }
+}
+```
+
+Never branch on `title` or `detail`. Both are written for people, and both
+change without notice.
+
+## Look up a type URI
+
+Every problem the API publishes is listed in the [catalog](/problems/catalog),
+with its code, status, and any extension fields it carries.
+
+Each slug there is anchored, and a `type` URI redirects onto it. Open
+`https://photon.codes/docs/problems/rate-limited` and you land on that row with
+it highlighted, whatever filter was set.

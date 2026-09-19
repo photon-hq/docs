@@ -3,13 +3,26 @@ name: Deploy dist
 on:
   push:
     branches: [main]
+  # Source repos notify us when their docs/ changes. Add one type per source in
+  # scripts/sources.json; each source repo sends its own event_type.
   repository_dispatch:
-    types: [spectrum-cloud-release, spectrum-ts-docs]
+    types: [spectrum-cloud-release, spectrum-ts-docs, photon-cli-docs, fusor-ws-docs]
   workflow_dispatch:
+
+# One running build plus at most one queued collapses bursts -- watcher
+# dispatches and source updates alike -- into a single trailing deploy.
+concurrency:
+  group: deploy-dist
+  cancel-in-progress: false
+
+# Checkout uses GITHUB_TOKEN; separate App tokens read sources and publish dist.
+permissions:
+  contents: read
 
 jobs:
   deploy:
-    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    # Source-branch pushes and PRs must never publish before the cutover is merged.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Parse repository
@@ -18,20 +31,26 @@ jobs:
           echo "owner=${GITHUB_REPOSITORY%/*}" >> "$GITHUB_OUTPUT"
           echo "name=${GITHUB_REPOSITORY#*/}" >> "$GITHUB_OUTPUT"
 
-      - name: Generate GitHub App token
-        id: app-token
+      - name: Generate read-only source token
+        id: source-token
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ steps.parse-repo.outputs.owner }}
+          permission-contents: read
+          # Add each source repo from scripts/sources.json here so the sparse
+          # clone in sync-docs can reach it.
           repositories: |
-            ${{ steps.parse-repo.outputs.name }}
-            spectrum-ts
+            cli-beta
+            fusor-v2
+            docs
 
       - uses: actions/checkout@v4
         with:
-          token: ${{ steps.app-token.outputs.token }}
+          # Dispatches arrive on main; every deployment builds this source branch.
+          ref: codex/docs-v2
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v4
 
@@ -48,29 +67,54 @@ jobs:
         # while Vellum extracts types from the installed package versions.
         env:
           DOCS_SOURCE_MODE: git
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          DOCS_GH_TOKEN: ${{ steps.source-token.outputs.token }}
+
+      - name: Record the OpenAPI spec version this build saw
+        # The aggregator serves a strong SHA-256 ETag. openapi-watch.yml
+        # compares this stamp against the live document and redeploys on drift,
+        # which is what keeps the API playground fresh -- Mintlify ingests the
+        # remote spec only at deployment, never per page view. An unreachable
+        # aggregator leaves no stamp rather than failing the deploy; the
+        # watcher skips when its own probe fails, so the two converge on the
+        # next cycle in which the aggregator is up.
+        run: |
+          etag=$(curl -sSfI --max-time 30 https://api.photon.codes/openapi.json \
+            | tr -d '\r' | awk 'tolower($1)=="etag:" {print $2}') || etag=""
+          if [ -n "$etag" ]; then
+            printf '%s\n' "$etag" > .openapi-etag
+            cat .openapi-etag
+          else
+            echo "::warning::no ETag from the aggregator; stamp omitted"
+          fi
+
+      - name: Generate dist publish token
+        id: publish-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ steps.parse-repo.outputs.owner }}
+          permission-contents: write
+          repositories: ${{ steps.parse-repo.outputs.name }}
 
       - name: Push to dist branch
+        env:
+          DIST_TOKEN: ${{ steps.publish-token.outputs.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Force-add the generated navigation (gitignored, but needed on dist)
-          git add -f docs.json
+          # Publish the assembled site as the root of dist. Source files and
+          # unprefixed Beta pages stay on codex/docs-v2.
+          [ ! -f .openapi-etag ] || cp .openapi-etag site/.openapi-etag
+          git read-tree --empty
+          git --work-tree=site add --all --force
 
-          # Force-add all Vellum-generated files (gitignored, but needed on dist).
-          # Template list comes from the assembled tree (.vellum-src), not docs-src,
-          # since sources may be pulled from other repos.
-          git add -f $(find .vellum-src -name '*.vel' | sed 's|^.vellum-src/||;s|\.vel$||')
-
-          # Force-add custom llms.txt generator output (also gitignored)
-          git add -f llms.txt llms-full.txt llms-*.txt
-
-          # Commit onto a detached HEAD so main is untouched
+          # Commit onto a detached HEAD so the source branch is untouched
           TREE=$(git write-tree)
           PARENT=$(git rev-parse HEAD)
           COMMIT=$(git commit-tree "$TREE" -p "$PARENT" \
             -m "build: generate docs from $(git rev-parse --short HEAD)")
 
-          git push "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}.git" \
+          git push "https://x-access-token:${DIST_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
             "$COMMIT":refs/heads/dist --force

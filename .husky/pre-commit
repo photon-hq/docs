@@ -1,3 +1,0 @@
-pnpm lint
-pnpm docs:generate
-pnpm typecheck:docs

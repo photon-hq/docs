@@ -1,0 +1,98 @@
+---
+title: "API reference"
+description: "Photon API reference."
+---
+
+The Photon API is a REST API over JSON. Use it to manage projects, provision and
+operate messaging and voice lines, handle 10DLC and call registry compliance,
+configure webhooks, and administer accounts, members, and billing.
+
+<Note>
+  This reference uses the production API at `https://api.photon.codes`,
+  including requests sent from the interactive playground.
+</Note>
+
+## Base URL
+
+```
+https://api.photon.codes
+```
+
+Every endpoint is versioned under `/v1`.
+
+## Authentication
+
+Send your credential as a bearer token on every request:
+
+```
+Authorization: Bearer <credential>
+```
+
+Photon accepts three kinds of credential and tells them apart by their prefix:
+
+| Credential | Looks like | Use it for |
+| --- | --- | --- |
+| Account service key | `pho_ask_...` | Any endpoint your account can reach. |
+| Project API key | `pho_sk_...` | One project, under `/v1/projects/{projectId}`. |
+| Access token | A JWT | Dashboard sessions and OAuth grants. |
+
+A project API key only works under `/v1/projects/{projectId}`, for the project it
+was issued for. Every other endpoint needs an account credential — all of
+`/v1/account`, the `/v1/projects` collection, and invitations.
+
+Pick the narrowest credential that reaches what you are testing. A project API
+key is enough for most endpoints, and limits the damage if you leak it. Reach for
+an account service key only when you need `/v1/account` or the project
+collection.
+
+Create one with the CLI. Every key needs a name and an explicit expiry:
+
+```sh
+photon account service-key create \
+  --name "Docs playground" \
+  --expires-at 2027-01-01T00:00:00Z
+```
+
+The credential is printed once, when the key is created, so copy it straight
+away. To replace a key you lost, revoke it and create another. See
+[Service keys](/cli/service-keys) for the full command, or create keys through
+`POST /v1/account/service-keys`.
+
+<Warning>
+  The playground sends real requests to production. Use a credential scoped to
+  the project you intend to work with, and revoke temporary credentials when you
+  are done.
+</Warning>
+
+A handful of endpoints under `/v1/auth` are public and ignore the header.
+
+## Errors
+
+Every error is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem
+document served as `application/problem+json`, carrying a stable `type` URI and
+`code` you can match on:
+
+```json
+{
+  "type": "https://photon.codes/docs/problems/validation-failed",
+  "code": "VALIDATION_FAILED",
+  "title": "Request Validation Failed",
+  "status": 422
+}
+```
+
+Each `type` URI resolves to the page documenting that problem. See
+[Problems](/problems/catalog) for the envelope and the full catalogue.
+
+## Browse the endpoints
+
+The **Endpoints** group in the sidebar lists every operation, grouped by the area
+it belongs to. Each page documents the parameters, request body, and responses,
+and lets you send a request to the production API.
+
+You can also read the schema directly at
+[`/openapi.json`](https://api.photon.codes/openapi.json).
+
+The **WebSocket** group below it covers
+[event delivery over WebSocket](/websocket): how to connect, start a session,
+receive events, and read the [frame reference](/websocket/frames).

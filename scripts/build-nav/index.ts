@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import process from 'node:process'
 
@@ -16,6 +16,7 @@ const BASE = join(ROOT, 'docs.base.json')
 const OUT = join(ROOT, 'docs.json')
 const SOURCES = join(ROOT, 'scripts/sources.json')
 const NAV_DIR = join(ROOT, '.vellum-src/.nav')
+const REDIRECT_DIR = join(ROOT, '.vellum-src/.redirects')
 
 interface Source {
   name: string
@@ -25,12 +26,15 @@ interface Source {
 
 interface NavFragment {
   source: string
-  groups: { group: string, [k: string]: unknown }[]
+  groups?: { group: string, [k: string]: unknown }[]
+  navigation?: Record<string, unknown>
 }
 
 interface Marker {
   $source: string
   group?: string
+  version?: string
+  default?: boolean
 }
 
 function isMarker(node: unknown): node is Marker {
@@ -54,9 +58,17 @@ function resolveMarker(marker: Marker, fragments: Map<string, NavFragment>): unk
   const fragment = fragments.get(marker.$source)
   if (!fragment)
     throw new Error(`nav: no fragment for source "${marker.$source}" (is it synced? does sources.json list it?)`)
-  if (marker.group === undefined)
+  if (marker.version !== undefined) {
+    if (!fragment.navigation)
+      throw new Error(`nav: source "${marker.$source}" has no site navigation`)
+    return [{ version: marker.version, ...fragment.navigation, ...(marker.default !== undefined ? { default: marker.default } : {}) }]
+  }
+  if (marker.group === undefined) {
+    if (!fragment.groups)
+      throw new Error(`nav: source "${marker.$source}" has no groups`)
     return fragment.groups
-  const group = fragment.groups.find(g => g.group === marker.group)
+  }
+  const group = fragment.groups?.find(g => g.group === marker.group)
   if (!group)
     throw new Error(`nav: source "${marker.$source}" has no group "${marker.group}"`)
   return [group]
@@ -82,10 +94,31 @@ function walk(node: unknown, fragments: Map<string, NavFragment>): unknown {
   return node
 }
 
+// Generated redirects are appended to whatever docs.base.json already declares.
+// A generator owning them keeps the list exact: build-problems emits one entry
+// per published problem type instead of a wildcard over /problems/, which would
+// also capture the .md endpoints Mintlify serves for "Copy page".
+function loadRedirects(): unknown[] {
+  if (!existsSync(REDIRECT_DIR))
+    return []
+  const out: unknown[] = []
+  for (const file of readdirSync(REDIRECT_DIR)) {
+    if (file.endsWith('.json'))
+      out.push(...JSON.parse(readFileSync(join(REDIRECT_DIR, file), 'utf8')) as unknown[])
+  }
+  return out
+}
+
 function main() {
   const base = JSON.parse(readFileSync(BASE, 'utf8'))
   const fragments = loadFragments()
-  const merged = walk(base, fragments)
+  const merged = walk(base, fragments) as Record<string, unknown>
+
+  const generated = loadRedirects()
+  if (generated.length > 0) {
+    merged.redirects = [...(merged.redirects as unknown[] ?? []), ...generated]
+    process.stdout.write(`nav: merged ${generated.length} generated redirect(s)\n`)
+  }
   writeFileSync(OUT, `${JSON.stringify(merged, null, 2)}\n`)
   process.stdout.write(`wrote docs.json (merged ${fragments.size} nav fragment(s))\n`)
 }

@@ -1,6 +1,7 @@
 import antfu from '@antfu/eslint-config'
 
 export default antfu({
+  ignores: ['site/**'],
   typescript: true,
   vue: false,
   jsonc: false,
@@ -9,5 +10,27 @@ export default antfu({
   stylistic: true,
   formatters: {
     markdown: 'prettier',
+  },
+}, {
+  // Build tooling uses Node's test runner without an additional test dependency.
+  files: ['scripts/**/*.test.ts'],
+  rules: {
+    'test/no-import-node-test': 'off',
+  },
+}, {
+  // Mintlify compiles a snippet into a function body and injects React's hooks
+  // through the call scope, so they are globals here and cannot be imported.
+  // See the header of snippets/problems-table.jsx.
+  files: ['snippets/**/*.jsx'],
+  languageOptions: {
+    globals: {
+      useCallback: 'readonly',
+      useContext: 'readonly',
+      useEffect: 'readonly',
+      useMemo: 'readonly',
+      useReducer: 'readonly',
+      useRef: 'readonly',
+      useState: 'readonly',
+    },
   },
 })

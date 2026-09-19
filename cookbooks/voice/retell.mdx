@@ -1,0 +1,331 @@
+---
+title: "Set up Photon with Retell"
+sidebarTitle: "Retell"
+description: "Connect your Retell agent to a Photon number with SIP trunking for incoming and outgoing calls."
+---
+
+Connect your existing Retell agent to a Photon number. This cookbook takes
+you through Photon profile setup, number import, and the settings for incoming
+calls, outgoing calls, or both.
+
+Incoming call: caller → Photon number → Voice profile → Retell agent.
+
+Outgoing call: Retell agent → Photon SIP connection → recipient's phone.
+
+Retell's custom telephony integration uses an imported number and SIP routing.
+Inbound delivery and outbound routing use different destinations.
+[Retell custom telephony](https://docs.retellai.com/deploy/custom-telephony).
+
+This cookbook uses **TLS** to encrypt SIP signaling between Photon and Retell.
+Retell also supports **TCP**, which its transport guide labels recommended.
+TLS is supported and is the transport used throughout the steps and screenshots
+in this cookbook. Audio encryption is configured separately below.
+[Retell transport guidance](https://docs.retellai.com/deploy/custom-telephony).
+
+## Before you start
+
+- A Photon project with an eligible **SMS number**, **WhatsApp number**, or
+  **dedicated iMessage line**. Shared iMessage assignments do not support Voice.
+- Permission to manage the project's Voice profiles.
+- A Retell account with a voice agent ready to use.
+
+Have your Photon number ready before starting. You can use your existing
+Retell workspace and agent. If you still need an agent, follow
+[Retell's agent setup guide](https://docs.retellai.com/build/overview) first.
+
+User-entered names in the screenshots are examples. Choose your own labels
+and use your own numbers. Copy generated credentials and assigned connection addresses
+from your account; the field instructions identify values that must match.
+
+## 1. Prepare your Photon Voice profile
+
+### Choose a profile
+
+A Voice profile stores the call settings for one or more numbers in your project.
+
+| Profile | Which numbers use it | When to use it |
+| --- | --- | --- |
+| **Default profile** | Numbers without an additional profile, including newly added numbers. They follow it automatically. | Use it for the settings your numbers share. A project can have one default. |
+| **Additional profile** | Only the numbers you explicitly assign to it. | Use it when selected numbers need a different provider, agent, or call configuration. |
+
+Create the default before creating an additional profile. Creating an additional
+profile does not move any numbers; assign the intended numbers to it afterward.
+
+The screenshots below show default-profile setup. If your number uses an
+additional profile, apply the connection settings to that profile instead.
+Changes affect new calls on every number using the edited profile. Check its
+**Lines** count to see how many numbers share the settings.
+
+### Open Voice
+
+If your number already uses a SIP Voice profile, open that profile and continue
+to **Understand your profile** below. Otherwise, create the default profile:
+
+Select your Photon project and open **Voice** in the sidebar.
+
+Under **Lines**, find the number you want to use. The example below already
+has an SMS number.
+
+In the **Default profile** section, select **Set up default**.
+
+![Photon Voice page showing an SMS number under Lines and the Set up default button highlighted.](/images/cookbooks/voice/retell/Voice1.webp)
+
+If your project already has a default profile, open it and skip to
+**Understand your profile** below.
+
+### Create the default profile
+
+On **Create the default profile**, select **SIP**, then select **Create profile**.
+
+![Create the default profile page with SIP selected and the Create profile button highlighted.](/images/cookbooks/voice/retell/create-default-profile.webp)
+
+### Understand your profile
+
+After creation, Photon opens **Default profile**. The example shows **SIP** as
+the protocol and **1 line** using the profile.
+
+![Created Default profile showing SIP, one line, and inbound and outbound calls not enabled.](/images/cookbooks/voice/retell/Voice3.webp)
+
+The profile has two independent call settings:
+
+| Section | What it controls |
+| --- | --- |
+| **Inbound calls** | Where Photon delivers calls arriving at your number, such as your connected voice agent. |
+| **Outbound calls** | The SIP credentials your connected platform uses to place calls through Photon. |
+
+Both sections show **Not enabled** in a newly created profile. The steps below
+connect this profile to Retell. Configure incoming calls, outgoing calls, or
+both; each direction is independent.
+
+### Check media encryption
+
+Leave **Media encryption** at **Auto** for this walkthrough. Photon negotiates
+encrypted audio over TLS when supported and can fall back to unencrypted audio.
+TLS encrypts SIP signaling; SRTP encrypts the audio.
+
+To require encrypted audio, select **Change** beside **Media encryption**,
+enable **Require encrypted calls**, and select **Save**. Photon displays
+**Required**. This policy applies to both incoming and outgoing calls. Every
+configured direction must then use TLS and support SRTP. Retell supports SRTP
+over TLS.
+[Retell media encryption](https://docs.retellai.com/deploy/custom-telephony).
+
+## 2. Prepare outbound credentials, if needed
+
+For incoming calls only, skip to [Import your Photon number into Retell](#3-import-your-photon-number-into-retell).
+Complete this section if you want Retell to place outgoing calls through Photon.
+
+In the Photon profile's **Outbound calls** section, select
+**SHA-256 (recommended)** under **Digest algorithm**, then select
+**Enable outbound**.
+
+Photon opens **Save the outbound password**. Copy it to a secure location,
+then select **I saved it**. Photon displays this password only once.
+If outbound is already enabled, use the existing details and saved password.
+
+![Photon Outbound calls section showing the Digest algorithm choices and Enable outbound button.](/images/cookbooks/voice/retell/voice_outbound_1.webp)
+
+![Photon one-time outbound password dialog with the password concealed and the I saved it button.](/images/cookbooks/voice/retell/voice_outbound_2.webp)
+
+After closing the password dialog, copy these values from **Outbound calls**:
+
+| Photon value | Where you use it in Retell |
+| --- | --- |
+| **Username** | **SIP Trunk User Name** |
+| Saved outbound password | **SIP Trunk Password** |
+| Server under **SIP connection** | **Termination URI**, with the matching port when needed |
+| **TLS** connection and its port | **Outbound Transport: TLS** and the corresponding termination address |
+
+![Photon outbound settings showing the username, authentication realm, SHA-256, and the production SIP connection sip.photon.codes with its ports.](/images/cookbooks/voice/retell/photon-outbound-configured.webp)
+
+This screenshot shows the production server `sip.photon.codes`, with
+**UDP/TCP** on port **5060** and **TLS** on port **5061**. Use the TLS connection
+for this walkthrough. Copy the server and matching port displayed in your own
+profile.
+
+**Authentication realm** identifies the authentication domain. It can differ
+from the SIP server; use **SIP connection** for Retell's termination address.
+The Retell form shown below has no separate realm field.
+
+Keep these values available for the next step. If you have lost the password,
+use **Rotate** in Photon to obtain a replacement and update every connected
+service using that credential. Rotating changes credentials used by the profile.
+
+## 3. Import your Photon number into Retell
+
+Have your Photon number and SIP server address available. For outgoing calls,
+also have the username and password from the previous step ready.
+
+In your Retell workspace, open **Phone Numbers** under **DEPLOY**. Select the
+**+** button beside the **Phone Numbers** heading.
+
+![Retell Phone Numbers page with the add button highlighted.](/images/cookbooks/voice/retell/add-number.webp)
+
+Select **Connect to your number via SIP trunking**.
+
+![The add-number menu with Connect to your number via SIP trunking highlighted.](/images/cookbooks/voice/retell/choose-sip-trunking.webp)
+
+In the dialog, enter the details for your Photon number and its Voice profile.
+
+![Retell connection form with a concealed Photon number, sip.photon.codes as the termination URI, Photon Voice Demo as the nickname, and TLS selected. The credential fields are empty.](/images/cookbooks/voice/retell/connection-details.webp)
+
+| Retell field | What to enter |
+| --- | --- |
+| **Phone Number** | Your eligible Photon number, including its country code. Keep **Format to E.164** selected. |
+| **Termination URI** | The server from Photon's **SIP connection**, with its TLS port when needed. Copy your environment's connection values. |
+| **SIP Trunk User Name** | For outgoing calls, the selected Photon profile's outbound SIP username. |
+| **SIP Trunk Password** | For outgoing calls, the outbound SIP password generated by Photon for that profile. |
+| **Nickname** | An optional label of your choice, such as `Photon Voice Demo`. |
+| **Outbound Transport** | Select **TLS** and use the TLS endpoint and port provided by Photon. |
+
+The Retell screenshot uses `sip.photon.codes`, matching the Photon connection
+shown above. Your termination address must match your profile's **SIP connection**.
+
+Retell labels the username and password as **encouraged**. Photon outbound
+calling uses SIP credentials, so supply the Photon username and password when
+configuring that direction, even though they are empty in the screenshot.
+The nickname is a label inside Retell; it does not rename your Photon profile.
+
+Retell requires a termination address when importing the number, even if you
+only plan to receive calls. For incoming calls only, enter the Photon SIP
+server address for your environment and leave the outbound credentials blank.
+The screenshot shows this state. For outgoing calls, supply both credentials.
+
+The termination address belongs to Photon. Retell's receiving address is entered
+in Photon's inbound settings in the next section.
+[Retell import reference](https://docs.retellai.com/api-references/import-phone-number).
+
+Select **Save**. On the imported number's page, check the number and nickname.
+The example shows **Provider: Custom telephony** and separate
+**Inbound Call Agent** and **Outbound Call Agent** sections.
+
+![Imported Photon number in Retell with both call-agent selectors initially set to None.](/images/cookbooks/voice/retell/number-agent-settings.webp)
+
+Choose an agent for each direction you want to use. Leaving its selector at
+**None** disables that direction in Retell.
+[Retell inbound calls](https://docs.retellai.com/deploy/inbound-call).
+
+## 4. Receive calls with your Retell agent
+
+For outgoing calls only, skip to [Choose the outbound agent in Retell](#5-choose-the-outbound-agent-in-retell).
+
+### Choose the inbound agent in Retell
+
+Under **Inbound Call Agent**, open the **Call Agent** dropdown. Select your
+existing agent, then select the published version you want to answer calls.
+
+The example selects **Photon Voice Demo Agent**, version **V0**. Your agent
+name and version will differ. The menu also shows **Latest Published** and
+**V1 (Draft)**; use the version intended for your callers.
+
+![Inbound Call Agent menu showing the Photon Voice Demo Agent and version V0 selected.](/images/cookbooks/voice/retell/select-agent-version.webp)
+
+The selected agent and version appear in **Call Agent**. For incoming calls
+only, leave **Outbound Call Agent** set to **None (disable outbound)**.
+
+### Set the inbound destination in Photon
+
+Open the existing Photon Voice profile used by your number. Under
+**Inbound calls**, select **Enable inbound**.
+
+![Photon Inbound calls section with Enable inbound highlighted.](/images/cookbooks/voice/retell/voice_inbound_1.webp)
+
+Use the following settings for Retell's standard SIP-trunking connection:
+
+| Photon field | Value |
+| --- | --- |
+| **SIP address** | `sip:sip.retellai.com;transport=tls` |
+| **Transport** | **TLS** |
+| **SIP username** | Leave empty for the standard Retell receiving endpoint. |
+| **SIP password** | Leave empty for the standard Retell receiving endpoint. |
+
+Retell publishes this receiving address for TLS.
+[Retell SIP settings](https://docs.retellai.com/deploy/custom-telephony).
+
+![Photon inbound form showing the SIP address, transport selector, and optional authentication fields before configuration.](/images/cookbooks/voice/retell/voice_inbound_2.webp)
+
+The screenshot shows the empty form with **UDP** selected. Paste the SIP address
+above; Photon automatically selects **TLS** from the address. Check that the
+transport shows **TLS** before continuing.
+
+Photon's generated outbound username and password belong in Retell's import
+form, not in these fields.
+If Retell has supplied custom receiving credentials for your account, use
+those instead of leaving these fields empty.
+
+<Note>
+  **Photon automatically formats the address.** When you leave the input field
+  or change the transport, Photon reformats the SIP address. With **TLS** selected,
+  `sip:sip.retellai.com;transport=tls` becomes `sips:sip.retellai.com`.
+  Both forms select TLS in Photon. You can continue with the reformatted address.
+</Note>
+
+Select **Enable inbound**. Check that the saved destination points to
+`sip.retellai.com` using **TLS**, as shown below.
+
+![Photon inbound enabled with destination sips:sip.retellai.com, TLS selected, and no SIP credentials.](/images/cookbooks/voice/retell/photon-inbound-configured.webp)
+
+With the number imported and an inbound agent selected, calls arriving at
+your Photon number are routed to that Retell agent.
+
+## 5. Choose the outbound agent in Retell
+
+Skip this section if you only receive calls.
+
+On the imported number's page, open **Call Agent** under
+**Outbound Call Agent**. Select your existing agent and the version you want
+to use for outgoing calls. This selection is independent of
+**Inbound Call Agent**; you can use the same agent or a different one.
+[Retell agent binding](https://docs.retellai.com/deploy/inbound-call).
+
+The screenshot in the next section shows **Photon Voice Demo Agent/V0**
+selected for both directions.
+
+## 6. Place an outbound call when you need one
+
+Once outbound configuration is complete, open your imported number in Retell
+and select **Make an outbound call**.
+
+![Retell number page with inbound and outbound agents selected and Make an outbound call highlighted.](/images/cookbooks/voice/retell/make-outbound-call.webp)
+
+In **Make Outbound Call**, enter the recipient's number under **Phone Number**.
+Keep **Format to E.164** selected and include the country code. This is the
+number you want to call; the imported Photon number is the calling number.
+
+![Make Outbound Call dialog showing the recipient number, Dynamic Variables, Custom SIP Headers, and Call button.](/images/cookbooks/voice/retell/outbound-call-dialog.webp)
+
+If your agent uses per-call values, add them under **Dynamic Variables** using
+**Variable Name** and **Test Value**. Use **Custom SIP Headers** only when your
+integration needs additional SIP metadata. Select **Call** when ready to place
+the call. Retell supports initiating outbound calls from this dashboard flow.
+[Retell outbound calls](https://docs.retellai.com/deploy/outbound-call).
+
+This is a usage step after setup. It is optional for readers who only need
+incoming calls and is not a prerequisite for configuring either direction.
+
+## Review your configuration
+
+| If you need | Check these settings |
+| --- | --- |
+| Incoming calls | Your Photon number is imported in Retell, **Inbound Call Agent** has the intended agent/version, and Photon inbound points to `sip.retellai.com` over **TLS**. |
+| Outgoing calls | Photon outbound is enabled, Retell has the profile's server and credentials with **TLS** and its matching port, Photon uses **SHA-256**, and **Outbound Call Agent** has the intended agent/version. |
+| Both directions | Both sets of settings are complete and refer to the same Photon number and its Voice profile. |
+
+Retell's **Save** action records the connection settings. It does not verify
+that calls can connect. You can leave an unused call direction disabled.
+
+## Troubleshooting
+
+| What you see | What to check |
+| --- | --- |
+| Your number is missing from Photon **Lines** | Confirm the selected project and that you have an SMS number, WhatsApp number, or dedicated iMessage line. Shared iMessage assignments are not eligible. |
+| An incoming call does not reach the agent | Check the imported number, the selected inbound agent/version, Photon's receiving destination, and **Allowed Inbound Countries** in Retell. |
+| Outbound authentication fails | Check that Retell uses the selected profile's generated SIP username and saved password, with **SHA-256** selected in Photon. These are not Photon API credentials. |
+| An outbound call cannot connect | Check the Photon termination address, selected transport and matching port, recipient number, and **Allowed Outbound Countries**. Look at the failed call in Retell **Call History** for the reported reason. |
+| Calls fail after requiring encrypted audio | Confirm TLS is selected for both configured directions and that SRTP is supported. |
+| You lost the outbound password | Rotate the credential in Photon, save the replacement, and update the services using it. |
+
+Retell reports reasons such as `invalid_destination`,
+`telephony_provider_permission_denied`, and `sip_routing_error` in its call
+logs. Use the reported reason to narrow the problem.
+[Retell outbound troubleshooting](https://docs.retellai.com/reliability/debug-outbound-call).
