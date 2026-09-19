@@ -24,6 +24,14 @@ photon billing show --json
 
 Displays the active subscription for the current project, including plan details and status.
 
+<Frame caption="A project on the free tier.">
+<img src="/images/cli/billing/free.avif" alt="Terminal output of photon billing show for a project on the free tier" style={{ padding: "1rem" }} />
+</Frame>
+
+<Frame caption="A project on a paid plan.">
+<img src="/images/cli/billing/paid.avif" alt="Terminal output of photon billing show for a project on a paid plan" style={{ padding: "1rem" }} />
+</Frame>
+
 ## Start a checkout
 
 ```sh
@@ -39,6 +47,10 @@ photon billing checkout --plan price_xxx
 ```
 
 When you run this command, the CLI creates a Stripe Checkout session and opens it in your browser. If you don't pass any arguments, you get an interactive picker listing the available plans. Pass a `[tier]` positional or `--plan <price-id>` to skip the picker.
+
+<Frame caption="Starting a checkout from the interactive picker.">
+<video src="/images/cli/billing/demo-billing.webm" autoPlay loop muted playsInline />
+</Frame>
 
 Available tiers: `pro`, `business`, `enterprise`.
 
