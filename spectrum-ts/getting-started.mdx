@@ -1,0 +1,330 @@
+---
+title: "Getting Started"
+description: "Install spectrum-ts and send your first message across platforms"
+---
+
+import { TypeTooltip } from "/snippets/type-tooltip.mdx";
+
+
+
+
+
+`spectrum-ts` is a unified messaging SDK for TypeScript. Write your logic once, deliver it across every platform — iMessage, WhatsApp Business, your terminal, or a custom platform you build yourself.
+
+## Installation
+
+`spectrum-ts` is the batteries-included package for the standard provider set.
+The macOS-only local iMessage adapter is intentionally separate so its native
+Messages database dependencies are never installed in cloud applications.
+
+<CodeGroup>
+```bash npm
+npm install spectrum-ts
+```
+
+```bash pnpm
+pnpm add spectrum-ts
+```
+
+```bash yarn
+yarn add spectrum-ts
+```
+
+```bash bun
+bun add spectrum-ts
+```
+</CodeGroup>
+
+For a leaner install, depend on `@spectrum-ts/core` plus only the providers you need:
+
+```bash
+bun add @spectrum-ts/core @spectrum-ts/imessage @spectrum-ts/telegram
+```
+
+Either way, the `spectrum-ts/providers/<platform>` import paths work as long as the matching provider package is installed.
+
+Local iMessage is the exception: install and import it explicitly. It has no
+`spectrum-ts/providers/imessage-local` compatibility path.
+
+```bash
+bun add spectrum-ts @spectrum-ts/imessage-local
+```
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { localIMessage } from "@spectrum-ts/imessage-local";
+
+const app = await Spectrum({
+  providers: [localIMessage.config()],
+});
+```
+
+Requires TypeScript 5 or later (TypeScript 6 is also supported).
+
+## Core concepts
+
+Spectrum is built around four primitives:
+
+| Primitive | What it represents |
+|---|---|
+| <TypeTooltip name="Message" type={`interface Message<TPlatform extends string = string, TSender extends User = User, TSpace extends Space = Space> {     content: Content;     direction: "inbound" \u007C "outbound";     edit(newContent: ContentInput): Promise<void>;     readonly id: string;     platform: TPlatform;     react(reaction: string): Promise<(Message<TPlatform, AgentSender, TSpace> & {         content: Reaction;     }) \u007C undefined>;     read(): Promise<void>;     reply(content: ContentInput): Promise<Message<TPlatform, AgentSender, TSpace> \u007C undefined>;     reply(...content: [         ContentInput,         ContentInput,         ...ContentInput[]     ]): Promise<Message<TPlatform, AgentSender, TSpace>[]>;     sender: TSender \u007C undefined;     space: TSpace;     timestamp: Date;     unsend(): Promise<void>; }`} /> | An incoming piece of content — text, attachments, or structured data — from any platform. |
+| <TypeTooltip name="Space" type={`interface Space<_Def = unknown> {     readonly __platform: string;     add(users: MemberInput): Promise<void>;     avatar(input: string \u007C URL, options?: {         mimeType?: string;     }): Promise<void>;     avatar(input: Buffer, options: {         mimeType: string;     }): Promise<void>;     edit(message: Message \u007C undefined, newContent: ContentInput): Promise<void>;     getAvatar(): Promise<AvatarData \u007C undefined>;     getDisplayName(): Promise<string \u007C undefined>;     getMembers(): Promise<User[]>;     getMessage(id: string): Promise<Message \u007C undefined>;     readonly id: string;     leave(): Promise<void>;     read(message: Message): Promise<void>;     remove(users: MemberInput): Promise<void>;     rename(displayName: string): Promise<void>;     responding<T>(fn: () => T \u007C Promise<T>): Promise<T>;     send(content: ReactionBuilder): Promise<(Message<string, AgentSender> & {         content: Reaction;     }) \u007C undefined>;     send(content: ContentInput): Promise<Message<string, AgentSender> \u007C undefined>;     send(...content: [         ContentInput,         ContentInput,         ...ContentInput[]     ]): Promise<Message<string, AgentSender>[]>;     startTyping(): Promise<void>;     stopTyping(): Promise<void>;     unsend(message: Message \u007C undefined): Promise<void>; }`} /> | A conversation context. A DM, a group chat, a terminal session. You send messages *into* a space. |
+| <TypeTooltip name="User" type={`interface User {     readonly __platform: string;     readonly id: string;     readonly kind?: "agent"; }`} /> | A participant on a platform, identified by a platform-specific ID. |
+| **Platform provider** | A platform adapter (iMessage, terminal, WhatsApp, or your own) that translates platform-specific protocols into Spectrum's unified interface. |
+
+Every message arrives as a tuple containing a <TypeTooltip name="Space" type={`interface Space<_Def = unknown> {
+    readonly __platform: string;
+    add(users: MemberInput): Promise<void>;
+    avatar(input: string | URL, options?: {
+        mimeType?: string;
+    }): Promise<void>;
+    avatar(input: Buffer, options: {
+        mimeType: string;
+    }): Promise<void>;
+    edit(message: Message | undefined, newContent: ContentInput): Promise<void>;
+    getAvatar(): Promise<AvatarData | undefined>;
+    getDisplayName(): Promise<string | undefined>;
+    getMembers(): Promise<User[]>;
+    getMessage(id: string): Promise<Message | undefined>;
+    readonly id: string;
+    leave(): Promise<void>;
+    read(message: Message): Promise<void>;
+    remove(users: MemberInput): Promise<void>;
+    rename(displayName: string): Promise<void>;
+    responding<T>(fn: () => T | Promise<T>): Promise<T>;
+    send(content: ReactionBuilder): Promise<(Message<string, AgentSender> & {
+        content: Reaction;
+    }) | undefined>;
+    send(content: ContentInput): Promise<Message<string, AgentSender> | undefined>;
+    send(...content: [
+        ContentInput,
+        ContentInput,
+        ...ContentInput[]
+    ]): Promise<Message<string, AgentSender>[]>;
+    startTyping(): Promise<void>;
+    stopTyping(): Promise<void>;
+    unsend(message: Message | undefined): Promise<void>;
+}`} /> and a <TypeTooltip name="Message" type={`interface Message<TPlatform extends string = string, TSender extends User = User, TSpace extends Space = Space> {
+    content: Content;
+    direction: "inbound" | "outbound";
+    edit(newContent: ContentInput): Promise<void>;
+    readonly id: string;
+    platform: TPlatform;
+    react(reaction: string): Promise<(Message<TPlatform, AgentSender, TSpace> & {
+        content: Reaction;
+    }) | undefined>;
+    read(): Promise<void>;
+    reply(content: ContentInput): Promise<Message<TPlatform, AgentSender, TSpace> | undefined>;
+    reply(...content: [
+        ContentInput,
+        ContentInput,
+        ...ContentInput[]
+    ]): Promise<Message<TPlatform, AgentSender, TSpace>[]>;
+    sender: TSender | undefined;
+    space: TSpace;
+    timestamp: Date;
+    unsend(): Promise<void>;
+}`} />. The space gives you the ability to respond; the message gives you the content and metadata.
+
+## Quickstart
+
+### Get your credentials
+
+Find your `PROJECT_ID` and `SECRET_KEY` in your project **Settings** on the [dashboard](https://app.photon.codes/).
+
+You can pass these to `Spectrum(...)` directly, or omit them and let Spectrum
+read `SPECTRUM_PROJECT_ID` and `SPECTRUM_PROJECT_SECRET` from the environment.
+The same explicit-wins-over-env fallback applies to `webhookSecret` (`SPECTRUM_WEBHOOK_SECRET`)
+and to every provider's config.
+
+Provider config fallbacks are automatic and convention-based: any text config
+field can be supplied through the environment as `SPECTRUM_<PLATFORM>_<FIELD>`,
+where `<PLATFORM>` is the provider's id upper-cased (spaces and punctuation become
+`_`) and `<FIELD>` is the config key in `UPPER_SNAKE_CASE`. For example
+Telegram's `botToken` reads from `SPECTRUM_TELEGRAM_BOT_TOKEN`, and WhatsApp
+Business's `phoneNumberId` reads from `SPECTRUM_WHATSAPP_BUSINESS_PHONE_NUMBER_ID`.
+Explicit config always wins over the environment — see the provider setup pages
+for each field's env var name.
+
+### Run your first app
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { imessage } from "spectrum-ts/providers/imessage";
+
+const app = await Spectrum({
+  projectId: "your-project-id",
+  projectSecret: "your-project-secret",
+  providers: [
+    imessage.config(),
+  ],
+});
+
+for await (const [space, message] of app.messages) {
+  if (message.content.type === "text") {
+    console.log(`[${message.platform}] ${message.sender?.id ?? "unknown"}: ${message.content.text}`);
+    await space.send("hello world");
+  }
+}
+```
+
+Projectless providers (like `terminal`) can be used without credentials:
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { terminal } from "spectrum-ts/providers/terminal";
+
+const app = await Spectrum({
+  providers: [terminal.config()],
+});
+```
+
+## The app instance
+
+
+`Spectrum()` returns a <TypeTooltip name="SpectrumInstance" type={`type SpectrumInstance<Providers extends PlatformProviderConfig[] = PlatformProviderConfig[]> = SpectrumLike<Providers> & CustomEventStreams<Providers> & {
+    readonly messages: AsyncIterable<[
+        Space,
+        Message
+    ]>;
+    stop(): Promise<void>;
+    send(space: Space, content: ContentInput): Promise<Message<string, AgentSender> | undefined>;
+    send(space: Space, ...content: [
+        ContentInput,
+        ContentInput,
+        ...ContentInput[]
+    ]): Promise<Message<string, AgentSender>[]>;
+    edit(message: Message, newContent: ContentInput): Promise<void>;
+    responding<T>(space: Space, fn: () => T | Promise<T>): Promise<T>;
+    webhook(request: Request, handler: WebhookHandler): Promise<Response>;
+    webhook(request: WebhookRawRequest, handler: WebhookHandler): Promise<WebhookRawResult>;
+};`} /> — an object that merges a message stream with platform-specific custom event streams.
+
+```ts
+app.messages
+await app.send(space, ...)   // send into a space
+await app.responding(space, fn)  // run fn with a typing indicator
+await app.webhook(req, handler)  // handle an inbound webhook delivery
+await app.stop()             // graceful shutdown
+```
+
+`app.messages` is an `AsyncIterable` of tuples containing a <TypeTooltip name="Space" type={`interface Space<_Def = unknown> {
+    readonly __platform: string;
+    add(users: MemberInput): Promise<void>;
+    avatar(input: string | URL, options?: {
+        mimeType?: string;
+    }): Promise<void>;
+    avatar(input: Buffer, options: {
+        mimeType: string;
+    }): Promise<void>;
+    edit(message: Message | undefined, newContent: ContentInput): Promise<void>;
+    getAvatar(): Promise<AvatarData | undefined>;
+    getDisplayName(): Promise<string | undefined>;
+    getMembers(): Promise<User[]>;
+    getMessage(id: string): Promise<Message | undefined>;
+    readonly id: string;
+    leave(): Promise<void>;
+    read(message: Message): Promise<void>;
+    remove(users: MemberInput): Promise<void>;
+    rename(displayName: string): Promise<void>;
+    responding<T>(fn: () => T | Promise<T>): Promise<T>;
+    send(content: ReactionBuilder): Promise<(Message<string, AgentSender> & {
+        content: Reaction;
+    }) | undefined>;
+    send(content: ContentInput): Promise<Message<string, AgentSender> | undefined>;
+    send(...content: [
+        ContentInput,
+        ContentInput,
+        ...ContentInput[]
+    ]): Promise<Message<string, AgentSender>[]>;
+    startTyping(): Promise<void>;
+    stopTyping(): Promise<void>;
+    unsend(message: Message | undefined): Promise<void>;
+}`} /> and a <TypeTooltip name="Message" type={`interface Message<TPlatform extends string = string, TSender extends User = User, TSpace extends Space = Space> {
+    content: Content;
+    direction: "inbound" | "outbound";
+    edit(newContent: ContentInput): Promise<void>;
+    readonly id: string;
+    platform: TPlatform;
+    react(reaction: string): Promise<(Message<TPlatform, AgentSender, TSpace> & {
+        content: Reaction;
+    }) | undefined>;
+    read(): Promise<void>;
+    reply(content: ContentInput): Promise<Message<TPlatform, AgentSender, TSpace> | undefined>;
+    reply(...content: [
+        ContentInput,
+        ContentInput,
+        ...ContentInput[]
+    ]): Promise<Message<TPlatform, AgentSender, TSpace>[]>;
+    sender: TSender | undefined;
+    space: TSpace;
+    timestamp: Date;
+    unsend(): Promise<void>;
+}`} />.
+
+Custom events emitted by providers are exposed as flat async iterables on the same object — see [Custom events and lifecycle](/spectrum-ts/custom-events-and-lifecycle).
+
+`app.webhook()` handles both native Spectrum webhooks and Fusor webhooks through the same method. See [Webhooks](/spectrum-ts/webhooks) for setup and framework adapters.
+
+## Multi-platform in three lines
+
+Combine providers to receive and send across platforms simultaneously:
+
+```ts
+import { Spectrum } from "spectrum-ts";
+import { imessage } from "spectrum-ts/providers/imessage";
+import { terminal } from "spectrum-ts/providers/terminal";
+
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [
+    imessage.config(),
+    terminal.config(),
+  ],
+});
+
+for await (const [space, message] of app.messages) {
+  await space.responding(async () => {
+    await message.reply("Hello from Spectrum.");
+  });
+}
+```
+
+Messages from every provider merge into the single `app.messages` stream. The `message.platform` field identifies the source.
+
+## Logging
+
+Spectrum emits structured logs across the core runtime and providers. The default log level is `info`. Control the verbosity with `logLevel`:
+
+```ts
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [imessage.config()],
+  options: { logLevel: "debug" },
+});
+```
+
+An explicit `logLevel` takes precedence over the `LOG_LEVEL` environment variable.
+
+Log output is sanitized — sensitive fields like tokens and secrets are redacted from error attributes before they reach any log destination.
+
+## Telemetry
+
+Spectrum has built-in [OpenTelemetry](https://opentelemetry.io/) instrumentation. Enable it by passing `telemetry: true`:
+
+```ts
+const app = await Spectrum({
+  projectId: process.env.PROJECT_ID!,
+  projectSecret: process.env.PROJECT_SECRET!,
+  providers: [imessage.config()],
+  telemetry: true,
+});
+```
+
+When enabled, Spectrum traces initialization, provider setup, message send/receive/get flows, space resolution, and custom events. Each span includes attributes like the provider name, space ID, content type, and sender kind.
+
+Traces are sent to the Photon OTLP endpoint by default. Standard `OTEL_EXPORTER_OTLP_*` environment variables override the default endpoint and headers.
+
+Calling `app.stop()` flushes any pending telemetry data before shutting down.

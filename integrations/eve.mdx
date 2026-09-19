@@ -1,0 +1,116 @@
+---
+title: "eve"
+description: "Connect an eve agent to iMessage through Photon"
+---
+
+
+
+
+
+
+
+[eve](https://vercel.com/eve) can expose an agent over iMessage with
+`photonIMessageChannel`. The channel wraps [Photon's Chat SDK iMessage
+adapter](https://github.com/photon-hq/vercel-chat-adapter-imessage), which is
+built on `spectrum-ts`. You configure an eve channel; you do not need to
+construct a Chat SDK `Chat` instance or initialize the underlying
+<Tooltip tip="type SpectrumInstance<Providers extends PlatformProviderConfig[] = PlatformProviderConfig[]> = SpectrumLike<Providers> & CustomEventStreams<Providers> & { readonly messages: AsyncIterable<[ Space, Me…">`SpectrumInstance`</Tooltip> yourself.
+
+The channel receives authenticated Photon webhook deliveries at
+`/eve/v1/photon`, keeps each iMessage conversation in one eve session, and
+marks accepted messages as read. If another accepted message arrives while the
+agent is replying, it cooperatively cancels the active turn and steers its
+replacement instead of starting a second independent reply. Replies are sent
+as complete messages rather than token-by-token streams because iMessage does
+not support Chat SDK streaming.
+
+This guide covers the Photon side of the integration: provisioning,
+credentials, and webhook verification. The channel's TypeScript surface —
+imports, configuration options, and callback signatures — is still evolving,
+so it is documented upstream in the [eve Photon channel
+reference](https://eve.dev/docs/channels/photon) rather than duplicated here.
+
+## Add the Photon channel
+
+If you do not have an eve agent yet, create one first with the
+[eve docs](https://eve.dev/docs). From the agent directory, add the Photon
+iMessage channel:
+
+```bash
+eve add channel/photon-imessage
+```
+
+The setup wizard:
+
+1. Creates a Photon project or connects an existing one.
+2. Registers your iMessage phone number with the project.
+3. Lets you choose Vercel Connect or portable environment credentials.
+4. Scaffolds the channel file in your agent.
+
+## Vercel Connect
+
+Choose **Set up Vercel Connect** when the agent will run on Vercel. The wizard
+links the Vercel project, creates a Photon connector, configures the Photon
+webhook, and scaffolds a channel that resolves the Photon project ID and
+secret through Vercel Connect when the channel initializes. Keep the connector
+ID the wizard writes into the generated file.
+
+Forwarded webhooks are verified with same-project Vercel OIDC by default, so
+this path does not require an `IMESSAGE_WEBHOOK_SECRET` environment variable.
+
+## Portable credentials
+
+Choose **Use portable credentials** for another host. The wizard writes
+`IMESSAGE_PROJECT_ID` and `IMESSAGE_PROJECT_SECRET` to `.env.local` and
+scaffolds a credential provider that reads them from the environment, along
+with a webhook signing secret read from `IMESSAGE_WEBHOOK_SECRET`.
+
+After deploying the agent:
+
+<Steps>
+  <Step title="Register the webhook">
+    In the [Photon dashboard](https://app.photon.codes), create a webhook that
+    points to your public `https://your-host.example/eve/v1/photon` URL.
+  </Step>
+  <Step title="Store the signing secret">
+    Copy the webhook signing secret to `IMESSAGE_WEBHOOK_SECRET` in your
+    host's encrypted environment variables.
+  </Step>
+  <Step title="Add the project credentials">
+    Add `IMESSAGE_PROJECT_ID` and `IMESSAGE_PROJECT_SECRET` to the same
+    environment, then redeploy the agent.
+  </Step>
+</Steps>
+
+<Warning>
+  Keep the project secret and webhook signing secret out of source control.
+  They are different credentials: the project secret authorizes Photon API
+  access, while the webhook secret authenticates inbound deliveries.
+</Warning>
+
+For a direct Photon webhook, the signing secret replaces the default Vercel
+OIDC verifier. A custom webhook verifier configured on the channel takes
+precedence over the signing secret.
+
+## Filter and enrich inbound messages
+
+The channel's `onMessage` callback decides which inbound messages reach the
+agent and can attach private context to the turn — for example, ignoring
+messages from other bots, or telling the agent who the sender is. The
+callback receives the Chat SDK <Tooltip tip="declare class Message<TRawMessage = unknown> { readonly id: string; readonly threadId: string; text: string; formatted: FormattedContent; raw: TRawMessage; author: Author; metadata: MessageMetadata; …">`Message`</Tooltip>, and its context
+exposes the low-level <Tooltip tip="interface Thread<TState = Record<string, unknown>, TRawMessage = unknown> extends Postable<TState, TRawMessage> { allMessages: AsyncIterable<Message<TRawMessage>>; readonly channel: Channel<TState, T…">`Thread`</Tooltip> for advanced iMessage
+operations.
+
+See the [eve Photon channel reference](https://eve.dev/docs/channels/photon)
+for the current callback signature and return shape.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="eve Photon channel" icon="comment" href="https://eve.dev/docs/channels/photon">
+    Read the upstream eve reference for the Photon channel.
+  </Card>
+  <Card title="Chat SDK adapter" icon="code" href="https://github.com/photon-hq/vercel-chat-adapter-imessage">
+    Use the adapter directly or review its iMessage capability matrix.
+  </Card>
+</CardGroup>
