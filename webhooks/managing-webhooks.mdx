@@ -205,6 +205,10 @@ The delete is logical — the row is soft-deleted with a `deletedAt` timestamp o
 
 ## Rotating the signing secret
 
+<Note>
+Your signing secret is **stable for the life of the registration**. Restarting your app, your relay, or the Spectrum worker never rotates it — the only things that change a secret are an explicit delete + re-register (below) or registering a brand-new webhook. If you find yourself capturing a new secret on every restart, you're deleting and re-creating the webhook when you don't need to.
+</Note>
+
 There is no dedicated rotation endpoint. To rotate, **delete and re-register**:
 
 ```sh
